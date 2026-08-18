@@ -192,6 +192,7 @@
     <select id="style"><option value="classic"></option><option value="trad"></option></select>
     <button class="btn" id="undo"></button>
     <button class="btn" id="sound"></button>
+    <button class="btn" id="music"></button>
     <button class="btn" id="coachbtn"></button>
     <button class="btn" id="fs"></button>
     <button class="btn" id="skins"></button>
@@ -229,6 +230,7 @@
 </div></div>
 <div id="setmodal" class="shop"><div class="shopcard">
   <div class="shophead"><span>⚙️ Settings</span><button id="setclose" class="shopx" aria-label="Close">✕</button></div>
+  <div class="setrow"><label for="volmus">🎵 Music volume</label><input type="range" id="volmus" min="0" max="100"></div>
   <div class="setrow"><label for="volsfx">🔊 Sound volume</label><input type="range" id="volsfx" min="0" max="100"></div>
   <div class="setbtns"><button class="btn" id="backup">⬇︎ Backup save</button><button class="btn" id="restore">⬆︎ Restore</button><button class="btn" id="resetprog">Reset progress</button></div>
   <input type="file" id="restorefile" accept="application/json" style="display:none">
@@ -635,10 +637,14 @@ function coachSummaryText(){ if(!coachStats)return''; const t=T[lang],parts=[];
   return parts.join(' · '); }
 
 // ================= sound =================
-let audioCtx=null, soundOn=true, musicOn=true, musicTimer=null, musicGain=null, musicStep=0, sfxGain=null, sfxVol=0.9, musicVol=0.6;
+let audioCtx=null, soundOn=true, musicOn=true, musicTimer=null, musicGain=null, musicStep=0, sfxGain=null, sfxVol=0.9, musicVol=0.55, bgm=null, bgmReady=false;
 function initAudio(){ if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(audioCtx&&!sfxGain){sfxGain=audioCtx.createGain();sfxGain.gain.value=sfxVol;sfxGain.connect(audioCtx.destination);}
-  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume(); }
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+  if(!bgm){ try{ bgm=new Audio('./music.mp3'); bgm.loop=true; bgm.preload='auto';
+    bgm.addEventListener('canplaythrough',function(){ bgmReady=true; if(musicOn){stopMusic();startMusic();} });
+    bgm.addEventListener('error',function(){ bgmReady=false; }); }catch(e){} }
+  if(musicOn)startMusic(); }
 function tone(freq,dur,type,vol,when){ if(!audioCtx)return;const t=when||audioCtx.currentTime;
   const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
   g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.008);
@@ -679,8 +685,27 @@ function mPerc(when,type){ if(!audioCtx||!musicGain)return; const g=audioCtx.cre
     const f=audioCtx.createBiquadFilter(); f.type='highpass'; f.frequency.value=2600;
     g.gain.setValueAtTime(0.08,when); g.gain.exponentialRampToValueAtTime(0.0001,when+0.06);
     n.connect(f).connect(g); n.start(when); } }
-function startMusic(){ /* background music removed */ }
-function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;} }
+function startMusic(){
+  if(bgm&&bgmReady){ try{ bgm.volume=musicVol; var pp=bgm.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} return; } // play user's music.mp3 if present
+  if(!audioCtx||musicTimer)return;
+  if(!musicGain){musicGain=audioCtx.createGain();musicGain.gain.value=musicVol;musicGain.connect(audioCtx.destination);}
+  const stepDur=0.5; let nextTime=audioCtx.currentTime+0.15;
+  const perc=['dum',null,'tak',null,'dum','tak',null,'tak'];   // darbuka-style groove
+  musicTimer=setInterval(function(){ if(!audioCtx)return; const now=audioCtx.currentTime;
+    while(nextTime<now+0.6){ const phrase=M_PHRASES[mPhrase], step=phrase[mPos], beat=mPos%8;
+      const pc=perc[beat]; if(pc) mPerc(nextTime,pc);                       // percussion
+      if(beat===0) mPad(73.42,nextTime,stepDur*3.9,0.06);                   // bass: tonic
+      else if(beat===4) mPad(97.999,nextTime,stepDur*3.9,0.045);            // bass: fifth-ish
+      if(step!==null&&step!==undefined){                                    // lead
+        mPad(mNoteFreq(step+mOct*7),nextTime,stepDur*1.7,0.036+Math.random()*0.012);
+        if(Math.random()<0.16) mPad(mNoteFreq(step+mOct*7+2),nextTime+stepDur*0.5,stepDur*0.8,0.02);
+      }
+      mPos++;
+      if(mPos>=phrase.length){ mPos=0;
+        let n; do{ n=Math.floor(Math.random()*M_PHRASES.length); }while(n===mPhrase&&M_PHRASES.length>1); mPhrase=n;
+        mOct = Math.random()<0.22 ? 1 : (Math.random()<0.15 ? -1 : 0); }
+      nextTime+=stepDur; } },140); }
+function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;} if(bgm){try{bgm.pause();}catch(e){}} }
 
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
@@ -696,7 +721,7 @@ function applyLang(){const t=T[lang];
   updateSideBtn();
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
-  $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
+  $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
   $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;$('skins').textContent='🎨 Skins';updateStats();
   const rb=$('rulesbtn'),rl=$('rules');
   rb.textContent=rl.classList.contains('hidden')?t.howto:t.hide;
@@ -974,7 +999,7 @@ function showToast(msg,onClick){ const el=$('toast'); if(!el)return; el.textCont
   if(toastTimer)clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},9000); }
 function renderAchv(){ const g=$('achvgrid'); if(!g)return; let html=''; ACHV.forEach(function(a){ const got=STATS.achv&&STATS.achv[a.id];
   html+='<div class="scard '+(got?'owned':'locked')+'"><div class="sname">'+a.emoji+' '+a.name+'</div><div class="sdesc">'+a.t+'</div><div class="sfoot"><span class="stag '+(got?'ok':'')+'">'+(got?'Earned':'Locked')+'</span></div></div>'; }); g.innerHTML=html; }
-function openSettings(){ $('volsfx').value=Math.round(sfxVol*100); renderAchv(); $('setmodal').classList.add('show'); }
+function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); renderAchv(); $('setmodal').classList.add('show'); }
 function closeSettings(){ $('setmodal').classList.remove('show'); }
 function doBackup(){ try{ const data={stats:localStorage.getItem('dama-stats'),learn:localStorage.getItem('dama-learn'),prefs:localStorage.getItem('dama-prefs'),_v:1};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'}); const url=URL.createObjectURL(blob);
@@ -991,10 +1016,12 @@ $('newgame').addEventListener('click',()=>{initAudio();newGame();});
 $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
 $('undo').addEventListener('click',undo);
 $('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;savePrefs();});
+$('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;savePrefs();});
 $('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textContent=coachOn?T[lang].coachOn:T[lang].coachOff;showCoachIdle();savePrefs();});
 $('settings').addEventListener('click',openSettings);
 $('setclose').addEventListener('click',closeSettings);
 $('setmodal').addEventListener('click',function(e){ if(e.target===$('setmodal'))closeSettings(); });
+$('volmus').addEventListener('input',function(){ musicVol=(+this.value)/100; if(musicGain)musicGain.gain.value=musicVol; if(bgm)bgm.volume=musicVol; savePrefs(); });
 $('volsfx').addEventListener('input',function(){ sfxVol=(+this.value)/100; if(sfxGain)sfxGain.gain.value=sfxVol; savePrefs(); });
 $('backup').addEventListener('click',doBackup);
 $('restore').addEventListener('click',function(){ $('restorefile').click(); });
