@@ -97,9 +97,39 @@
   .rulesbtn{margin-top:16px;background:transparent;color:var(--muted);border:none;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;}
   .rules{margin-top:8px;font-size:13.5px;line-height:1.65;color:#cdc3ae;} .rules ul{margin:6px 0;padding-left:18px;} .rules p{margin:6px 0;} .hidden{display:none;}
   [dir="rtl"] .rules ul{padding-left:0;padding-right:18px;}
+
+  /* loading splash */
+  .loading{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+     background:radial-gradient(120% 90% at 50% 0%,#221a12 0%,var(--bg) 60%);transition:opacity .5s ease;}
+  .loading.gone{opacity:0;pointer-events:none;}
+  .loadinner{text-align:center;}
+  .lwm{font-family:"Iowan Old Style",Georgia,serif;font-size:64px;color:var(--gold);letter-spacing:2px;text-shadow:0 3px 12px rgba(0,0,0,.55);}
+  .lsub{margin-top:10px;color:var(--accent);font-size:11px;letter-spacing:4px;text-transform:uppercase;}
+  .lspin{width:34px;height:34px;margin:20px auto 0;border-radius:50%;border:3px solid rgba(217,164,65,.22);border-top-color:var(--gold);animation:spin .9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* hint / assist button */
+  .hintfab{position:fixed;right:14px;bottom:86px;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+     width:58px;height:58px;border-radius:50%;background:var(--panel);color:var(--gold);border:1px solid #4a3a24;
+     box-shadow:0 6px 16px rgba(0,0,0,.5);cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;}
+  .hintfab:active{transform:translateY(1px);}
+  .hintfab .hicon{font-size:22px;line-height:1;}
+  .hintfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;}
+  .hintfab.busy{opacity:.55;}
+  .hintfab.off{display:none;}
+  .sq.hintfrom{box-shadow:inset 0 0 0 .5px var(--grid),inset 0 0 0 4px rgba(143,174,107,.85);}
+  .sq.hintto::after{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(143,174,107,.92);animation:hintpulse 1s ease-in-out infinite;pointer-events:none;}
+  @keyframes hintpulse{0%,100%{opacity:.5;}50%{opacity:1;}}
 </style>
 </head>
 <body>
+<div id="loading" class="loading">
+  <div class="loadinner">
+    <div class="lwm">دامة</div>
+    <div class="lspin"></div>
+    <div class="lsub">Dama · Lebanese draughts</div>
+  </div>
+</div>
 <div class="wrap" id="wrap">
   <div class="head">
     <h1><span id="tTitle">Dama</span><span class="sub" id="tSub">Lebanese draughts</span></h1>
@@ -118,6 +148,7 @@
     <button class="btn" id="sound"></button>
     <button class="btn" id="music"></button>
     <button class="btn" id="coachbtn"></button>
+    <button class="btn" id="fs"></button>
   </div>
 
   <div class="tray"><div class="caps" id="capL"></div><div class="movebadge" id="move"></div><div class="caps right" id="capR"></div></div>
@@ -138,12 +169,16 @@
   <div class="rules hidden" id="rules"></div>
 </div>
 
+<button id="hintfab" class="hintfab" title="Suggest a move — it advises, it doesn't move for you">
+  <span class="hicon">💡</span><span class="hlbl" id="hintlbl">Hint</span>
+</button>
+
 <script>
 // ================= i18n =================
 const T={
  en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
    playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",
-   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",
+   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",fs:"Fullscreen",fsExit:"Exit full",hint:"Hint",
    light:"Light",dark:"Dark",toMove:"to move",must:"must capture",thinking:"thinking…",wins:"wins",
    youWon:"Well played — نخبك!",youLost:"Computer takes it. Rematch?",niceGame:"نخبك!",move:"Move",playAgain:"Play again",
    howto:"How to play",hide:"Hide rules",
@@ -155,7 +190,7 @@ const T={
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
    playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
-   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",
+   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",fs:"ملء الشاشة",fsExit:"إنهاء",hint:"مساعدة",
    light:"الفاتح",dark:"الغامق",toMove:"عليه الدور",must:"الأكل إجباري",thinking:"يفكّر…",wins:"فاز",
    youWon:"لعب موفّق — نخبك!",youLost:"الكمبيوتر فاز. تعيدها؟",niceGame:"نخبك!",move:"نقلة",playAgain:"العب مجدداً",
    howto:"كيفية اللعب",hide:"إخفاء القواعد",
@@ -378,7 +413,7 @@ function startMusic(){ if(!audioCtx||musicTimer)return;
 function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;} }
 
 // ================= state =================
-let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip;
+let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
 function dIndex(r,c){const p=disp(r,c);return p.r*8+p.c;}
@@ -391,6 +426,7 @@ function applyLang(){const t=T[lang];
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
+  $('fs').textContent=document.fullscreenElement?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;
   const rb=$('rulesbtn'),rl=$('rules');
   rb.textContent=rl.classList.contains('hidden')?t.howto:t.hide;
   rl.innerHTML='<p>'+t.rules[0]+'</p><ul>'+t.rules.slice(1).map(x=>'<li>'+x+'</li>').join('')+'</ul>';
@@ -405,7 +441,7 @@ function newGame(doBounce){
   mode=$('mode').value;humanSide=sideChoice;diff=$('diff').value;style=$('style').value;
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
-  board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;
+  board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
   moveTrail=[];coachStats={};
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -465,6 +501,7 @@ function render(){const t=T[lang];
     sq.className='sq '+(((mr+mc)%2)?'dark':'light');
     if(lastMove&&((lastMove.from[0]===mr&&lastMove.from[1]===mc)||(lastMove.to[0]===mr&&lastMove.to[1]===mc)))sq.classList.add('last');
     if(selKey===key)sq.classList.add('sel');
+    if(hint){ if(hint.from[0]===mr&&hint.from[1]===mc)sq.classList.add('hintfrom'); if(hint.to[0]===mr&&hint.to[1]===mc)sq.classList.add('hintto'); }
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -494,7 +531,7 @@ function apply(mv){
   recordMove(prev,mover,mv);                                   // remember move for learning
   const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
   if(moverHuman) coachOnMove(prev,mover,mv);                   // rate the human's move
-  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;
+  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
@@ -504,6 +541,17 @@ function apply(mv){
     if(over){finishGame(next===1?2:1);}else{render();maybeAI();}});
 }
 function finishGame(w){ winner=w; learnFromGame(w); render(); showWin(); }
+function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
+function showHint(){ if(!canAssist())return; initAudio();
+  const fab=$('hintfab'); if(fab)fab.classList.add('busy');
+  setTimeout(function(){ let mv=null; try{ mv=search(board,turn,900,20); }catch(e){}
+    if(mv){ hint={from:mv.from,to:mv.to}; render(); }
+    if(fab)fab.classList.remove('busy'); },20);
+}
+function toggleFullscreen(){ try{ const el=document.documentElement;
+  if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); }
+  else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+}catch(e){} }
 
 function animateMove(mv,prevBoard,promoted,done){
   const cell=boardEl.clientWidth/8;
@@ -564,6 +612,10 @@ $('undo').addEventListener('click',undo);
 $('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;});
 $('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;});
 $('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textContent=coachOn?T[lang].coachOn:T[lang].coachOff;showCoachIdle();});
+$('fs').addEventListener('click',toggleFullscreen);
+$('hintfab').addEventListener('click',showHint);
+document.addEventListener('fullscreenchange',()=>{$('fs').textContent=document.fullscreenElement?T[lang].fsExit:T[lang].fs;});
+document.addEventListener('webkitfullscreenchange',()=>{$('fs').textContent=document.fullscreenElement?T[lang].fsExit:T[lang].fs;});
 ['mode','diff','style'].forEach(id=>$(id).addEventListener('change',()=>{initAudio();newGame();}));
 $('side').addEventListener('click',()=>{initAudio();doSideToggle();});
 $('rulesbtn').addEventListener('click',function(){const el=$('rules');el.classList.toggle('hidden');
@@ -573,6 +625,10 @@ window.addEventListener('pointerdown',initAudio,{once:true});
 loadLearn();
 applyLang();
 newGame();
+(function(){ function hideLoading(){ var l=document.getElementById('loading'); if(!l)return;
+    l.classList.add('gone'); setTimeout(function(){ if(l&&l.parentNode) l.parentNode.removeChild(l); },600); }
+  setTimeout(hideLoading, 800);
+  window.addEventListener('load', function(){ setTimeout(hideLoading, 250); }); })();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
