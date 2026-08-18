@@ -1,5 +1,5 @@
 // Dama — offline service worker
-const CACHE = 'dama-v6';
+const CACHE = 'dama-v7';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 
 self.addEventListener('install', function (e) {
@@ -18,6 +18,26 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
+
+  var accept = (req.headers.get('accept') || '');
+  var isPage = req.mode === 'navigate' || accept.indexOf('text/html') !== -1;
+
+  if (isPage) {
+    // Network-first for the page: always try to get the latest when online,
+    // fall back to the cached copy (offline / airplane mode).
+    e.respondWith(
+      fetch(req).then(function (res) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(req, copy); }).catch(function () {});
+        return res;
+      }).catch(function () {
+        return caches.match(req).then(function (hit) { return hit || caches.match('./index.html'); });
+      })
+    );
+    return;
+  }
+
+  // Cache-first for everything else (icons, manifest) — fast, and rarely changes.
   e.respondWith(
     caches.match(req).then(function (hit) {
       return hit || fetch(req).then(function (res) {
