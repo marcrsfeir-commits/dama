@@ -156,6 +156,13 @@
   .sfoot{margin-top:auto;} .stag{font-size:11px;color:var(--muted);} .stag.ok{color:var(--accent);font-weight:600;}
   .scard .equip{padding:5px 12px;font-size:12px;}
   .shopnote{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.4;}
+  .setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;font-size:13px;color:var(--ink);}
+  .setrow input[type=range]{flex:1;max-width:60%;accent-color:var(--accent);}
+  .setbtns{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px;}
+  .achv-title{margin:16px 0 8px;font-size:13px;color:var(--gold);font-weight:600;}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);z-index:70;background:var(--panel);color:var(--ink);border:1px solid var(--accent);border-radius:10px;padding:11px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:88vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;cursor:pointer;}
+  .confetti{position:fixed;top:0;z-index:65;border-radius:2px;pointer-events:none;}
   .capdot{fill:rgba(224,122,58,.95);} .capdot.hint{fill:rgba(143,174,107,.95);}
   .sq.willeat::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
   .sq.willeathint::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(143,174,107,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
@@ -189,6 +196,7 @@
     <button class="btn" id="coachbtn"></button>
     <button class="btn" id="fs"></button>
     <button class="btn" id="skins"></button>
+    <button class="btn" id="settings" aria-label="Settings">⚙️</button>
   </div>
 
   <div class="tray"><div class="caps" id="capL"></div><div class="movebadge" id="move"></div><div class="caps right" id="capR"></div></div>
@@ -220,7 +228,144 @@
   <div id="shopgrid" class="shopgrid"></div>
   <div class="shopnote">Earn Win Points by winning games — 2-player 1 · easy 1 · medium 2 · hard 3 · very hard 4. Unlocks are permanent.</div>
 </div></div>
+<div id="setmodal" class="shop"><div class="shopcard">
+  <div class="shophead"><span>⚙️ Settings</span><button id="setclose" class="shopx" aria-label="Close">✕</button></div>
+  <div class="setrow"><label for="volmus">🎵 Music volume</label><input type="range" id="volmus" min="0" max="100"></div>
+  <div class="setrow"><label for="volsfx">🔊 Sound volume</label><input type="range" id="volsfx" min="0" max="100"></div>
+  <div class="setbtns"><button class="btn" id="backup">⬇︎ Backup save</button><button class="btn" id="restore">⬆︎ Restore</button><button class="btn" id="resetprog">Reset progress</button></div>
+  <input type="file" id="restorefile" accept="application/json" style="display:none">
+  <div class="achv-title">🏅 Achievements</div>
+  <div id="achvgrid" class="shopgrid"></div>
+</div></div>
+<div id="toast" class="toast" role="status"></div>
 
+<script type="text/js-worker" id="wsrc">
+var diff;
+function posKey(){return '';}
+function learnScore(){return 0;}
+const SIZE=8, KING_DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+const clone=b=>b.map(row=>row.map(c=>c?{player:c.player,king:c.king}:null));
+function initialBoard(){const b=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+  for(let c=0;c<SIZE;c++){b[1][c]={player:2,king:false};b[2][c]={player:2,king:false};b[5][c]={player:1,king:false};b[6][c]={player:1,king:false};}return b;}
+function singleCaptures(board,r,c,piece){const opts=[],enemy=piece.player===1?2:1;
+  if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
+    if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;let lr=nr+dr,lc=nc+dc;
+    while(inB(lr,lc)&&!board[lr][lc]){opts.push({capR:nr,capC:nc,landR:lr,landC:lc});lr+=dr;lc+=dc;}}}
+  else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const er=r+dr,ec=c+dc,lr=r+2*dr,lc=c+2*dc;
+    if(inB(lr,lc)&&board[er]&&board[er][ec]&&board[er][ec].player===enemy&&!board[lr][lc])opts.push({capR:er,capC:ec,landR:lr,landC:lc});}}return opts;}
+function captureSequences(board,r,c){const piece=board[r][c],out=[];
+  (function rec(bd,cr,cc,captured,path,lastDir){const single=singleCaptures(bd,cr,cc,piece);let ext=false;
+    for(const cap of single){
+      const ddr=Math.sign(cap.landR-cr), ddc=Math.sign(cap.landC-cc);
+      if(piece.king && lastDir && ddr===-lastDir[0] && ddc===-lastDir[1]) continue; // a king may not turn 180° between captures
+      const nb=clone(bd);nb[cap.capR][cap.capC]=null;nb[cr][cc]=null;
+      nb[cap.landR][cap.landC]={player:piece.player,king:piece.king};ext=true;
+      rec(nb,cap.landR,cap.landC,captured.concat([{r:cap.capR,c:cap.capC}]),path.concat([{r:cap.landR,c:cap.landC}]),[ddr,ddc]);}
+    if(!ext&&captured.length>0)out.push({captured,end:{r:cr,c:cc},path});})(board,r,c,[],[],null);return out;}
+function normalMoves(board,r,c,piece){const d=[];
+  if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
+  else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc])d.push({r:nr,c:nc});}}return d;}
+function computeLegal(board,player){const capBy={};let anyCap=false;
+  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
+    const seqs=captureSequences(board,r,c);if(seqs.length){capBy[r+','+c]=seqs;anyCap=true;}}
+  const moves={};
+  if(anyCap){
+    const eatsKing=function(s){return s.captured.some(function(cp){var q=board[cp.r][cp.c];return q&&q.king;});};
+    let anyKingCap=false; for(const k in capBy){ if(capBy[k].some(eatsKing)){anyKingCap=true;break;} }
+    for(const k in capBy){ const list=anyKingCap?capBy[k].filter(eatsKing):capBy[k];
+      if(list.length) moves[k]=list.map(s=>({r:s.end.r,c:s.end.c,captured:s.captured,path:s.path})); }
+    return{mustCapture:true,moves};
+  }
+  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
+    const nm=normalMoves(board,r,c,p);if(nm.length)moves[r+','+c]=nm.map(d=>({r:d.r,c:d.c,captured:null,path:null}));}
+  return{mustCapture:false,moves};}
+function countPieces(board,player){let n=0;for(const row of board)for(const c of row)if(c&&c.player===player)n++;return n;}
+function allMoves(board,player){const lg=computeLegal(board,player);const list=[];
+  for(const k in lg.moves){const p=k.split(',').map(Number);for(const m of lg.moves[k])list.push({from:p,to:[m.r,m.c],captured:m.captured,path:m.path});}return list;}
+function makeMove(board,mv){const nb=clone(board);const fr=mv.from[0],fc=mv.from[1];
+  const piece={player:nb[fr][fc].player,king:nb[fr][fc].king};nb[fr][fc]=null;
+  if(mv.captured)for(const cap of mv.captured)nb[cap.r][cap.c]=null;
+  const backRow=piece.player===1?0:7;if(!piece.king&&mv.to[0]===backRow)piece.king=true;
+  nb[mv.to[0]][mv.to[1]]=piece;return nb;}
+
+// ================= AI =================
+function evalPlayer(board,player){
+  // material + positional score, from `player`'s point of view
+  let mine=0,opp=0,myPieces=0,oppPieces=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(!p)continue;
+    let v=p.king?360:100;
+    if(!p.king){
+      const adv=p.player===1?(6-r):(r-1);
+      v+=Math.max(0,adv)*8;                                          // push men toward promotion
+      if((p.player===1&&r===6)||(p.player===2&&r===1))v+=10;         // one row from king
+      if((p.player===1&&r===7)||(p.player===2&&r===0))v+=16;         // hold back rank (blocks enemy kings)
+      v+=(3.5-Math.abs(c-3.5))*2.2;                                  // central files
+      if(c===0||c===7)v+=3;                                          // edge men are harder to capture
+    } else {
+      v+=(3.5-Math.abs(c-3.5))*3+(3.5-Math.abs(r-3.5))*3;            // centralised kings dominate
+    }
+    if(p.player===player){mine+=v;myPieces++;} else {opp+=v;oppPieces++;}
+  }
+  let s=mine-opp;
+  if(myPieces>oppPieces) s+=(myPieces-oppPieces)*6;                  // when ahead, favour trading down
+  return s;
+}
+function orderMoves(m){m.sort(function(a,b){
+  const ca=a.captured?a.captured.length:0, cb=b.captured?b.captured.length:0;
+  if(cb!==ca)return cb-ca;                                           // most captures first
+  const pa=(a.to[0]===0||a.to[0]===7)?1:0, pb=(b.to[0]===0||b.to[0]===7)?1:0;
+  return pb-pa;                                                      // then promotions
+});return m;}
+function nega(board,player,depth,alpha,beta,deadline){
+  if(performance.now()>deadline) throw 0;
+  const moves=allMoves(board,player);
+  if(!moves.length) return -99999-depth;                            // no legal move = loss for side to move
+  const forcedCapture = moves[0].captured!=null;                    // captures are mandatory → covers all moves
+  // Quiescence: don't stop evaluating in the middle of a forced capture exchange (kills the horizon effect)
+  if(depth<=0 && !forcedCapture) return evalPlayer(board,player);
+  orderMoves(moves);
+  let best=-Infinity;
+  for(const mv of moves){
+    const val=-nega(makeMove(board,mv),player===1?2:1,depth-1,-beta,-alpha,deadline);
+    if(val>best)best=val; if(best>alpha)alpha=best; if(alpha>=beta)break;
+  }
+  return best;
+}
+function search(board,player,budgetMs,maxDepth){
+  const other=player===1?2:1;
+  let scored=orderMoves(allMoves(board,player)).map(function(mv){return {mv:mv,val:0};});
+  if(!scored.length)return null; if(scored.length===1)return scored[0].mv;
+  const deadline=performance.now()+budgetMs;
+  let stable=scored.slice();
+  for(let depth=2;depth<=maxDepth;depth++){
+    let aborted=false;
+    for(const item of scored){
+      try{ item.val=-nega(makeMove(board,item.mv),other,depth-1,-Infinity,Infinity,deadline); }
+      catch(e){ aborted=true; break; }
+    }
+    if(aborted) break;                                              // keep last fully-completed depth (in `stable`)
+    scored.sort(function(a,b){return b.val-a.val;});                // best-first ordering deepens next pass faster
+    stable=scored.slice();
+    if(performance.now()>deadline) break;
+  }
+  // Among moves that are essentially equal to the best, prefer whatever has worked in past games (learning).
+  const pos=posKey(board,player), top=stable[0].val;
+  const near=stable.filter(function(x){return x.val>=top-8;});
+  let bestLS=-Infinity; for(const x of near){const ls=learnScore(pos,x.mv); if(ls>bestLS)bestLS=ls;}
+  const pick=near.filter(function(x){return learnScore(pos,x.mv)===bestLS;});
+  return pick[Math.floor(Math.random()*pick.length)].mv;
+}
+function aiMove(board,player){
+  const total=countPieces(board,1)+countPieces(board,2);
+  if(diff==='easy'){ const m=allMoves(board,player); if(!m.length)return null; orderMoves(m);
+    return Math.random()<0.4 ? m[Math.floor(Math.random()*m.length)] : search(board,player,90,3); }
+  if(diff==='med')  return search(board,player,500,  total<=10?10:7);
+  if(diff==='hard') return search(board,player,1400, total<=10?14:10);
+  return search(board,player,2400, total<=12?22:16); // very hard
+}
+self.onmessage=function(e){var d=e.data; diff=d.diff; var mv=aiMove(d.board,d.player); postMessage({id:d.id, mv:mv});};
+</script>
 <script>
 // Hide the loading splash after ~1s — registered first so it always fires, even if init hiccups.
 setTimeout(function(){var l=document.getElementById('loading');if(l){l.classList.add('gone');setTimeout(function(){if(l.parentNode)l.parentNode.removeChild(l);},500);}},1000);
@@ -228,7 +373,7 @@ setTimeout(function(){var l=document.getElementById('loading');if(l){l.classList
 const T={
  en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
    playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",
-   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",fs:"Fullscreen",fsExit:"Exit full",hint:"Hint",wins:"Wins",losses:"Losses",streak:"Streak",best:"Best",
+   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",fs:"Fullscreen",fsExit:"Exit full",hint:"Hint",wins:"Wins",losses:"Losses",streak:"Streak",best:"Best",draw:"Draw",drawSub:"A draw — well played.",
    light:"Light",dark:"Dark",toMove:"to move",must:"must capture",thinking:"thinking…",wins:"wins",
    youWon:"Well played — نخبك!",youLost:"Computer takes it. Rematch?",niceGame:"نخبك!",move:"Move",playAgain:"Play again",
    howto:"How to play",hide:"Hide rules",
@@ -240,7 +385,7 @@ const T={
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
    playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
-   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",fs:"ملء الشاشة",fsExit:"إنهاء",hint:"مساعدة",wins:"فوز",losses:"خسارة",streak:"متتالية",best:"الأفضل",
+   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",fs:"ملء الشاشة",fsExit:"إنهاء",hint:"مساعدة",wins:"فوز",losses:"خسارة",streak:"متتالية",best:"الأفضل",draw:"تعادل",drawSub:"تعادل — لعب موفّق.",
    light:"الفاتح",dark:"الغامق",toMove:"عليه الدور",must:"الأكل إجباري",thinking:"يفكّر…",wins:"فاز",
    youWon:"لعب موفّق — نخبك!",youLost:"الكمبيوتر فاز. تعيدها؟",niceGame:"نخبك!",move:"نقلة",playAgain:"العب مجدداً",
    howto:"كيفية اللعب",hide:"إخفاء القواعد",
@@ -433,6 +578,7 @@ function applySkin(id){ const s=skinById(id); const root=document.documentElemen
 }
 function updateHintVisibility(){ const f=$('hintfab'); if(f) f.classList.toggle('off',!hintUnlocked()); }
 function recordResult(w){ pendingUnlock=[];
+  if(w==='draw'){ STATS.streak=0; STATS.games++; saveStats(); updateStats(); updateHintVisibility(); return; }
   let base=0;
   if(mode==='ai'){
     if(w===humanSide){ base=({easy:1,med:2,hard:3,vhard:4})[diff]||1; }
@@ -444,6 +590,8 @@ function recordResult(w){ pendingUnlock=[];
   const after=STATS.wp;
   if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
   SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
+  const flawless = mode==='ai' && countPieces(board,humanSide)===16;
+  checkAchv({win:true, mode:mode, diff:diff, quad:gQuad, flawless:flawless});
   saveStats(); updateStats(); updateHintVisibility();
 }
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
@@ -489,18 +637,19 @@ function coachSummaryText(){ if(!coachStats)return''; const t=T[lang],parts=[];
   return parts.join(' · '); }
 
 // ================= sound =================
-let audioCtx=null, soundOn=true, musicOn=true, musicTimer=null, musicGain=null, musicStep=0;
+let audioCtx=null, soundOn=true, musicOn=true, musicTimer=null, musicGain=null, musicStep=0, sfxGain=null, sfxVol=0.9, musicVol=0.6;
 function initAudio(){ if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  if(audioCtx&&!sfxGain){sfxGain=audioCtx.createGain();sfxGain.gain.value=sfxVol;sfxGain.connect(audioCtx.destination);}
   if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
   if(musicOn)startMusic(); }
 function tone(freq,dur,type,vol,when){ if(!audioCtx)return;const t=when||audioCtx.currentTime;
   const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
   g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.008);
-  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+dur+0.03);}
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g).connect(sfxGain||audioCtx.destination);o.start(t);o.stop(t+dur+0.03);}
 function noise(dur,vol){ if(!audioCtx)return;const n=audioCtx.createBufferSource();
   const b=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*dur),audioCtx.sampleRate);const d=b.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);n.buffer=b;
-  const g=audioCtx.createGain();g.gain.value=vol||0.1;n.connect(g).connect(audioCtx.destination);n.start();}
+  const g=audioCtx.createGain();g.gain.value=vol||0.1;n.connect(g).connect(sfxGain||audioCtx.destination);n.start();}
 function sMove(){if(soundOn&&audioCtx){tone(320,0.07,'triangle',0.16);}}
 function sCapture(){if(soundOn&&audioCtx){tone(150,0.13,'sine',0.28);tone(95,0.16,'sine',0.2);noise(0.05,0.12);}}
 function sPromote(){if(soundOn&&audioCtx){const t=audioCtx.currentTime;[523,659,784,1047].forEach((f,i)=>tone(f,0.2,'sine',0.15,t+i*0.09));}}
@@ -523,16 +672,28 @@ function mPad(freq,when,dur,vol){ if(!audioCtx||!musicGain)return;
   g.gain.exponentialRampToValueAtTime(0.0001,when+dur);
   o1.connect(g);o2.connect(g);g.connect(musicGain);
   o1.start(when);o2.start(when);o1.stop(when+dur+0.05);o2.stop(when+dur+0.05); }
+function mPerc(when,type){ if(!audioCtx||!musicGain)return; const g=audioCtx.createGain(); g.connect(musicGain);
+  if(type==='dum'){ const o=audioCtx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(165,when); o.frequency.exponentialRampToValueAtTime(52,when+0.14);
+    g.gain.setValueAtTime(0.0001,when); g.gain.exponentialRampToValueAtTime(0.13,when+0.01); g.gain.exponentialRampToValueAtTime(0.0001,when+0.2);
+    o.connect(g); o.start(when); o.stop(when+0.22); }
+  else { const n=audioCtx.createBufferSource(); const b=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*0.06),audioCtx.sampleRate); const d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length); n.buffer=b;
+    const f=audioCtx.createBiquadFilter(); f.type='highpass'; f.frequency.value=2600;
+    g.gain.setValueAtTime(0.08,when); g.gain.exponentialRampToValueAtTime(0.0001,when+0.06);
+    n.connect(f).connect(g); n.start(when); } }
 function startMusic(){ if(!audioCtx||musicTimer)return;
-  if(!musicGain){musicGain=audioCtx.createGain();musicGain.gain.value=0.8;musicGain.connect(audioCtx.destination);}
+  if(!musicGain){musicGain=audioCtx.createGain();musicGain.gain.value=musicVol;musicGain.connect(audioCtx.destination);}
   const stepDur=0.5; let nextTime=audioCtx.currentTime+0.15;
+  const perc=['dum',null,'tak',null,'dum','tak',null,'tak'];   // darbuka-style groove
   musicTimer=setInterval(function(){ if(!audioCtx)return; const now=audioCtx.currentTime;
-    while(nextTime<now+0.6){ const phrase=M_PHRASES[mPhrase];
-      if(mPos===0){ mPad(73.42,nextTime,stepDur*7.6,0.05); mPad(110.00,nextTime,stepDur*3.6,0.03); } // drones per phrase
-      const step=phrase[mPos];
-      if(step!==null&&step!==undefined){
-        mPad(mNoteFreq(step+mOct*7),nextTime,stepDur*1.9,0.04+Math.random()*0.015);
-        if(Math.random()<0.14) mPad(mNoteFreq(step+mOct*7+2),nextTime+stepDur*0.5,stepDur*0.9,0.022); // soft ornament
+    while(nextTime<now+0.6){ const phrase=M_PHRASES[mPhrase], step=phrase[mPos], beat=mPos%8;
+      const pc=perc[beat]; if(pc) mPerc(nextTime,pc);                       // percussion
+      if(beat===0) mPad(73.42,nextTime,stepDur*3.9,0.06);                   // bass: tonic
+      else if(beat===4) mPad(97.999,nextTime,stepDur*3.9,0.045);            // bass: fifth-ish
+      if(step!==null&&step!==undefined){                                    // lead
+        mPad(mNoteFreq(step+mOct*7),nextTime,stepDur*1.7,0.036+Math.random()*0.012);
+        if(Math.random()<0.16) mPad(mNoteFreq(step+mOct*7+2),nextTime+stepDur*0.5,stepDur*0.8,0.02);
       }
       mPos++;
       if(mPos>=phrase.length){ mPos=0;
@@ -543,6 +704,7 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
+let noProg=0, posCounts={}, gQuad=false;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
 function dIndex(r,c){const p=disp(r,c);return p.r*8+p.c;}
@@ -571,7 +733,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;savePrefs();
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
   maybeAI();}
@@ -604,7 +766,8 @@ function refresh(){legal=computeLegal(board,turn);render();}
 function render(){ if(!board||!legal)return;   // not initialised yet (e.g. first applyLang before newGame)
   const t=T[lang];
   const cLight=t.light,cDark=t.dark;
-  if(winner){const w=winner===1?cLight:cDark;
+  if(winner==='draw'){ statusMain.innerHTML='<b>'+(t.draw||'Draw')+'</b>'; }
+  else if(winner){const w=winner===1?cLight:cDark;
     statusMain.innerHTML='<span class="dot '+(winner===1?'l':'d')+'"></span><b>'+(lang==='ar'?(t.wins+' '+w):(w+' '+t.wins))+'</b>';}
   else{let extra='';if(thinking)extra='<span class="thinking">· '+t.thinking+'</span>';
     else if(legal.mustCapture)extra='<span class="must">· '+t.must+'</span>';
@@ -696,13 +859,17 @@ function apply(mv){
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
   const over=countPieces(board,next)===0||Object.keys(legal.moves).length===0;
+  if(mv.captured||wasMan){ noProg=0; posCounts={}; } else { noProg++; }
+  const pk=posKey(board,turn); posCounts[pk]=(posCounts[pk]||0)+1;
+  const draw=!over && (posCounts[pk]>=3 || noProg>=60);
+  if(mv.captured){ if(mover===humanSide && mv.captured.length>=4) gQuad=true; if(navigator.vibrate){try{navigator.vibrate(25);}catch(e){}} }
   animating=true;render();
   const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
   if(moverHuman && coachOn) setTimeout(function(){ coachOnMove(prev,mover,mv); },260); // rate move AFTER it registers (non-blocking)
   animateMove(mv,prev,promoted,()=>{animating=false;
-    if(over){finishGame(next===1?2:1);}else{render();maybeAI();}});
+    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();}});
 }
-function finishGame(w){ winner=w; learnFromGame(w); recordResult(w); render(); showWin(); }
+function finishGame(w){ winner=w; learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
 function showHint(){ if(!hintUnlocked()||!canAssist())return; initAudio();
   const fab=$('hintfab'); if(fab)fab.classList.add('busy');
@@ -751,23 +918,38 @@ function animateMove(mv,prevBoard,promoted,done){
   } else { setTimeout(finish,total+40); }
 }
 
+let aiWorker=null, aiCbs={}, aiSeq=0;
+function initAIWorker(){ try{ const el=$('wsrc'); if(!el||typeof Worker==='undefined')return;
+  const url=URL.createObjectURL(new Blob([el.textContent],{type:'text/javascript'}));
+  aiWorker=new Worker(url);
+  aiWorker.onmessage=function(e){ const cb=aiCbs[e.data.id]; if(cb){delete aiCbs[e.data.id]; cb(e.data.mv);} };
+  aiWorker.onerror=function(){ aiWorker=null; };
+}catch(e){ aiWorker=null; } }
+function aiThink(bd,player,cb){
+  if(aiWorker){ const id=++aiSeq; aiCbs[id]=cb;
+    try{ aiWorker.postMessage({id:id,board:bd,player:player,diff:diff}); }
+    catch(e){ delete aiCbs[id]; setTimeout(function(){cb(aiMove(bd,player));},0); } }
+  else setTimeout(function(){cb(aiMove(bd,player));},0);
+}
 function maybeAI(){ if(winner)return;
   const aiTurn=(mode==='ai'&&turn!==humanSide)||mode==='cvc';
   if(!aiTurn)return;
   thinking=true;render();
-  const pace=(mode==='cvc')?600:30, g=gameId;
-  setTimeout(()=>{if(g!==gameId||winner){thinking=false;return;}
-    const mv=aiMove(board,turn);
-    if(g!==gameId)return;
-    thinking=false;
-    if(!mv){finishGame(turn===1?2:1);return;}apply(mv);},pace);}
+  const pace=(mode==='cvc')?600:120, g=gameId;
+  setTimeout(function(){ if(g!==gameId||winner){thinking=false;return;}
+    aiThink(board,turn,function(mv){ if(g!==gameId)return; thinking=false;
+      if(!mv){finishGame(turn===1?2:1);return;} apply(mv); }); },pace);}
 
-function showWin(){const t=T[lang];const youWon=mode==='ai'&&winner===humanSide;const w=winner===1?t.light:t.dark;
+function showWin(){const t=T[lang];
+  if(winner==='draw'){ $('winTitle').textContent=t.draw||'Draw'; let s0=t.drawSub||''; const cs0=coachSummaryText(); if(cs0)s0+=' — '+cs0; $('winSub').textContent=s0; overlay.classList.add('show'); showCoachIdle(); return; }
+  const youWon=mode==='ai'&&winner===humanSide;const w=winner===1?t.light:t.dark;
   $('winTitle').textContent=lang==='ar'?(t.wins+' '+w):(w+' '+t.wins);
   let sub=mode==='ai'?(youWon?t.youWon:t.youLost):t.niceGame;
   const cs=coachSummaryText(); if(cs) sub+=' — '+cs;
   if(pendingUnlock&&pendingUnlock.length) sub+='  🎉 Unlocked: '+pendingUnlock.join(', ');
-  $('winSub').textContent=sub; overlay.classList.add('show'); showCoachIdle();}
+  $('winSub').textContent=sub; overlay.classList.add('show'); showCoachIdle();
+  if(youWon || mode==='pvp'){ confettiBurst(); if(navigator.vibrate){try{navigator.vibrate([40,40,90]);}catch(e){}} }
+}
 
 function undo(){ if(thinking||animating||!history.length)return;
   let prev=history.pop();
@@ -775,13 +957,71 @@ function undo(){ if(thinking||animating||!history.length)return;
   board=prev.board;turn=prev.turn;lastMove=prev.lastMove;selected=null;winner=null;
   overlay.classList.remove('show');refresh();}
 
+// ================= settings / achievements / backup / prefs =================
+const ACHV=[
+ {id:'first',emoji:'🥇',name:'First Win',t:'Win your first game.'},
+ {id:'streak5',emoji:'🔥',name:'On Fire',t:'Reach a 5-win streak.'},
+ {id:'vhard',emoji:'🧠',name:'Giant Slayer',t:'Beat the computer on Very Hard.'},
+ {id:'quad',emoji:'💥',name:'Quad Capture',t:'Capture 4+ pieces in one move.'},
+ {id:'flawless',emoji:'🛡️',name:'Flawless',t:'Beat the computer without losing a piece.'},
+ {id:'wp100',emoji:'🏆',name:'Centurion',t:'Reach 100 Win Points.'},
+ {id:'collector',emoji:'🎨',name:'Collector',t:'Unlock every skin (140 WP).'}
+];
+function grantAchv(id){ if(!STATS.achv)STATS.achv={}; if(STATS.achv[id])return false; STATS.achv[id]=1; const a=ACHV.find(function(x){return x.id===id;}); if(a)pendingUnlock.push('🏅 '+a.name); return true; }
+function checkAchv(ctx){ if(!STATS.achv)STATS.achv={};
+  if(STATS.wins>=1)grantAchv('first');
+  if(STATS.best>=5)grantAchv('streak5');
+  if(ctx&&ctx.win&&ctx.mode==='ai'&&ctx.diff==='vhard')grantAchv('vhard');
+  if(ctx&&ctx.quad)grantAchv('quad');
+  if(ctx&&ctx.flawless)grantAchv('flawless');
+  if((STATS.wp||0)>=100)grantAchv('wp100');
+  if((STATS.wp||0)>=140)grantAchv('collector'); }
+function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)return; const p=JSON.parse(s)||{};
+  if(p.mode&&$('mode'))$('mode').value=p.mode; if(p.diff&&$('diff'))$('diff').value=p.diff; if(p.style&&$('style'))$('style').value=p.style;
+  if(typeof p.side==='number')sideChoice=p.side;
+  if(typeof p.sound==='boolean')soundOn=p.sound; if(typeof p.music==='boolean')musicOn=p.music; if(typeof p.coach==='boolean')coachOn=p.coach;
+  if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus; }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,sfx:sfxVol,mus:musicVol})); }catch(e){} }
+function confettiBurst(){ try{ const cols=['#e0563a','#d9a441','#8fae6b','#6db0ff','#c060e0','#ffd85a']; const N=42;
+  for(let i=0;i<N;i++){ const s=document.createElement('div'); s.className='confetti';
+    s.style.left=(Math.random()*100)+'vw'; s.style.background=cols[i%cols.length]; s.style.width=s.style.height=(6+Math.random()*6)+'px';
+    document.body.appendChild(s); const dx=(Math.random()*2-1)*140, dur=1200+Math.random()*900;
+    s.animate([{transform:'translate(0,-10vh) rotate(0deg)',opacity:1},{transform:'translate('+dx+'px,110vh) rotate('+(Math.random()*720)+'deg)',opacity:.9}],{duration:dur,easing:'cubic-bezier(.2,.6,.4,1)'}).onfinish=function(){ if(s.parentNode)s.parentNode.removeChild(s); }; }
+}catch(e){} }
+let toastTimer=null;
+function showToast(msg,onClick){ const el=$('toast'); if(!el)return; el.textContent=msg; el.classList.add('show');
+  el.onclick=function(){ el.classList.remove('show'); if(onClick)onClick(); };
+  if(toastTimer)clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},9000); }
+function renderAchv(){ const g=$('achvgrid'); if(!g)return; let html=''; ACHV.forEach(function(a){ const got=STATS.achv&&STATS.achv[a.id];
+  html+='<div class="scard '+(got?'owned':'locked')+'"><div class="sname">'+a.emoji+' '+a.name+'</div><div class="sdesc">'+a.t+'</div><div class="sfoot"><span class="stag '+(got?'ok':'')+'">'+(got?'Earned':'Locked')+'</span></div></div>'; }); g.innerHTML=html; }
+function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); renderAchv(); $('setmodal').classList.add('show'); }
+function closeSettings(){ $('setmodal').classList.remove('show'); }
+function doBackup(){ try{ const data={stats:localStorage.getItem('dama-stats'),learn:localStorage.getItem('dama-learn'),prefs:localStorage.getItem('dama-prefs'),_v:1};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='dama-save.json'; document.body.appendChild(a); a.click(); setTimeout(function(){a.remove();URL.revokeObjectURL(url);},100);
+}catch(e){} }
+function doRestore(file){ const r=new FileReader(); r.onload=function(){ try{ const d=JSON.parse(r.result);
+  if(d.stats)localStorage.setItem('dama-stats',d.stats); if(d.learn)localStorage.setItem('dama-learn',d.learn); if(d.prefs)localStorage.setItem('dama-prefs',d.prefs);
+  location.reload(); }catch(e){ showToast('Restore failed — not a valid save file.'); } }; r.readAsText(file); }
+function doReset(){ if(!window.confirm('Reset ALL progress (Win Points, skins, learning, stats)? This cannot be undone.'))return;
+  try{ localStorage.removeItem('dama-stats'); localStorage.removeItem('dama-learn'); localStorage.removeItem('dama-prefs'); }catch(e){} location.reload(); }
+
 // ================= wire up =================
 $('newgame').addEventListener('click',()=>{initAudio();newGame();});
 $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
 $('undo').addEventListener('click',undo);
-$('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;});
-$('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;});
-$('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textContent=coachOn?T[lang].coachOn:T[lang].coachOff;showCoachIdle();});
+$('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;savePrefs();});
+$('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;savePrefs();});
+$('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textContent=coachOn?T[lang].coachOn:T[lang].coachOff;showCoachIdle();savePrefs();});
+$('settings').addEventListener('click',openSettings);
+$('setclose').addEventListener('click',closeSettings);
+$('setmodal').addEventListener('click',function(e){ if(e.target===$('setmodal'))closeSettings(); });
+$('volmus').addEventListener('input',function(){ musicVol=(+this.value)/100; if(musicGain)musicGain.gain.value=musicVol; savePrefs(); });
+$('volsfx').addEventListener('input',function(){ sfxVol=(+this.value)/100; if(sfxGain)sfxGain.gain.value=sfxVol; savePrefs(); });
+$('backup').addEventListener('click',doBackup);
+$('restore').addEventListener('click',function(){ $('restorefile').click(); });
+$('restorefile').addEventListener('change',function(){ if(this.files&&this.files[0])doRestore(this.files[0]); });
+$('resetprog').addEventListener('click',doReset);
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
@@ -800,6 +1040,8 @@ window.addEventListener('pointerdown',initAudio,{once:true});
 
 loadLearn();
 loadStats();
+loadPrefs();
+initAIWorker();
 applySkin(STATS.equipped||'wood');
 applyLang();
 newGame();
@@ -807,7 +1049,12 @@ updateHintVisibility();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
-  window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){});});
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      reg.addEventListener('updatefound',function(){ var nw=reg.installing; if(!nw)return;
+        nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof showToast==='function'){ showToast('Update available — tap to refresh',function(){location.reload();}); } }); });
+    }).catch(function(){});
+  });
 }
 </script>
 </body>
