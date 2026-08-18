@@ -590,7 +590,8 @@ function doSideToggle(){
 }
 function refresh(){legal=computeLegal(board,turn);render();}
 
-function render(){const t=T[lang];
+function render(){ if(!board||!legal)return;   // not initialised yet (e.g. first applyLang before newGame)
+  const t=T[lang];
   const cLight=t.light,cDark=t.dark;
   if(winner){const w=winner===1?cLight:cDark;
     statusMain.innerHTML='<span class="dot '+(winner===1?'l':'d')+'"></span><b>'+(lang==='ar'?(t.wins+' '+w):(w+' '+t.wins))+'</b>';}
