@@ -133,6 +133,7 @@
   .pathsvg{position:absolute;inset:8px;pointer-events:none;z-index:5;overflow:visible;display:none;}
   .capline{fill:none;stroke:rgba(224,122,58,.9);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 8;}
   .capline.hint{stroke:rgba(143,174,107,.95);}
+  .moveline{fill:none;stroke:rgba(143,174,107,.6);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1 6;}
   .capdot{fill:rgba(224,122,58,.95);} .capdot.hint{fill:rgba(143,174,107,.95);}
   .sq.willeat::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
   .sq.willeathint::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(143,174,107,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
@@ -514,7 +515,10 @@ function render(){const t=T[lang];
   const pickable=new Set(Object.keys(legal.moves));
   const canInput=!winner&&!thinking&&!animating&&(mode==='pvp'||(mode==='ai'&&turn===humanSide));
 
-  const capMoves=(selKey&&legal.moves[selKey])?legal.moves[selKey].filter(function(m){return m.captured;}):[];
+  const selArr=selected;
+  const selMoves=(selKey&&legal.moves[selKey])?legal.moves[selKey]:[];
+  const capMoves=selMoves.filter(function(m){return m.captured;}).map(function(m){return {from:selArr,to:[m.r,m.c],captured:m.captured,path:m.path};});
+  const normMoves=selMoves.filter(function(m){return !m.captured;}).map(function(m){return {from:selArr,to:[m.r,m.c]};});
   const eatSet=new Set(); capMoves.forEach(function(m){m.captured.forEach(function(cp){eatSet.add(cp.r+','+cp.c);});});
   const hintCap=(hint&&hint.captured)?hint:null;
   const eatHint=new Set(); if(hintCap)hintCap.captured.forEach(function(cp){eatHint.add(cp.r+','+cp.c);});
@@ -538,21 +542,25 @@ function render(){const t=T[lang];
     if(canInput)sq.addEventListener('click',()=>handleCell(mr,mc));
     boardEl.appendChild(sq);
   }
-  drawPaths(capMoves,hintCap);
+  drawPaths(capMoves,hintCap,normMoves);
 }
-function drawPaths(capMoves,hintMv){ const svg=$('pathsvg'); if(!svg)return;
+function drawPaths(capMoves,hintMv,normMoves){ const svg=$('pathsvg'); if(!svg)return;
   while(svg.firstChild)svg.removeChild(svg.firstChild);
-  const groups=[]; if(capMoves&&capMoves.length)groups.push({moves:capMoves,cls:''}); if(hintMv)groups.push({moves:[hintMv],cls:' hint'});
   const cell=boardEl.clientWidth/8;
-  if(!groups.length||!cell){svg.style.display='none';return;}
+  const hasAny=(capMoves&&capMoves.length)||hintMv||(normMoves&&normMoves.length);
+  if(!hasAny||!cell){svg.style.display='none';return;}
   svg.setAttribute('viewBox','0 0 '+(cell*8)+' '+(cell*8)); svg.style.display='block';
   const ns='http://www.w3.org/2000/svg';
+  function line(pts,cls){ let d=''; pts.forEach(function(p,i){ const dp=disp(p.r,p.c); d+=(i?'L':'M')+((dp.c+0.5)*cell)+' '+((dp.r+0.5)*cell)+' '; });
+    const pa=document.createElementNS(ns,'path'); pa.setAttribute('d',d.trim()); pa.setAttribute('class',cls); svg.appendChild(pa); }
+  function dot(p,cls){ const dp=disp(p.r,p.c); const c=document.createElementNS(ns,'circle'); c.setAttribute('cx',(dp.c+0.5)*cell); c.setAttribute('cy',(dp.r+0.5)*cell); c.setAttribute('r',cell*0.08); c.setAttribute('class',cls); svg.appendChild(c); }
+  // plain-move paths (drawn beneath capture routes)
+  if(normMoves) normMoves.forEach(function(mv){ line([{r:mv.from[0],c:mv.from[1]},{r:mv.to[0],c:mv.to[1]}],'moveline'); });
+  // capture routes (selected = orange, hint = green), with a dot at each landing
+  const groups=[]; if(capMoves&&capMoves.length)groups.push({moves:capMoves,cls:''}); if(hintMv)groups.push({moves:[hintMv],cls:' hint'});
   groups.forEach(function(g){ g.moves.forEach(function(mv){ if(!mv.captured)return;
     const pts=[{r:mv.from[0],c:mv.from[1]}].concat(mv.path&&mv.path.length?mv.path:[{r:mv.to[0],c:mv.to[1]}]);
-    let d=''; pts.forEach(function(p,i){ const dp=disp(p.r,p.c); d+=(i?'L':'M')+((dp.c+0.5)*cell)+' '+((dp.r+0.5)*cell)+' '; });
-    const pa=document.createElementNS(ns,'path'); pa.setAttribute('d',d.trim()); pa.setAttribute('class','capline'+g.cls); svg.appendChild(pa);
-    pts.forEach(function(p,i){ if(!i)return; const dp=disp(p.r,p.c); const dot=document.createElementNS(ns,'circle');
-      dot.setAttribute('cx',(dp.c+0.5)*cell); dot.setAttribute('cy',(dp.r+0.5)*cell); dot.setAttribute('r',cell*0.08); dot.setAttribute('class','capdot'+g.cls); svg.appendChild(dot); });
+    line(pts,'capline'+g.cls); pts.forEach(function(p,i){ if(i)dot(p,'capdot'+g.cls); });
   }); });
 }
 
