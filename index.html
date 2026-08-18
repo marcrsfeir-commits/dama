@@ -455,7 +455,7 @@ function closeShop(){ $('shop').classList.remove('show'); }
 let coachOn=true, coachStats=null;
 function sameMove(a,b){ return a.from[0]===b.from[0]&&a.from[1]===b.from[1]&&a.to[0]===b.to[0]&&a.to[1]===b.to[1]; }
 function analyzeLoss(prevBoard,player,playedMv){
-  const other=player===1?2:1, dl=performance.now()+280, depth=8;
+  const other=player===1?2:1, dl=performance.now()+200, depth=8;
   let best=-Infinity, played=null;
   const moves=orderMoves(allMoves(prevBoard,player));
   for(const m of moves){ let v; try{v=-nega(makeMove(prevBoard,m),other,depth-1,-Infinity,Infinity,dl);}catch(e){v=null;}
@@ -676,14 +676,14 @@ function apply(mv){
   const mover=turn;
   history.push({board:prev,turn,lastMove});
   recordMove(prev,mover,mv);                                   // remember move for learning
-  const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
-  if(moverHuman) coachOnMove(prev,mover,mv);                   // rate the human's move
   board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
   const over=countPieces(board,next)===0||Object.keys(legal.moves).length===0;
   animating=true;render();
+  const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
+  if(moverHuman && coachOn) setTimeout(function(){ coachOnMove(prev,mover,mv); },260); // rate move AFTER it registers (non-blocking)
   animateMove(mv,prev,promoted,()=>{animating=false;
     if(over){finishGame(next===1?2:1);}else{render();maybeAI();}});
 }
@@ -714,7 +714,7 @@ function animateMove(mv,prevBoard,promoted,done){
   const dTo=disp(mv.to[0],mv.to[1]);
   const positions=[{r:mv.from[0],c:mv.from[1]}].concat(mv.path&&mv.path.length?mv.path:[{r:mv.to[0],c:mv.to[1]}]);
   const segs=positions.length-1;
-  const perSeg=mv.captured?185:235;
+  const perSeg=mv.captured?150:150;
   const total=Math.max(perSeg,segs*perSeg);
 
   const ghosts=[];
