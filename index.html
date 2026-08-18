@@ -29,6 +29,10 @@
   h1 .ar{font-weight:400;} h1 .sub{display:block;font-size:12px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-top:2px;}
   .headbtns{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
   .wordmark{font-family:"Iowan Old Style",Georgia,serif;font-size:22px;line-height:1;color:var(--gold);letter-spacing:1px;}
+  .sdot{width:13px;height:13px;border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:7px;border:1px solid var(--frameLine);}
+  .sdot.l{background:radial-gradient(circle at 35% 28%,#fbf1d8,#d8bd8e);}
+  .sdot.d{background:radial-gradient(circle at 35% 28%,#6b4e37,#2a1a10);}
+  .play{perspective:1200px;}
   .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
   select,.btn{background:var(--panel);color:var(--ink);border:1px solid #3a2f24;border-radius:9px;
      padding:8px 11px;font-size:13px;cursor:pointer;-webkit-appearance:none;appearance:none;}
@@ -104,7 +108,7 @@
 
   <div class="controls">
     <select id="mode"><option value="pvp"></option><option value="ai"></option></select>
-    <select id="side"><option value="1"></option><option value="2"></option></select>
+    <button class="btn" id="side" title="Tap to switch which colour you play"></button>
     <select id="diff"><option value="easy"></option><option value="med" selected></option><option value="hard"></option></select>
     <select id="style"><option value="classic"></option><option value="trad"></option></select>
     <button class="btn" id="undo"></button>
@@ -157,7 +161,7 @@ const T={
      "الوصول إلى الصف الأخير يحوّل القطعة إلى <b>دامة (✦)</b> — تتحرك وتأكل أي مسافة على الصفوف والأعمدة بكل الاتجاهات.",
      "تفوز بأكل كل قطع الخصم أو بحرمانه من أي نقلة قانونية."],langBtn:"EN"}
 };
-let lang="en";
+let lang="en", sideChoice=1;
 const $=id=>document.getElementById(id);
 
 // ================= engine =================
@@ -291,7 +295,7 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip;
-const boardEl=$('board'),statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
+const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
 function dIndex(r,c){const p=disp(r,c);return p.r*8+p.c;}
 
@@ -299,7 +303,7 @@ function applyLang(){const t=T[lang];
   $('wrap').setAttribute('dir', lang==='ar'?'rtl':'ltr');
   $('tTitle').textContent=t.title;$('tSub').textContent=t.sub;$('newgame').textContent=t.new;
   $('mode').options[0].text=t.pvp;$('mode').options[1].text=t.ai;
-  $('side').options[0].text=t.playLight;$('side').options[1].text=t.playDark;
+  updateSideBtn();
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('playAgain').textContent=t.playAgain;
@@ -312,17 +316,38 @@ function buildLabels(){const ranks=$('ranks'),files=$('files');ranks.innerHTML='
   for(let dr=0;dr<8;dr++){const s=document.createElement('span');const m=disp(dr,0);s.textContent=8-m.r;ranks.appendChild(s);}
   const letters='abcdefgh';for(let dc=0;dc<8;dc++){const s=document.createElement('span');const m=disp(0,dc);s.textContent=letters[m.c];files.appendChild(s);}}
 
-function newGame(){
-  const prevFlip=flip;
-  mode=$('mode').value;humanSide=parseInt($('side').value,10);diff=$('diff').value;style=$('style').value;
+function newGame(doBounce){
+  mode=$('mode').value;humanSide=sideChoice;diff=$('diff').value;style=$('style').value;
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;
-  overlay.classList.remove('show');buildLabels();refresh();
-  if(prevFlip!==undefined&&prevFlip!==flip)flipBoardAnim();
+  overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();
+  if(doBounce!==false)bouncePieces();
   maybeAI();}
-function flipBoardAnim(){ if(boardEl&&boardEl.animate){
-  boardEl.animate([{transform:'rotate(180deg)'},{transform:'rotate(0deg)'}],{duration:580,easing:'cubic-bezier(.34,.05,.2,1)'}); } }
+function updateSideBtn(){const t=T[lang];const isL=sideChoice===1;
+  $('side').innerHTML='<span class="sdot '+(isL?'l':'d')+'"></span>'+(isL?t.light:t.dark);}
+function bouncePieces(){const ps=boardEl.querySelectorAll('.piece');
+  ps.forEach(function(p,i){ if(!p.animate)return; p.animate(
+    [{transform:'translateY(-42%) scale(.55)',opacity:0.25},
+     {transform:'translateY(10%) scale(1.08)',offset:0.6},
+     {transform:'translateY(-3%) scale(.97)',offset:0.82},
+     {transform:'translateY(0) scale(1)'}],
+    {duration:520,delay:Math.min(i*7,240),easing:'cubic-bezier(.28,1.5,.5,1)'});});}
+function doSideToggle(){
+  sideChoice=(sideChoice===1)?2:1;updateSideBtn();
+  if(frameEl&&frameEl.animate){
+    var a1=frameEl.animate(
+      [{transform:'rotateX(0deg)'},{transform:'rotateX(87deg)'}],
+      {duration:300,easing:'cubic-bezier(.5,0,.9,.35)',fill:'forwards'});
+    a1.onfinish=function(){
+      newGame(false);
+      var a2=frameEl.animate(
+        [{transform:'rotateX(-87deg)'},{transform:'rotateX(0deg)'}],
+        {duration:400,easing:'cubic-bezier(.2,.85,.3,1)',fill:'forwards'});
+      a2.onfinish=function(){a1.cancel();a2.cancel();bouncePieces();};
+    };
+  } else { newGame(); }
+}
 function refresh(){legal=computeLegal(board,turn);render();}
 
 function render(){const t=T[lang];
@@ -438,7 +463,8 @@ $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
 $('undo').addEventListener('click',undo);
 $('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;});
 $('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;});
-['mode','side','diff','style'].forEach(id=>$(id).addEventListener('change',()=>{initAudio();newGame();}));
+['mode','diff','style'].forEach(id=>$(id).addEventListener('change',()=>{initAudio();newGame();}));
+$('side').addEventListener('click',()=>{initAudio();doSideToggle();});
 $('rulesbtn').addEventListener('click',function(){const el=$('rules');el.classList.toggle('hidden');
   this.textContent=el.classList.contains('hidden')?T[lang].howto:T[lang].hide;});
 window.addEventListener('pointerdown',initAudio,{once:true});
