@@ -174,6 +174,8 @@
 </button>
 
 <script>
+// Hide the loading splash after ~1s — registered first so it always fires, even if init hiccups.
+setTimeout(function(){var l=document.getElementById('loading');if(l){l.classList.add('gone');setTimeout(function(){if(l.parentNode)l.parentNode.removeChild(l);},500);}},1000);
 // ================= i18n =================
 const T={
  en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
@@ -625,10 +627,6 @@ window.addEventListener('pointerdown',initAudio,{once:true});
 loadLearn();
 applyLang();
 newGame();
-(function(){ function hideLoading(){ var l=document.getElementById('loading'); if(!l)return;
-    l.classList.add('gone'); setTimeout(function(){ if(l&&l.parentNode) l.parentNode.removeChild(l); },600); }
-  setTimeout(hideLoading, 800);
-  window.addEventListener('load', function(){ setTimeout(hideLoading, 250); }); })();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
