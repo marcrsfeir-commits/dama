@@ -120,6 +120,22 @@
   .sq.hintfrom{box-shadow:inset 0 0 0 .5px var(--grid),inset 0 0 0 4px rgba(143,174,107,.85);}
   .sq.hintto::after{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(143,174,107,.92);animation:hintpulse 1s ease-in-out infinite;pointer-events:none;}
   @keyframes hintpulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+
+  /* board-only fullscreen */
+  .fsx{position:fixed;top:14px;right:14px;z-index:30;display:none;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:var(--panel);color:var(--ink);border:1px solid #4a3a24;font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5);-webkit-tap-highlight-color:transparent;}
+  body.boardfs{overflow:hidden;}
+  body.boardfs .head,body.boardfs .controls,body.boardfs .tray,body.boardfs .status,body.boardfs #coach,body.boardfs .rulesbtn,body.boardfs .rules{display:none !important;}
+  body.boardfs .wrap{max-width:none;padding:0;min-height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;}
+  body.boardfs .play{--sz:min(96vw,92dvh,1000px);}
+  body.boardfs .fsx{display:flex;}
+
+  /* multi-capture route preview */
+  .pathsvg{position:absolute;inset:8px;pointer-events:none;z-index:5;overflow:visible;display:none;}
+  .capline{fill:none;stroke:rgba(224,122,58,.9);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 8;}
+  .capline.hint{stroke:rgba(143,174,107,.95);}
+  .capdot{fill:rgba(224,122,58,.95);} .capdot.hint{fill:rgba(143,174,107,.95);}
+  .sq.willeat::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
+  .sq.willeathint::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(143,174,107,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
 </style>
 </head>
 <body>
@@ -159,6 +175,7 @@
   <div class="play">
     <div class="ranks" id="ranks"></div>
     <div class="frame"><div class="board" id="board"></div>
+      <svg class="pathsvg" id="pathsvg"></svg>
       <div class="overlay" id="overlay"><div class="card"><h2 id="winTitle"></h2><p id="winSub"></p>
         <button class="btn primary" id="playAgain"></button></div></div>
     </div>
@@ -172,6 +189,7 @@
 <button id="hintfab" class="hintfab" title="Suggest a move — it advises, it doesn't move for you">
   <span class="hicon">💡</span><span class="hlbl" id="hintlbl">Hint</span>
 </button>
+<button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 
 <script>
 // Hide the loading splash after ~1s — registered first so it always fires, even if init hiccups.
@@ -428,7 +446,7 @@ function applyLang(){const t=T[lang];
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
-  $('fs').textContent=document.fullscreenElement?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;
+  $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;
   const rb=$('rulesbtn'),rl=$('rules');
   rb.textContent=rl.classList.contains('hidden')?t.howto:t.hide;
   rl.innerHTML='<p>'+t.rules[0]+'</p><ul>'+t.rules.slice(1).map(x=>'<li>'+x+'</li>').join('')+'</ul>';
@@ -496,6 +514,11 @@ function render(){const t=T[lang];
   const pickable=new Set(Object.keys(legal.moves));
   const canInput=!winner&&!thinking&&!animating&&(mode==='pvp'||(mode==='ai'&&turn===humanSide));
 
+  const capMoves=(selKey&&legal.moves[selKey])?legal.moves[selKey].filter(function(m){return m.captured;}):[];
+  const eatSet=new Set(); capMoves.forEach(function(m){m.captured.forEach(function(cp){eatSet.add(cp.r+','+cp.c);});});
+  const hintCap=(hint&&hint.captured)?hint:null;
+  const eatHint=new Set(); if(hintCap)hintCap.captured.forEach(function(cp){eatHint.add(cp.r+','+cp.c);});
+
   boardEl.innerHTML='';
   for(let dr=0;dr<8;dr++)for(let dc=0;dc<8;dc++){
     const m=disp(dr,dc),mr=m.r,mc=m.c,key=mr+','+mc,cell=board[mr][mc];
@@ -504,6 +527,7 @@ function render(){const t=T[lang];
     if(lastMove&&((lastMove.from[0]===mr&&lastMove.from[1]===mc)||(lastMove.to[0]===mr&&lastMove.to[1]===mc)))sq.classList.add('last');
     if(selKey===key)sq.classList.add('sel');
     if(hint){ if(hint.from[0]===mr&&hint.from[1]===mc)sq.classList.add('hintfrom'); if(hint.to[0]===mr&&hint.to[1]===mc)sq.classList.add('hintto'); }
+    if(eatSet.has(key))sq.classList.add('willeat'); else if(eatHint.has(key))sq.classList.add('willeathint');
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -514,6 +538,22 @@ function render(){const t=T[lang];
     if(canInput)sq.addEventListener('click',()=>handleCell(mr,mc));
     boardEl.appendChild(sq);
   }
+  drawPaths(capMoves,hintCap);
+}
+function drawPaths(capMoves,hintMv){ const svg=$('pathsvg'); if(!svg)return;
+  while(svg.firstChild)svg.removeChild(svg.firstChild);
+  const groups=[]; if(capMoves&&capMoves.length)groups.push({moves:capMoves,cls:''}); if(hintMv)groups.push({moves:[hintMv],cls:' hint'});
+  const cell=boardEl.clientWidth/8;
+  if(!groups.length||!cell){svg.style.display='none';return;}
+  svg.setAttribute('viewBox','0 0 '+(cell*8)+' '+(cell*8)); svg.style.display='block';
+  const ns='http://www.w3.org/2000/svg';
+  groups.forEach(function(g){ g.moves.forEach(function(mv){ if(!mv.captured)return;
+    const pts=[{r:mv.from[0],c:mv.from[1]}].concat(mv.path&&mv.path.length?mv.path:[{r:mv.to[0],c:mv.to[1]}]);
+    let d=''; pts.forEach(function(p,i){ const dp=disp(p.r,p.c); d+=(i?'L':'M')+((dp.c+0.5)*cell)+' '+((dp.r+0.5)*cell)+' '; });
+    const pa=document.createElementNS(ns,'path'); pa.setAttribute('d',d.trim()); pa.setAttribute('class','capline'+g.cls); svg.appendChild(pa);
+    pts.forEach(function(p,i){ if(!i)return; const dp=disp(p.r,p.c); const dot=document.createElementNS(ns,'circle');
+      dot.setAttribute('cx',(dp.c+0.5)*cell); dot.setAttribute('cy',(dp.r+0.5)*cell); dot.setAttribute('r',cell*0.08); dot.setAttribute('class','capdot'+g.cls); svg.appendChild(dot); });
+  }); });
 }
 
 function handleCell(r,c){ initAudio();
@@ -547,13 +587,19 @@ function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false;
 function showHint(){ if(!canAssist())return; initAudio();
   const fab=$('hintfab'); if(fab)fab.classList.add('busy');
   setTimeout(function(){ let mv=null; try{ mv=search(board,turn,900,20); }catch(e){}
-    if(mv){ hint={from:mv.from,to:mv.to}; render(); }
+    if(mv){ hint=mv; render(); }
     if(fab)fab.classList.remove('busy'); },20);
 }
-function toggleFullscreen(){ try{ const el=document.documentElement;
-  if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); }
-  else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
-}catch(e){} }
+function updateFSLabel(){ const on=document.body.classList.contains('boardfs'); const f=$('fs'); if(f)f.textContent=on?T[lang].fsExit:T[lang].fs; }
+function toggleBoardFS(){
+  const willOn=!document.body.classList.contains('boardfs');
+  document.body.classList.toggle('boardfs',willOn);
+  try{ const el=document.documentElement;
+    if(willOn){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); }
+    else if(document.fullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+  }catch(e){}
+  updateFSLabel(); render();
+}
 
 function animateMove(mv,prevBoard,promoted,done){
   const cell=boardEl.clientWidth/8;
@@ -614,10 +660,12 @@ $('undo').addEventListener('click',undo);
 $('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;});
 $('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;});
 $('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textContent=coachOn?T[lang].coachOn:T[lang].coachOff;showCoachIdle();});
-$('fs').addEventListener('click',toggleFullscreen);
+$('fs').addEventListener('click',toggleBoardFS);
+$('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
-document.addEventListener('fullscreenchange',()=>{$('fs').textContent=document.fullscreenElement?T[lang].fsExit:T[lang].fs;});
-document.addEventListener('webkitfullscreenchange',()=>{$('fs').textContent=document.fullscreenElement?T[lang].fsExit:T[lang].fs;});
+function onFSChange(){ if(!document.fullscreenElement) document.body.classList.remove('boardfs'); updateFSLabel(); render(); }
+document.addEventListener('fullscreenchange',onFSChange);
+document.addEventListener('webkitfullscreenchange',onFSChange);
 ['mode','diff','style'].forEach(id=>$(id).addEventListener('change',()=>{initAudio();newGame();}));
 $('side').addEventListener('click',()=>{initAudio();doSideToggle();});
 $('rulesbtn').addEventListener('click',function(){const el=$('rules');el.classList.toggle('hidden');
