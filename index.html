@@ -57,6 +57,9 @@
   .dot.d{background:radial-gradient(circle at 35% 28%,#6b4e37,#3f2a1a 60%,#2a1a10);}
   .must{color:var(--sel);font-size:12px;} .thinking{color:var(--gold);font-size:12px;}
   .count{font-size:12px;color:var(--muted);letter-spacing:.5px;}
+  .coach{min-height:18px;margin:-4px 0 10px;font-size:12.5px;letter-spacing:.3px;color:var(--muted);transition:color .2s;}
+  .coach.best{color:#8fae6b;} .coach.good{color:#a9c07f;} .coach.inacc{color:#e0c045;}
+  .coach.mistake{color:#e08a3a;} .coach.blunder{color:#e0563a;font-weight:600;}
 
   .play{display:grid;grid-template-columns:16px var(--sz);grid-template-rows:var(--sz) 16px;gap:3px;justify-content:center;}
   .frame{grid-column:2;grid-row:1;background:linear-gradient(150deg,var(--frameA),var(--frameB));
@@ -114,11 +117,13 @@
     <button class="btn" id="undo"></button>
     <button class="btn" id="sound"></button>
     <button class="btn" id="music"></button>
+    <button class="btn" id="coachbtn"></button>
   </div>
 
   <div class="tray"><div class="caps" id="capL"></div><div class="movebadge" id="move"></div><div class="caps right" id="capR"></div></div>
 
   <div class="status"><div id="statusMain" class="turn"></div><div class="count" id="count"></div></div>
+  <div id="coach" class="coach"></div>
 
   <div class="play">
     <div class="ranks" id="ranks"></div>
@@ -138,7 +143,7 @@
 const T={
  en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
    playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",
-   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",
+   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",
    light:"Light",dark:"Dark",toMove:"to move",must:"must capture",thinking:"thinking…",wins:"wins",
    youWon:"Well played — نخبك!",youLost:"Computer takes it. Rematch?",niceGame:"نخبك!",move:"Move",playAgain:"Play again",
    howto:"How to play",hide:"Hide rules",
@@ -150,7 +155,7 @@ const T={
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
    playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
-   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",
+   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",
    light:"الفاتح",dark:"الغامق",toMove:"عليه الدور",must:"الأكل إجباري",thinking:"يفكّر…",wins:"فاز",
    youWon:"لعب موفّق — نخبك!",youLost:"الكمبيوتر فاز. تعيدها؟",niceGame:"نخبك!",move:"نقلة",playAgain:"العب مجدداً",
    howto:"كيفية اللعب",hide:"إخفاء القواعد",
@@ -204,42 +209,121 @@ function makeMove(board,mv){const nb=clone(board);const fr=mv.from[0],fc=mv.from
   nb[mv.to[0]][mv.to[1]]=piece;return nb;}
 
 // ================= AI =================
-function evalPlayer(board,player){let s=0;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(!p)continue;
-  let v=p.king?330:100;
-  if(!p.king){const adv=p.player===1?(6-r):(r-1);v+=Math.max(0,adv)*7;
-    if((p.player===1&&r===7)||(p.player===2&&r===0))v+=10;         // back-rank guard
-    if(c===0||c===7)v+=4;                                          // edge safety
-  } else { v+=(3.5-Math.abs(c-3.5))*3+(3.5-Math.abs(r-3.5))*3; }   // king centralization
-  v+=(3.5-Math.abs(c-3.5))*2;
-  s+=p.player===player?v:-v;}return s;}
-function orderMoves(m){m.sort((a,b)=>(b.captured?b.captured.length:0)-(a.captured?a.captured.length:0));return m;}
+function evalPlayer(board,player){
+  // material + positional score, from `player`'s point of view
+  let mine=0,opp=0,myPieces=0,oppPieces=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(!p)continue;
+    let v=p.king?360:100;
+    if(!p.king){
+      const adv=p.player===1?(6-r):(r-1);
+      v+=Math.max(0,adv)*8;                                          // push men toward promotion
+      if((p.player===1&&r===6)||(p.player===2&&r===1))v+=10;         // one row from king
+      if((p.player===1&&r===7)||(p.player===2&&r===0))v+=16;         // hold back rank (blocks enemy kings)
+      v+=(3.5-Math.abs(c-3.5))*2.2;                                  // central files
+      if(c===0||c===7)v+=3;                                          // edge men are harder to capture
+    } else {
+      v+=(3.5-Math.abs(c-3.5))*3+(3.5-Math.abs(r-3.5))*3;            // centralised kings dominate
+    }
+    if(p.player===player){mine+=v;myPieces++;} else {opp+=v;oppPieces++;}
+  }
+  let s=mine-opp;
+  if(myPieces>oppPieces) s+=(myPieces-oppPieces)*6;                  // when ahead, favour trading down
+  return s;
+}
+function orderMoves(m){m.sort(function(a,b){
+  const ca=a.captured?a.captured.length:0, cb=b.captured?b.captured.length:0;
+  if(cb!==ca)return cb-ca;                                           // most captures first
+  const pa=(a.to[0]===0||a.to[0]===7)?1:0, pb=(b.to[0]===0||b.to[0]===7)?1:0;
+  return pb-pa;                                                      // then promotions
+});return m;}
 function nega(board,player,depth,alpha,beta,deadline){
   if(performance.now()>deadline) throw 0;
   const moves=allMoves(board,player);
-  if(!moves.length) return -99999-depth;
-  if(depth===0) return evalPlayer(board,player);
-  orderMoves(moves);let best=-Infinity;
-  for(const mv of moves){const val=-nega(makeMove(board,mv),player===1?2:1,depth-1,-beta,-alpha,deadline);
-    if(val>best)best=val;if(best>alpha)alpha=best;if(alpha>=beta)break;}return best;}
+  if(!moves.length) return -99999-depth;                            // no legal move = loss for side to move
+  const forcedCapture = moves[0].captured!=null;                    // captures are mandatory → covers all moves
+  // Quiescence: don't stop evaluating in the middle of a forced capture exchange (kills the horizon effect)
+  if(depth<=0 && !forcedCapture) return evalPlayer(board,player);
+  orderMoves(moves);
+  let best=-Infinity;
+  for(const mv of moves){
+    const val=-nega(makeMove(board,mv),player===1?2:1,depth-1,-beta,-alpha,deadline);
+    if(val>best)best=val; if(best>alpha)alpha=best; if(alpha>=beta)break;
+  }
+  return best;
+}
 function search(board,player,budgetMs,maxDepth){
-  const root=orderMoves(allMoves(board,player));if(!root.length)return null;if(root.length===1)return root[0];
-  const deadline=performance.now()+budgetMs;let bestCands=[root[0]];
+  const other=player===1?2:1;
+  let scored=orderMoves(allMoves(board,player)).map(function(mv){return {mv:mv,val:0};});
+  if(!scored.length)return null; if(scored.length===1)return scored[0].mv;
+  const deadline=performance.now()+budgetMs;
+  let stable=scored.slice();
   for(let depth=2;depth<=maxDepth;depth++){
-    let localBest=-Infinity,cands=[],alpha=-Infinity,beta=Infinity,aborted=false;
-    for(const mv of root){let val;
-      try{val=-nega(makeMove(board,mv),player===1?2:1,depth-1,-beta,-alpha,deadline);}catch(e){aborted=true;break;}
-      if(val>localBest){localBest=val;cands=[mv];}else if(val===localBest)cands.push(mv);if(localBest>alpha)alpha=localBest;}
-    if(aborted)break;bestCands=cands;if(performance.now()>deadline)break;}
-  return bestCands[Math.floor(Math.random()*bestCands.length)];}
+    let aborted=false;
+    for(const item of scored){
+      try{ item.val=-nega(makeMove(board,item.mv),other,depth-1,-Infinity,Infinity,deadline); }
+      catch(e){ aborted=true; break; }
+    }
+    if(aborted) break;                                              // keep last fully-completed depth (in `stable`)
+    scored.sort(function(a,b){return b.val-a.val;});                // best-first ordering deepens next pass faster
+    stable=scored.slice();
+    if(performance.now()>deadline) break;
+  }
+  // Among moves that are essentially equal to the best, prefer whatever has worked in past games (learning).
+  const pos=posKey(board,player), top=stable[0].val;
+  const near=stable.filter(function(x){return x.val>=top-8;});
+  let bestLS=-Infinity; for(const x of near){const ls=learnScore(pos,x.mv); if(ls>bestLS)bestLS=ls;}
+  const pick=near.filter(function(x){return learnScore(pos,x.mv)===bestLS;});
+  return pick[Math.floor(Math.random()*pick.length)].mv;
+}
 function aiMove(board,player){
   const total=countPieces(board,1)+countPieces(board,2);
-  if(diff==='easy'){ const m=allMoves(board,player); if(!m.length)return null;
-    orderMoves(m); if(m[0].captured) return m[Math.floor(Math.random()*m.length)]; // still grabs a capture
-    return Math.random()<0.35 ? m[Math.floor(Math.random()*m.length)] : search(board,player,60,2); }
-  if(diff==='med') return search(board,player,350, total<=8?7:5);
-  if(diff==='hard') return search(board,player,1100, total<=8?11:8);
-  return search(board,player,2600, total<=10?18:13); // very hard
+  if(diff==='easy'){ const m=allMoves(board,player); if(!m.length)return null; orderMoves(m);
+    return Math.random()<0.4 ? m[Math.floor(Math.random()*m.length)] : search(board,player,90,3); }
+  if(diff==='med')  return search(board,player,500,  total<=10?10:7);
+  if(diff==='hard') return search(board,player,1400, total<=10?14:10);
+  return search(board,player,2400, total<=12?22:16); // very hard
 }
+
+// ================= learning + coach =================
+let LEARN={games:0,book:{}};
+function loadLearn(){ try{const s=localStorage.getItem('dama-learn'); if(s){const o=JSON.parse(s); if(o&&o.book){LEARN=o;LEARN.book=LEARN.book||{};LEARN.games=LEARN.games||0;}}}catch(e){} }
+function saveLearn(){ try{ const ks=Object.keys(LEARN.book);
+    if(ks.length>4000){ for(let i=0;i<ks.length-3000;i++) delete LEARN.book[ks[i]]; }
+    localStorage.setItem('dama-learn',JSON.stringify(LEARN)); }catch(e){} }
+function posKey(board,turn){ let s=''; for(let r=0;r<8;r++){const row=board[r]; for(let c=0;c<8;c++){const p=row[c]; s+= !p?'.':(p.player===1?(p.king?'L':'l'):(p.king?'D':'d'));}} return s+turn; }
+function moveKey(mv){ return mv.from[0]+''+mv.from[1]+'>'+mv.to[0]+''+mv.to[1]; }
+function learnScore(pos,mv){ const b=LEARN.book[pos]; if(!b)return 0; const e=b[moveKey(mv)]; if(!e||e[0]<2)return 0; return e[1]/e[0]; }
+let moveTrail=[];
+function recordMove(prevBoard,mover,mv){ if(moveTrail.length<24) moveTrail.push({pos:posKey(prevBoard,mover),mk:moveKey(mv),mover:mover}); }
+function learnFromGame(winner){ try{
+    for(const tr of moveTrail){ let b=LEARN.book[tr.pos]; if(!b){b={};LEARN.book[tr.pos]=b;} let e=b[tr.mk]; if(!e){e=[0,0];b[tr.mk]=e;}
+      e[0]++; e[1]+= winner? (tr.mover===winner?1:-1) : 0; }
+    LEARN.games++; saveLearn(); }catch(e){} moveTrail=[]; }
+
+let coachOn=true, coachStats=null;
+function sameMove(a,b){ return a.from[0]===b.from[0]&&a.from[1]===b.from[1]&&a.to[0]===b.to[0]&&a.to[1]===b.to[1]; }
+function analyzeLoss(prevBoard,player,playedMv){
+  const other=player===1?2:1, dl=performance.now()+280, depth=8;
+  let best=-Infinity, played=null;
+  const moves=orderMoves(allMoves(prevBoard,player));
+  for(const m of moves){ let v; try{v=-nega(makeMove(prevBoard,m),other,depth-1,-Infinity,Infinity,dl);}catch(e){v=null;}
+    if(v===null)continue; if(v>best)best=v; if(sameMove(m,playedMv))played=v; }
+  if(best===-Infinity) return null;
+  if(played===null) played=best;
+  return Math.max(0,best-played);
+}
+function classify(loss){ if(loss<=12)return'best'; if(loss<=45)return'good'; if(loss<=110)return'inacc'; if(loss<=260)return'mistake'; return'blunder'; }
+function coachOnMove(prevBoard,mover,mv){ if(!coachOn)return;
+  let loss; try{loss=analyzeLoss(prevBoard,mover,mv);}catch(e){loss=null;}
+  if(loss===null)return; const k=classify(loss);
+  if(coachStats)coachStats[k]=(coachStats[k]||0)+1; showCoach(k); }
+function showCoach(k){ const el=$('coach'); if(!el)return; el.className='coach '+k; el.textContent=T[lang]['coach_'+k]||''; }
+function showCoachIdle(){ const el=$('coach'); if(!el)return; el.className='coach';
+  el.textContent=(T[lang].learned||'Learning from {n} games').replace('{n}',LEARN.games); }
+function coachSummaryText(){ if(!coachStats)return''; const t=T[lang],parts=[];
+  [['best','coach_best'],['good','coach_good'],['inacc','coach_inacc'],['mistake','coach_mistake'],['blunder','coach_blunder']].forEach(function(p){
+    if(coachStats[p[0]])parts.push(coachStats[p[0]]+' '+t[p[1]]); });
+  return parts.join(' · '); }
 
 // ================= sound =================
 let audioCtx=null, soundOn=true, musicOn=true, musicTimer=null, musicGain=null, musicStep=0;
@@ -307,7 +391,7 @@ function applyLang(){const t=T[lang];
   updateSideBtn();
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
-  $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('playAgain').textContent=t.playAgain;
+  $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
   const rb=$('rulesbtn'),rl=$('rules');
   rb.textContent=rl.classList.contains('hidden')?t.howto:t.hide;
   rl.innerHTML='<p>'+t.rules[0]+'</p><ul>'+t.rules.slice(1).map(x=>'<li>'+x+'</li>').join('')+'</ul>';
@@ -323,7 +407,8 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;
-  overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();
+  moveTrail=[];coachStats={};
+  overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
   maybeAI();}
 function updateSideBtn(){const t=T[lang];const isL=sideChoice===1;
@@ -405,7 +490,11 @@ function handleCell(r,c){ initAudio();
 
 function apply(mv){
   const prev=clone(board);
+  const mover=turn;
   history.push({board:prev,turn,lastMove});
+  recordMove(prev,mover,mv);                                   // remember move for learning
+  const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
+  if(moverHuman) coachOnMove(prev,mover,mv);                   // rate the human's move
   board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
@@ -413,8 +502,9 @@ function apply(mv){
   const over=countPieces(board,next)===0||Object.keys(legal.moves).length===0;
   animating=true;render();
   animateMove(mv,prev,promoted,()=>{animating=false;
-    if(over){winner=next===1?2:1;render();showWin();}else{render();maybeAI();}});
+    if(over){finishGame(next===1?2:1);}else{render();maybeAI();}});
 }
+function finishGame(w){ winner=w; learnFromGame(w); render(); showWin(); }
 
 function animateMove(mv,prevBoard,promoted,done){
   const cell=boardEl.clientWidth/8;
@@ -454,11 +544,13 @@ function maybeAI(){ if(winner)return;
     const mv=aiMove(board,turn);
     if(g!==gameId)return;
     thinking=false;
-    if(!mv){winner=turn===1?2:1;render();showWin();return;}apply(mv);},pace);}
+    if(!mv){finishGame(turn===1?2:1);return;}apply(mv);},pace);}
 
 function showWin(){const t=T[lang];const youWon=mode==='ai'&&winner===humanSide;const w=winner===1?t.light:t.dark;
   $('winTitle').textContent=lang==='ar'?(t.wins+' '+w):(w+' '+t.wins);
-  $('winSub').textContent=mode==='ai'?(youWon?t.youWon:t.youLost):t.niceGame;overlay.classList.add('show');}
+  let sub=mode==='ai'?(youWon?t.youWon:t.youLost):t.niceGame;
+  const cs=coachSummaryText(); if(cs) sub+=' — '+cs;
+  $('winSub').textContent=sub; overlay.classList.add('show'); showCoachIdle();}
 
 function undo(){ if(thinking||animating||!history.length)return;
   let prev=history.pop();
@@ -472,12 +564,14 @@ $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
 $('undo').addEventListener('click',undo);
 $('sound').addEventListener('click',()=>{soundOn=!soundOn;initAudio();$('sound').textContent=soundOn?T[lang].soundOn:T[lang].soundOff;});
 $('music').addEventListener('click',()=>{musicOn=!musicOn;if(musicOn){initAudio();startMusic();}else{stopMusic();}$('music').textContent=musicOn?T[lang].musicOn:T[lang].musicOff;});
+$('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textContent=coachOn?T[lang].coachOn:T[lang].coachOff;showCoachIdle();});
 ['mode','diff','style'].forEach(id=>$(id).addEventListener('change',()=>{initAudio();newGame();}));
 $('side').addEventListener('click',()=>{initAudio();doSideToggle();});
 $('rulesbtn').addEventListener('click',function(){const el=$('rules');el.classList.toggle('hidden');
   this.textContent=el.classList.contains('hidden')?T[lang].howto:T[lang].hide;});
 window.addEventListener('pointerdown',initAudio,{once:true});
 
+loadLearn();
 applyLang();
 newGame();
 </script>
