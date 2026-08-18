@@ -254,7 +254,13 @@ function sCapture(){if(soundOn&&audioCtx){tone(150,0.13,'sine',0.28);tone(95,0.1
 function sPromote(){if(soundOn&&audioCtx){const t=audioCtx.currentTime;[523,659,784,1047].forEach((f,i)=>tone(f,0.2,'sine',0.15,t+i*0.09));}}
 
 // ============ background music (procedural, offline — soft Hijaz-mode loop) ============
-const MEL=[0,2,3,4, 3,2,0,null, 4,3,2,4, 5,4,3,null, 2,3,4,5, 4,3,2,null, 3,2,0,2, 3,0,-3,null];
+const M_PHRASES=[
+  [0,2,3,4, 3,2,0,null, 4,3,2,4, 5,4,3,null],
+  [7,5,4,3, 4,5,7,null, 5,4,3,2, 3,4,5,null],
+  [0,3,2,4, 3,5,4,null, 3,2,0,-3, 0,2,3,null],
+  [4,5,4,3, 2,3,4,null, 2,0,-1,0, 2,3,2,null]
+];
+let mPhrase=0, mPos=0, mOct=0;
 function mNoteFreq(i){ const base=[293.66,311.13,369.99,392.00,440.00,466.16,554.37]; // D Hijaz
   const oct=Math.floor(i/base.length), idx=((i%base.length)+base.length)%base.length;
   return base[idx]*Math.pow(2,oct); }
@@ -269,11 +275,18 @@ function startMusic(){ if(!audioCtx||musicTimer)return;
   if(!musicGain){musicGain=audioCtx.createGain();musicGain.gain.value=0.8;musicGain.connect(audioCtx.destination);}
   const stepDur=0.5; let nextTime=audioCtx.currentTime+0.15;
   musicTimer=setInterval(function(){ if(!audioCtx)return; const now=audioCtx.currentTime;
-    while(nextTime<now+0.6){ const s=musicStep%MEL.length, mi=MEL[s];
-      if(mi!==null&&mi!==undefined) mPad(mNoteFreq(mi),nextTime,stepDur*1.9,0.045);
-      if(s%8===0) mPad(73.42,nextTime,stepDur*7.6,0.05);   // low D drone
-      if(s%8===4) mPad(110.00,nextTime,stepDur*3.6,0.032); // A under-drone
-      musicStep++; nextTime+=stepDur; } },140); }
+    while(nextTime<now+0.6){ const phrase=M_PHRASES[mPhrase];
+      if(mPos===0){ mPad(73.42,nextTime,stepDur*7.6,0.05); mPad(110.00,nextTime,stepDur*3.6,0.03); } // drones per phrase
+      const step=phrase[mPos];
+      if(step!==null&&step!==undefined){
+        mPad(mNoteFreq(step+mOct*7),nextTime,stepDur*1.9,0.04+Math.random()*0.015);
+        if(Math.random()<0.14) mPad(mNoteFreq(step+mOct*7+2),nextTime+stepDur*0.5,stepDur*0.9,0.022); // soft ornament
+      }
+      mPos++;
+      if(mPos>=phrase.length){ mPos=0;
+        let n; do{ n=Math.floor(Math.random()*M_PHRASES.length); }while(n===mPhrase&&M_PHRASES.length>1); mPhrase=n;
+        mOct = Math.random()<0.22 ? 1 : (Math.random()<0.15 ? -1 : 0); }
+      nextTime+=stepDur; } },140); }
 function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;} }
 
 // ================= state =================
@@ -300,11 +313,16 @@ function buildLabels(){const ranks=$('ranks'),files=$('files');ranks.innerHTML='
   const letters='abcdefgh';for(let dc=0;dc<8;dc++){const s=document.createElement('span');const m=disp(0,dc);s.textContent=letters[m.c];files.appendChild(s);}}
 
 function newGame(){
+  const prevFlip=flip;
   mode=$('mode').value;humanSide=parseInt($('side').value,10);diff=$('diff').value;style=$('style').value;
-  flip=(mode==='ai'&&humanSide===2);
+  flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;
-  overlay.classList.remove('show');buildLabels();refresh();maybeAI();}
+  overlay.classList.remove('show');buildLabels();refresh();
+  if(prevFlip!==undefined&&prevFlip!==flip)flipBoardAnim();
+  maybeAI();}
+function flipBoardAnim(){ if(boardEl&&boardEl.animate){
+  boardEl.animate([{transform:'rotate(180deg)'},{transform:'rotate(0deg)'}],{duration:580,easing:'cubic-bezier(.34,.05,.2,1)'}); } }
 function refresh(){legal=computeLegal(board,turn);render();}
 
 function render(){const t=T[lang];
