@@ -17,6 +17,7 @@
     --frameA:#5a4026; --frameB:#3a2716; --frameLine:#27190e;
     --sqLight:#e6d2a8; --sqDark:#c69f6a; --wood:#dcc196; --grid:rgba(39,25,14,.4);
     --gold:#d9a441; --sel:#e07a3a; --accent:#8fae6b; --ink:#eee6d5; --muted:#a89a80;
+    --lp1:#fdf3da; --lp2:#dcc191; --lp3:#b9975d; --dp1:#7a5a40; --dp2:#43301f; --dp3:#241609;
     --sz:min(94vw, calc(100vh - 296px), 700px); --cell:calc(var(--sz)/8);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -77,9 +78,9 @@
   .sq.moving{z-index:4;}
   .sq.pick,.sq.godest{cursor:pointer;}
   .piece{width:78%;height:78%;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;}
-  .piece.l{background:radial-gradient(circle at 36% 27%,#fdf3da,#dcc191 58%,#b9975d);
+  .piece.l{background:radial-gradient(circle at 36% 27%,var(--lp1),var(--lp2) 58%,var(--lp3));
      box-shadow:inset 0 -3px 6px rgba(120,88,45,.55),inset 0 2px 3px rgba(255,255,255,.6),0 3px 5px rgba(0,0,0,.45);}
-  .piece.d{background:radial-gradient(circle at 36% 27%,#7a5a40,#43301f 58%,#241609);
+  .piece.d{background:radial-gradient(circle at 36% 27%,var(--dp1),var(--dp2) 58%,var(--dp3));
      box-shadow:inset 0 -3px 6px rgba(0,0,0,.6),inset 0 2px 3px rgba(255,255,255,.14),0 3px 5px rgba(0,0,0,.5);}
   .king::after{content:"✦";position:absolute;color:var(--gold);font-size:calc(var(--cell)*.46);line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.55);}
   .dest{width:calc(var(--cell)*.26);height:calc(var(--cell)*.26);border-radius:50%;background:rgba(224,122,58,.5);box-shadow:0 0 0 2px rgba(224,122,58,.25);}
@@ -135,6 +136,26 @@
   .capline{fill:none;stroke:rgba(224,122,58,.9);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 8;}
   .capline.hint{stroke:rgba(143,174,107,.95);}
   .moveline{fill:none;stroke:rgba(143,174,107,.6);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1 6;}
+
+  /* skins shop */
+  .shop{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(8,6,4,.72);padding:16px;}
+  .shop.show{display:flex;}
+  .shopcard{background:var(--panel);border:1px solid #3a2f24;border-radius:16px;max-width:540px;width:100%;max-height:86vh;overflow:auto;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.6);}
+  .shophead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  #shopwp{font-size:16px;color:var(--gold);font-weight:700;letter-spacing:.5px;}
+  .shopx{background:transparent;border:none;color:var(--ink);font-size:20px;cursor:pointer;line-height:1;}
+  .shopgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;}
+  .scard{background:rgba(0,0,0,.22);border:1px solid #3a2f24;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:96px;}
+  .scard.locked{opacity:.6;}
+  .scard.eq{box-shadow:inset 0 0 0 2px var(--accent);}
+  .scard.r-rare{border-color:#5a86c0;} .scard.r-epic{border-color:#c89a3a;} .scard.r-legendary{border-color:#c060e0;}
+  .sname{font-size:13px;font-weight:600;color:var(--ink);}
+  .sdesc{font-size:11px;color:var(--muted);line-height:1.35;}
+  .swrow{display:flex;gap:5px;} .swd{width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.35);}
+  .sperk{font-size:10.5px;color:var(--accent);letter-spacing:.2px;}
+  .sfoot{margin-top:auto;} .stag{font-size:11px;color:var(--muted);} .stag.ok{color:var(--accent);font-weight:600;}
+  .scard .equip{padding:5px 12px;font-size:12px;}
+  .shopnote{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.4;}
   .capdot{fill:rgba(224,122,58,.95);} .capdot.hint{fill:rgba(143,174,107,.95);}
   .sq.willeat::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
   .sq.willeathint::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(143,174,107,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
@@ -167,6 +188,7 @@
     <button class="btn" id="music"></button>
     <button class="btn" id="coachbtn"></button>
     <button class="btn" id="fs"></button>
+    <button class="btn" id="skins"></button>
   </div>
 
   <div class="tray"><div class="caps" id="capL"></div><div class="movebadge" id="move"></div><div class="caps right" id="capR"></div></div>
@@ -193,6 +215,11 @@
   <span class="hicon">💡</span><span class="hlbl" id="hintlbl">Hint</span>
 </button>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
+<div id="shop" class="shop"><div class="shopcard">
+  <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
+  <div id="shopgrid" class="shopgrid"></div>
+  <div class="shopnote">Earn Win Points by beating the computer — easy 1 · medium 2 · hard 3 · very hard 4. Unlocks are permanent.</div>
+</div></div>
 
 <script>
 // Hide the loading splash after ~1s — registered first so it always fires, even if init hiccups.
@@ -357,12 +384,73 @@ function learnFromGame(winner){ try{
       e[0]++; e[1]+= winner? (tr.mover===winner?1:-1) : 0; }
     LEARN.games++; saveLearn(); }catch(e){} moveTrail=[]; }
 
-let STATS={wins:0,losses:0,streak:0,best:0,games:0};
+let STATS={wins:0,losses:0,streak:0,best:0,games:0,wp:0,equipped:'wood'};
 function loadStats(){ try{const s=localStorage.getItem('dama-stats'); if(s){const o=JSON.parse(s); if(o)STATS=Object.assign(STATS,o);}}catch(e){} }
 function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STATS)); }catch(e){} }
-function recordResult(w){ if(mode==='ai'){ if(w===humanSide){STATS.wins++;STATS.streak++;if(STATS.streak>STATS.best)STATS.best=STATS.streak;} else {STATS.losses++;STATS.streak=0;} STATS.games++; saveStats(); } updateStats(); }
+
+// ---- progression: win points, skins, perks ----
+const THEMEVARS=['--bg','--panel','--frameA','--frameB','--frameLine','--sqLight','--sqDark','--wood','--gold','--sel','--accent','--ink','--muted','--lp1','--lp2','--lp3','--dp1','--dp2','--dp3'];
+const HINT_COST=10;
+const SKINS=[
+ {id:'wood',name:'Classic Wood',emoji:'🌰',cost:0,rarity:'common',swatch:['#e6d2a8','#c69f6a','#d9a441'],vars:{}},
+ {id:'midnight',name:'Midnight',emoji:'🌙',cost:4,rarity:'common',swatch:['#c3cfe0','#6f86a8','#6db0ff'],
+   vars:{'--bg':'#0d1017','--panel':'#151b26','--frameA':'#2b3a52','--frameB':'#182032','--frameLine':'#0b1120','--sqLight':'#c3cfe0','--sqDark':'#6f86a8','--gold':'#6db0ff','--sel':'#4f8cff','--accent':'#7fb0e0','--ink':'#e6edf7','--muted':'#8ea0b8','--lp1':'#eaf1fb','--lp2':'#c3d3ea','--lp3':'#8fa8cc','--dp1':'#33465f','--dp2':'#1c2838','--dp3':'#0e1521'}},
+ {id:'forest',name:'Forest Felt',emoji:'🌿',cost:7,rarity:'common',swatch:['#d7e4c4','#7fa06a','#e0c045'],
+   vars:{'--bg':'#0e1510','--panel':'#16211a','--frameA':'#3f5a3a','--frameB':'#243620','--frameLine':'#12200f','--sqLight':'#d7e4c4','--sqDark':'#7fa06a','--gold':'#e0c045','--sel':'#e08a3a','--accent':'#9ccf7a','--ink':'#eef6e6','--muted':'#9fb090'}},
+ {id:'rosewood',name:'Rosewood',emoji:'🌹',cost:12,rarity:'common',swatch:['#f0d8c0','#c98a6a','#e8a04a'],
+   vars:{'--frameA':'#7a3b2e','--frameB':'#4a2018','--frameLine':'#2a120c','--sqLight':'#f0d8c0','--sqDark':'#c98a6a','--gold':'#e8a04a','--sel':'#e0563a','--accent':'#d0906a','--lp1':'#fdeadd','--lp2':'#e6bfa0','--lp3':'#c98a6a'}},
+ {id:'marble',name:'Ivory & Onyx',emoji:'🏛️',cost:18,rarity:'rare',swatch:['#efeae2','#b9b3a8','#c8a24a'],
+   vars:{'--bg':'#161616','--panel':'#1e1e1e','--frameA':'#8a8a8a','--frameB':'#4a4a4a','--frameLine':'#2a2a2a','--sqLight':'#efeae2','--sqDark':'#b9b3a8','--gold':'#c8a24a','--sel':'#c07a3a','--accent':'#9aa0a6','--ink':'#f0efec','--muted':'#a8a49c','--lp1':'#ffffff','--lp2':'#e6e2da','--lp3':'#c8c2b6','--dp1':'#4a4a4a','--dp2':'#2a2a2a','--dp3':'#141414'}},
+ {id:'cedar',name:'Cedar of Lebanon',emoji:'🌲',cost:25,rarity:'rare',swatch:['#f2f2ee','#7fb389','#d33f3f'],
+   vars:{'--bg':'#0f1512','--panel':'#16211b','--frameA':'#3a6b45','--frameB':'#234a2c','--frameLine':'#12240f','--sqLight':'#f2f2ee','--sqDark':'#7fb389','--gold':'#e0b23a','--sel':'#d33f3f','--accent':'#4fae6b','--ink':'#eef6ee','--muted':'#9fb0a0'}},
+ {id:'royalgold',name:'Royal Gold',emoji:'👑',cost:40,rarity:'epic',perk:{bonusWP:1},swatch:['#f3e4b0','#caa24a','#ffd85a'],
+   vars:{'--bg':'#12100a','--panel':'#1c180e','--frameA':'#a97d2e','--frameB':'#6b4c18','--frameLine':'#3a2a0e','--sqLight':'#f3e4b0','--sqDark':'#caa24a','--gold':'#ffd85a','--sel':'#e0a83a','--accent':'#e8c766','--ink':'#fbf3d8','--muted':'#c8b483','--lp1':'#fff6d8','--lp2':'#f0d488','--lp3':'#c8a24a','--dp1':'#3a2c12','--dp2':'#241a08','--dp3':'#120c04'}},
+ {id:'obsidian',name:'Obsidian',emoji:'🔮',cost:60,rarity:'epic',perk:{strongHint:true},swatch:['#b9b9cf','#5a5a72','#b98cff'],
+   vars:{'--bg':'#0a0a0f','--panel':'#12121a','--frameA':'#2a2a3a','--frameB':'#16161f','--frameLine':'#0a0a12','--sqLight':'#b9b9cf','--sqDark':'#5a5a72','--gold':'#b98cff','--sel':'#8a5cff','--accent':'#9a8cff','--ink':'#ece9f7','--muted':'#8a869c','--lp1':'#e9e6f7','--lp2':'#c3bede','--lp3':'#9a93c0','--dp1':'#2a2438','--dp2':'#171022','--dp3':'#0c0814'}},
+ {id:'phoenix',name:'Phoenix',emoji:'🔥',cost:90,rarity:'legendary',perk:{bonusWP:2,strongHint:true},swatch:['#f6d9b0','#d67a3a','#ff5a2a'],
+   vars:{'--bg':'#160a08','--panel':'#20100c','--frameA':'#8a3320','--frameB':'#5a1e10','--frameLine':'#2a0e06','--sqLight':'#f6d9b0','--sqDark':'#d67a3a','--gold':'#ff8a3a','--sel':'#ff5a2a','--accent':'#ffab5a','--ink':'#fbeadd','--muted':'#c89a80','--lp1':'#ffe8c8','--lp2':'#ffb070','--lp3':'#e0702a','--dp1':'#5a1e10','--dp2':'#360f08','--dp3':'#1c0704'}},
+ {id:'celestial',name:'Celestial',emoji:'🌌',cost:140,rarity:'legendary',perk:{bonusWP:3,strongHint:true},swatch:['#cdd6f5','#6f7cc0','#8ad0ff'],
+   vars:{'--bg':'#080a16','--panel':'#101426','--frameA':'#3a4a8a','--frameB':'#1e2650','--frameLine':'#0a0e20','--sqLight':'#cdd6f5','--sqDark':'#6f7cc0','--gold':'#8ad0ff','--sel':'#c08aff','--accent':'#8ad0ff','--ink':'#eef2ff','--muted':'#9aa4c8','--lp1':'#eaf0ff','--lp2':'#b0c0f0','--lp3':'#8090d0','--dp1':'#26305a','--dp2':'#151c3a','--dp3':'#0a0e20'}}
+];
+let pendingUnlock=[];
+function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
+function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
+function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
+function ownsSkin(s){ return (STATS.wp||0)>=s.cost; }
+function hintUnlocked(){ return (STATS.wp||0)>=HINT_COST; }
+function applySkin(id){ const s=skinById(id); const root=document.documentElement;
+  THEMEVARS.forEach(function(v){root.style.removeProperty(v);});
+  if(s.vars) for(const k in s.vars) root.style.setProperty(k,s.vars[k]);
+}
+function updateHintVisibility(){ const f=$('hintfab'); if(f) f.classList.toggle('off',!hintUnlocked()); }
+function recordResult(w){ pendingUnlock=[];
+  if(mode==='ai'){
+    if(w===humanSide){ const base=({easy:1,med:2,hard:3,vhard:4})[diff]||1; const bonus=equippedPerk('bonusWP')||0;
+      const before=STATS.wp||0; STATS.wp=before+base+bonus; STATS.wins++; STATS.streak++; if(STATS.streak>STATS.best)STATS.best=STATS.streak;
+      const after=STATS.wp;
+      if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
+      SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
+    } else { STATS.losses++; STATS.streak=0; }
+    STATS.games++; saveStats();
+  }
+  updateStats(); updateHintVisibility();
+}
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
-  el.textContent=t.wins+' '+STATS.wins+'  ·  '+t.losses+' '+STATS.losses+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
+  el.textContent='🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
+function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+wp+' WP';
+  let html='';
+  const au=wp>=HINT_COST;
+  html+='<div class="scard '+(au?'owned':'locked')+'"><div class="sname">💡 Assist (Hint)</div><div class="sdesc">A button that suggests the best move for you.</div><div class="sfoot">'+(au?'<span class="stag ok">Unlocked</span>':'<span class="stag">🔒 '+HINT_COST+' WP</span>')+'</div></div>';
+  SKINS.forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
+    const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
+    let foot; if(!owned) foot='<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
+    let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint'); perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
+    html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
+  });
+  grid.innerHTML=html;
+}
+function openShop(){ renderShop(); $('shop').classList.add('show'); }
+function closeShop(){ $('shop').classList.remove('show'); }
 
 let coachOn=true, coachStats=null;
 function sameMove(a,b){ return a.from[0]===b.from[0]&&a.from[1]===b.from[1]&&a.to[0]===b.to[0]&&a.to[1]===b.to[1]; }
@@ -456,7 +544,7 @@ function applyLang(){const t=T[lang];
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
-  $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;updateStats();
+  $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;$('skins').textContent='🎨 Skins';updateStats();
   const rb=$('rulesbtn'),rl=$('rules');
   rb.textContent=rl.classList.contains('hidden')?t.howto:t.hide;
   rl.innerHTML='<p>'+t.rules[0]+'</p><ul>'+t.rules.slice(1).map(x=>'<li>'+x+'</li>').join('')+'</ul>';
@@ -601,9 +689,10 @@ function apply(mv){
 }
 function finishGame(w){ winner=w; learnFromGame(w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
-function showHint(){ if(!canAssist())return; initAudio();
+function showHint(){ if(!hintUnlocked()||!canAssist())return; initAudio();
   const fab=$('hintfab'); if(fab)fab.classList.add('busy');
-  setTimeout(function(){ let mv=null; try{ mv=search(board,turn,900,20); }catch(e){}
+  const strong=equippedPerk('strongHint');
+  setTimeout(function(){ let mv=null; try{ mv=search(board,turn,strong?1500:900,strong?24:20); }catch(e){}
     if(mv){ hint=mv; render(); }
     if(fab)fab.classList.remove('busy'); },20);
 }
@@ -662,6 +751,7 @@ function showWin(){const t=T[lang];const youWon=mode==='ai'&&winner===humanSide;
   $('winTitle').textContent=lang==='ar'?(t.wins+' '+w):(w+' '+t.wins);
   let sub=mode==='ai'?(youWon?t.youWon:t.youLost):t.niceGame;
   const cs=coachSummaryText(); if(cs) sub+=' — '+cs;
+  if(pendingUnlock&&pendingUnlock.length) sub+='  🎉 Unlocked: '+pendingUnlock.join(', ');
   $('winSub').textContent=sub; overlay.classList.add('show'); showCoachIdle();}
 
 function undo(){ if(thinking||animating||!history.length)return;
@@ -680,6 +770,10 @@ $('coachbtn').addEventListener('click',()=>{coachOn=!coachOn;$('coachbtn').textC
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
+$('skins').addEventListener('click',openShop);
+$('shopclose').addEventListener('click',closeShop);
+$('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
+$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ STATS.equipped=b.getAttribute('data-id'); saveStats(); applySkin(STATS.equipped); renderShop(); } });
 function onFSChange(){ if(!document.fullscreenElement) document.body.classList.remove('boardfs'); updateFSLabel(); render(); }
 document.addEventListener('fullscreenchange',onFSChange);
 document.addEventListener('webkitfullscreenchange',onFSChange);
@@ -691,8 +785,10 @@ window.addEventListener('pointerdown',initAudio,{once:true});
 
 loadLearn();
 loadStats();
+applySkin(STATS.equipped||'wood');
 applyLang();
 newGame();
+updateHintVisibility();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
