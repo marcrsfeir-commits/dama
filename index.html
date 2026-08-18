@@ -236,7 +236,7 @@ const T={
      "Pieces move one square <b>forward or sideways</b> — never diagonally, never backward.",
      "Capture by <b>jumping straight over</b> an adjacent enemy into the empty square beyond. Chain jumps continue in one turn.",
      "Capturing is <b>mandatory</b>, but you may take <b>any</b> capture — you don't have to take the one that captures the most.",
-     "Reach the far row to become a <b>dama (✦)</b> — it slides and jumps any distance along rows and columns, in any direction.",
+     "Reach the far row to become a <b>dama (✦)</b> — it slides and jumps any distance along rows and columns, in any direction (but it can't reverse 180° between two jumps in a chain).",
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
    playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
@@ -248,7 +248,7 @@ const T={
      "تتحرك القطعة مربعاً واحداً <b>للأمام أو للجانب</b> — لا قطرياً ولا للخلف.",
      "الأكل بـ<b>القفز فوق</b> قطعة الخصم المجاورة إلى المربع الفارغ خلفها. وتستمر القفزات المتتالية في الدور نفسه.",
      "الأكل <b>إجباري</b>، لكن يمكنك اختيار <b>أي</b> أكلة — لست مضطراً لأخذ التي تأكل أكثر.",
-     "الوصول إلى الصف الأخير يحوّل القطعة إلى <b>دامة (✦)</b> — تتحرك وتأكل أي مسافة على الصفوف والأعمدة بكل الاتجاهات.",
+     "الوصول إلى الصف الأخير يحوّل القطعة إلى <b>دامة (✦)</b> — تتحرك وتأكل أي مسافة على الصفوف والأعمدة بكل الاتجاهات (لكن لا يمكنها الرجوع 180° بين قفزتين في السلسلة).",
      "تفوز بأكل كل قطع الخصم أو بحرمانه من أي نقلة قانونية."],langBtn:"EN"}
 };
 let lang="en", sideChoice=1, gameId=0;
@@ -267,11 +267,14 @@ function singleCaptures(board,r,c,piece){const opts=[],enemy=piece.player===1?2:
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const er=r+dr,ec=c+dc,lr=r+2*dr,lc=c+2*dc;
     if(inB(lr,lc)&&board[er]&&board[er][ec]&&board[er][ec].player===enemy&&!board[lr][lc])opts.push({capR:er,capC:ec,landR:lr,landC:lc});}}return opts;}
 function captureSequences(board,r,c){const piece=board[r][c],out=[];
-  (function rec(bd,cr,cc,captured,path){const single=singleCaptures(bd,cr,cc,piece);let ext=false;
-    for(const cap of single){const nb=clone(bd);nb[cap.capR][cap.capC]=null;nb[cr][cc]=null;
+  (function rec(bd,cr,cc,captured,path,lastDir){const single=singleCaptures(bd,cr,cc,piece);let ext=false;
+    for(const cap of single){
+      const ddr=Math.sign(cap.landR-cr), ddc=Math.sign(cap.landC-cc);
+      if(piece.king && lastDir && ddr===-lastDir[0] && ddc===-lastDir[1]) continue; // a king may not turn 180° between captures
+      const nb=clone(bd);nb[cap.capR][cap.capC]=null;nb[cr][cc]=null;
       nb[cap.landR][cap.landC]={player:piece.player,king:piece.king};ext=true;
-      rec(nb,cap.landR,cap.landC,captured.concat([{r:cap.capR,c:cap.capC}]),path.concat([{r:cap.landR,c:cap.landC}]));}
-    if(!ext&&captured.length>0)out.push({captured,end:{r:cr,c:cc},path});})(board,r,c,[],[]);return out;}
+      rec(nb,cap.landR,cap.landC,captured.concat([{r:cap.capR,c:cap.capC}]),path.concat([{r:cap.landR,c:cap.landC}]),[ddr,ddc]);}
+    if(!ext&&captured.length>0)out.push({captured,end:{r:cr,c:cc},path});})(board,r,c,[],[],null);return out;}
 function normalMoves(board,r,c,piece){const d=[];
   if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc])d.push({r:nr,c:nc});}}return d;}
