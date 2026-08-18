@@ -132,7 +132,7 @@
   body.boardfs .fsx{display:flex;}
 
   /* multi-capture route preview */
-  .pathsvg{position:absolute;inset:8px;pointer-events:none;z-index:5;overflow:visible;display:none;}
+  .pathsvg{position:absolute;pointer-events:none;z-index:5;overflow:visible;display:none;}
   .capline{fill:none;stroke:rgba(224,122,58,.9);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 8;}
   .capline.hint{stroke:rgba(143,174,107,.95);}
   .moveline{fill:none;stroke:rgba(143,174,107,.6);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1 6;}
@@ -643,10 +643,13 @@ function render(){const t=T[lang];
 }
 function drawPaths(capMoves,hintMv,normMoves){ const svg=$('pathsvg'); if(!svg)return;
   while(svg.firstChild)svg.removeChild(svg.firstChild);
-  const cell=boardEl.clientWidth/8;
+  const bw=boardEl.clientWidth, bh=boardEl.clientHeight, cell=bw/8;
   const hasAny=(capMoves&&capMoves.length)||hintMv||(normMoves&&normMoves.length);
-  if(!hasAny||!cell){svg.style.display='none';return;}
-  svg.setAttribute('viewBox','0 0 '+(cell*8)+' '+(cell*8)); svg.style.display='block';
+  if(!hasAny||!bw){svg.style.display='none';return;}
+  svg.style.left=(boardEl.offsetLeft+boardEl.clientLeft)+'px';
+  svg.style.top=(boardEl.offsetTop+boardEl.clientTop)+'px';
+  svg.style.width=bw+'px'; svg.style.height=bh+'px';
+  svg.setAttribute('viewBox','0 0 '+bw+' '+bh); svg.style.display='block';
   const ns='http://www.w3.org/2000/svg';
   function line(pts,cls){ let d=''; pts.forEach(function(p,i){ const dp=disp(p.r,p.c); d+=(i?'L':'M')+((dp.c+0.5)*cell)+' '+((dp.r+0.5)*cell)+' '; });
     const pa=document.createElementNS(ns,'path'); pa.setAttribute('d',d.trim()); pa.setAttribute('class',cls); svg.appendChild(pa); }
