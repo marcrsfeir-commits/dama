@@ -150,7 +150,7 @@ const T={
    rules:["Two players, 16 pieces each. Light always moves first.",
      "Pieces move one square <b>forward or sideways</b> — never diagonally, never backward.",
      "Capture by <b>jumping straight over</b> an adjacent enemy into the empty square beyond. Chain jumps continue in one turn.",
-     "Capturing is <b>mandatory</b>, and you must take the move that captures the <b>most</b> pieces.",
+     "Capturing is <b>mandatory</b>, but you may take <b>any</b> capture — you don't have to take the one that captures the most.",
      "Reach the far row to become a <b>dama (✦)</b> — it slides and jumps any distance along rows and columns, in any direction.",
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
@@ -162,7 +162,7 @@ const T={
    rules:["لاعبان، لكل منهما 16 قطعة. الفاتح يلعب أولاً دائماً.",
      "تتحرك القطعة مربعاً واحداً <b>للأمام أو للجانب</b> — لا قطرياً ولا للخلف.",
      "الأكل بـ<b>القفز فوق</b> قطعة الخصم المجاورة إلى المربع الفارغ خلفها. وتستمر القفزات المتتالية في الدور نفسه.",
-     "الأكل <b>إجباري</b>، ويجب اختيار النقلة التي تأكل <b>أكبر عدد</b> من القطع.",
+     "الأكل <b>إجباري</b>، لكن يمكنك اختيار <b>أي</b> أكلة — لست مضطراً لأخذ التي تأكل أكثر.",
      "الوصول إلى الصف الأخير يحوّل القطعة إلى <b>دامة (✦)</b> — تتحرك وتأكل أي مسافة على الصفوف والأعمدة بكل الاتجاهات.",
      "تفوز بأكل كل قطع الخصم أو بحرمانه من أي نقلة قانونية."],langBtn:"EN"}
 };
@@ -190,12 +190,11 @@ function captureSequences(board,r,c){const piece=board[r][c],out=[];
 function normalMoves(board,r,c,piece){const d=[];
   if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc])d.push({r:nr,c:nc});}}return d;}
-function computeLegal(board,player){let maxCap=0;const capBy={};
+function computeLegal(board,player){const capBy={};let anyCap=false;
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
-    const seqs=captureSequences(board,r,c);if(seqs.length){capBy[r+','+c]=seqs;const lm=Math.max.apply(null,seqs.map(s=>s.captured.length));if(lm>maxCap)maxCap=lm;}}
+    const seqs=captureSequences(board,r,c);if(seqs.length){capBy[r+','+c]=seqs;anyCap=true;}}
   const moves={};
-  if(maxCap>0){for(const k in capBy){const best=capBy[k].filter(s=>s.captured.length===maxCap);
-    if(best.length)moves[k]=best.map(s=>({r:s.end.r,c:s.end.c,captured:s.captured,path:s.path}));}return{mustCapture:true,moves};}
+  if(anyCap){for(const k in capBy){moves[k]=capBy[k].map(s=>({r:s.end.r,c:s.end.c,captured:s.captured,path:s.path}));}return{mustCapture:true,moves};}
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
     const nm=normalMoves(board,r,c,p);if(nm.length)moves[r+','+c]=nm.map(d=>({r:d.r,c:d.c,captured:null,path:null}));}
   return{mustCapture:false,moves};}
