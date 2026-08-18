@@ -60,6 +60,7 @@
   .coach{min-height:18px;margin:-4px 0 10px;font-size:12.5px;letter-spacing:.3px;color:var(--muted);transition:color .2s;}
   .coach.best{color:#8fae6b;} .coach.good{color:#a9c07f;} .coach.inacc{color:#e0c045;}
   .coach.mistake{color:#e08a3a;} .coach.blunder{color:#e0563a;font-weight:600;}
+  .stats{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:-4px 0 10px;}
 
   .play{display:grid;grid-template-columns:16px var(--sz);grid-template-rows:var(--sz) 16px;gap:3px;justify-content:center;}
   .frame{grid-column:2;grid-row:1;background:linear-gradient(150deg,var(--frameA),var(--frameB));
@@ -124,7 +125,7 @@
   /* board-only fullscreen */
   .fsx{position:fixed;top:14px;right:14px;z-index:30;display:none;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:var(--panel);color:var(--ink);border:1px solid #4a3a24;font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5);-webkit-tap-highlight-color:transparent;}
   body.boardfs{overflow:hidden;}
-  body.boardfs .head,body.boardfs .controls,body.boardfs .tray,body.boardfs .status,body.boardfs #coach,body.boardfs .rulesbtn,body.boardfs .rules{display:none !important;}
+  body.boardfs .head,body.boardfs .controls,body.boardfs .tray,body.boardfs .status,body.boardfs #coach,body.boardfs #stats,body.boardfs .rulesbtn,body.boardfs .rules{display:none !important;}
   body.boardfs .wrap{max-width:none;padding:0;min-height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;}
   body.boardfs .play{--sz:min(96vw,92dvh,1000px);}
   body.boardfs .fsx{display:flex;}
@@ -172,6 +173,7 @@
 
   <div class="status"><div id="statusMain" class="turn"></div><div class="count" id="count"></div></div>
   <div id="coach" class="coach"></div>
+  <div id="stats" class="stats"></div>
 
   <div class="play">
     <div class="ranks" id="ranks"></div>
@@ -199,7 +201,7 @@ setTimeout(function(){var l=document.getElementById('loading');if(l){l.classList
 const T={
  en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
    playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",
-   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",fs:"Fullscreen",fsExit:"Exit full",hint:"Hint",
+   classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",fs:"Fullscreen",fsExit:"Exit full",hint:"Hint",wins:"Wins",losses:"Losses",streak:"Streak",best:"Best",
    light:"Light",dark:"Dark",toMove:"to move",must:"must capture",thinking:"thinking…",wins:"wins",
    youWon:"Well played — نخبك!",youLost:"Computer takes it. Rematch?",niceGame:"نخبك!",move:"Move",playAgain:"Play again",
    howto:"How to play",hide:"Hide rules",
@@ -211,7 +213,7 @@ const T={
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
    playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
-   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",fs:"ملء الشاشة",fsExit:"إنهاء",hint:"مساعدة",
+   classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",fs:"ملء الشاشة",fsExit:"إنهاء",hint:"مساعدة",wins:"فوز",losses:"خسارة",streak:"متتالية",best:"الأفضل",
    light:"الفاتح",dark:"الغامق",toMove:"عليه الدور",must:"الأكل إجباري",thinking:"يفكّر…",wins:"فاز",
    youWon:"لعب موفّق — نخبك!",youLost:"الكمبيوتر فاز. تعيدها؟",niceGame:"نخبك!",move:"نقلة",playAgain:"العب مجدداً",
    howto:"كيفية اللعب",hide:"إخفاء القواعد",
@@ -355,6 +357,13 @@ function learnFromGame(winner){ try{
       e[0]++; e[1]+= winner? (tr.mover===winner?1:-1) : 0; }
     LEARN.games++; saveLearn(); }catch(e){} moveTrail=[]; }
 
+let STATS={wins:0,losses:0,streak:0,best:0,games:0};
+function loadStats(){ try{const s=localStorage.getItem('dama-stats'); if(s){const o=JSON.parse(s); if(o)STATS=Object.assign(STATS,o);}}catch(e){} }
+function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STATS)); }catch(e){} }
+function recordResult(w){ if(mode==='ai'){ if(w===humanSide){STATS.wins++;STATS.streak++;if(STATS.streak>STATS.best)STATS.best=STATS.streak;} else {STATS.losses++;STATS.streak=0;} STATS.games++; saveStats(); } updateStats(); }
+function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
+  el.textContent=t.wins+' '+STATS.wins+'  ·  '+t.losses+' '+STATS.losses+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
+
 let coachOn=true, coachStats=null;
 function sameMove(a,b){ return a.from[0]===b.from[0]&&a.from[1]===b.from[1]&&a.to[0]===b.to[0]&&a.to[1]===b.to[1]; }
 function analyzeLoss(prevBoard,player,playedMv){
@@ -447,7 +456,7 @@ function applyLang(){const t=T[lang];
   $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
-  $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;
+  $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;updateStats();
   const rb=$('rulesbtn'),rl=$('rules');
   rb.textContent=rl.classList.contains('hidden')?t.howto:t.hide;
   rl.innerHTML='<p>'+t.rules[0]+'</p><ul>'+t.rules.slice(1).map(x=>'<li>'+x+'</li>').join('')+'</ul>';
@@ -590,7 +599,7 @@ function apply(mv){
   animateMove(mv,prev,promoted,()=>{animating=false;
     if(over){finishGame(next===1?2:1);}else{render();maybeAI();}});
 }
-function finishGame(w){ winner=w; learnFromGame(w); render(); showWin(); }
+function finishGame(w){ winner=w; learnFromGame(w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
 function showHint(){ if(!canAssist())return; initAudio();
   const fab=$('hintfab'); if(fab)fab.classList.add('busy');
@@ -681,6 +690,7 @@ $('rulesbtn').addEventListener('click',function(){const el=$('rules');el.classLi
 window.addEventListener('pointerdown',initAudio,{once:true});
 
 loadLearn();
+loadStats();
 applyLang();
 newGame();
 </script>
