@@ -235,7 +235,7 @@ const T={
    rules:["Two players, 16 pieces each. Light always moves first.",
      "Pieces move one square <b>forward or sideways</b> — never diagonally, never backward.",
      "Capture by <b>jumping straight over</b> an adjacent enemy into the empty square beyond. Chain jumps continue in one turn.",
-     "Capturing is <b>mandatory</b>, but you may take <b>any</b> capture — you don't have to take the one that captures the most.",
+     "Capturing is <b>mandatory</b>, but you may take <b>any</b> capture — you don't have to take the one that captures the most. However, if a capture can take a <b>dama (king)</b>, you must choose one that does.",
      "Reach the far row to become a <b>dama (✦)</b> — it slides and jumps any distance along rows and columns, in any direction (but it can't reverse 180° between two jumps in a chain).",
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
@@ -247,7 +247,7 @@ const T={
    rules:["لاعبان، لكل منهما 16 قطعة. الفاتح يلعب أولاً دائماً.",
      "تتحرك القطعة مربعاً واحداً <b>للأمام أو للجانب</b> — لا قطرياً ولا للخلف.",
      "الأكل بـ<b>القفز فوق</b> قطعة الخصم المجاورة إلى المربع الفارغ خلفها. وتستمر القفزات المتتالية في الدور نفسه.",
-     "الأكل <b>إجباري</b>، لكن يمكنك اختيار <b>أي</b> أكلة — لست مضطراً لأخذ التي تأكل أكثر.",
+     "الأكل <b>إجباري</b>، لكن يمكنك اختيار <b>أي</b> أكلة — لست مضطراً لأخذ التي تأكل أكثر. لكن إن أمكن أكل <b>دامة</b>، يجب اختيار أكلة تأخذ دامة.",
      "الوصول إلى الصف الأخير يحوّل القطعة إلى <b>دامة (✦)</b> — تتحرك وتأكل أي مسافة على الصفوف والأعمدة بكل الاتجاهات (لكن لا يمكنها الرجوع 180° بين قفزتين في السلسلة).",
      "تفوز بأكل كل قطع الخصم أو بحرمانه من أي نقلة قانونية."],langBtn:"EN"}
 };
@@ -282,7 +282,13 @@ function computeLegal(board,player){const capBy={};let anyCap=false;
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
     const seqs=captureSequences(board,r,c);if(seqs.length){capBy[r+','+c]=seqs;anyCap=true;}}
   const moves={};
-  if(anyCap){for(const k in capBy){moves[k]=capBy[k].map(s=>({r:s.end.r,c:s.end.c,captured:s.captured,path:s.path}));}return{mustCapture:true,moves};}
+  if(anyCap){
+    const eatsKing=function(s){return s.captured.some(function(cp){var q=board[cp.r][cp.c];return q&&q.king;});};
+    let anyKingCap=false; for(const k in capBy){ if(capBy[k].some(eatsKing)){anyKingCap=true;break;} }
+    for(const k in capBy){ const list=anyKingCap?capBy[k].filter(eatsKing):capBy[k];
+      if(list.length) moves[k]=list.map(s=>({r:s.end.r,c:s.end.c,captured:s.captured,path:s.path})); }
+    return{mustCapture:true,moves};
+  }
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
     const nm=normalMoves(board,r,c,p);if(nm.length)moves[r+','+c]=nm.map(d=>({r:d.r,c:d.c,captured:null,path:null}));}
   return{mustCapture:false,moves};}

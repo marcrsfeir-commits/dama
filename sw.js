@@ -1,5 +1,5 @@
 // Dama — offline service worker
-const CACHE = 'dama-v20';
+const CACHE = 'dama-v21';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 
 self.addEventListener('install', function (e) {
