@@ -218,7 +218,7 @@
 <div id="shop" class="shop"><div class="shopcard">
   <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
   <div id="shopgrid" class="shopgrid"></div>
-  <div class="shopnote">Earn Win Points by beating the computer — easy 1 · medium 2 · hard 3 · very hard 4. Unlocks are permanent.</div>
+  <div class="shopnote">Earn Win Points by winning games — 2-player 1 · easy 1 · medium 2 · hard 3 · very hard 4. Unlocks are permanent.</div>
 </div></div>
 
 <script>
@@ -433,16 +433,18 @@ function applySkin(id){ const s=skinById(id); const root=document.documentElemen
 }
 function updateHintVisibility(){ const f=$('hintfab'); if(f) f.classList.toggle('off',!hintUnlocked()); }
 function recordResult(w){ pendingUnlock=[];
+  let base=0;
   if(mode==='ai'){
-    if(w===humanSide){ const base=({easy:1,med:2,hard:3,vhard:4})[diff]||1; const bonus=equippedPerk('bonusWP')||0;
-      const before=STATS.wp||0; STATS.wp=before+base+bonus; STATS.wins++; STATS.streak++; if(STATS.streak>STATS.best)STATS.best=STATS.streak;
-      const after=STATS.wp;
-      if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
-      SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
-    } else { STATS.losses++; STATS.streak=0; }
-    STATS.games++; saveStats();
-  }
-  updateStats(); updateHintVisibility();
+    if(w===humanSide){ base=({easy:1,med:2,hard:3,vhard:4})[diff]||1; }
+    else { STATS.losses++; STATS.streak=0; STATS.games++; saveStats(); updateStats(); updateHintVisibility(); return; }
+  } else if(mode==='pvp'){ base=1; }                 // 2-player: the winner earns 1 WP
+  else { updateStats(); updateHintVisibility(); return; }   // computer-vs-computer: no WP
+  const bonus=equippedPerk('bonusWP')||0; const before=STATS.wp||0;
+  STATS.wp=before+base+bonus; STATS.wins++; STATS.streak++; if(STATS.streak>STATS.best)STATS.best=STATS.streak; STATS.games++;
+  const after=STATS.wp;
+  if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
+  SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
+  saveStats(); updateStats(); updateHintVisibility();
 }
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
   el.textContent='🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
