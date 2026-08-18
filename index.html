@@ -107,9 +107,9 @@
   </div>
 
   <div class="controls">
-    <select id="mode"><option value="pvp"></option><option value="ai"></option></select>
+    <select id="mode"><option value="pvp"></option><option value="ai"></option><option value="cvc"></option></select>
     <button class="btn" id="side" title="Tap to switch which colour you play"></button>
-    <select id="diff"><option value="easy"></option><option value="med" selected></option><option value="hard"></option></select>
+    <select id="diff"><option value="easy"></option><option value="med" selected></option><option value="hard"></option><option value="vhard"></option></select>
     <select id="style"><option value="classic"></option><option value="trad"></option></select>
     <button class="btn" id="undo"></button>
     <button class="btn" id="sound"></button>
@@ -136,8 +136,8 @@
 <script>
 // ================= i18n =================
 const T={
- en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",
-   playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",
+ en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
+   playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",
    classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",
    light:"Light",dark:"Dark",toMove:"to move",must:"must capture",thinking:"thinking…",wins:"wins",
    youWon:"Well played — نخبك!",youLost:"Computer takes it. Rematch?",niceGame:"نخبك!",move:"Move",playAgain:"Play again",
@@ -148,8 +148,8 @@ const T={
      "Capturing is <b>mandatory</b>, and you must take the move that captures the <b>most</b> pieces.",
      "Reach the far row to become a <b>dama (✦)</b> — it slides and jumps any distance along rows and columns, in any direction.",
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
- ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",
-   playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",
+ ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
+   playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
    classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",
    light:"الفاتح",dark:"الغامق",toMove:"عليه الدور",must:"الأكل إجباري",thinking:"يفكّر…",wins:"فاز",
    youWon:"لعب موفّق — نخبك!",youLost:"الكمبيوتر فاز. تعيدها؟",niceGame:"نخبك!",move:"نقلة",playAgain:"العب مجدداً",
@@ -161,7 +161,7 @@ const T={
      "الوصول إلى الصف الأخير يحوّل القطعة إلى <b>دامة (✦)</b> — تتحرك وتأكل أي مسافة على الصفوف والأعمدة بكل الاتجاهات.",
      "تفوز بأكل كل قطع الخصم أو بحرمانه من أي نقلة قانونية."],langBtn:"EN"}
 };
-let lang="en", sideChoice=1;
+let lang="en", sideChoice=1, gameId=0;
 const $=id=>document.getElementById(id);
 
 // ================= engine =================
@@ -237,7 +237,8 @@ function aiMove(board,player){
     orderMoves(m); if(m[0].captured) return m[Math.floor(Math.random()*m.length)]; // still grabs a capture
     return Math.random()<0.35 ? m[Math.floor(Math.random()*m.length)] : search(board,player,60,2); }
   if(diff==='med') return search(board,player,350, total<=8?7:5);
-  return search(board,player,1100, total<=8?11:8); // hard
+  if(diff==='hard') return search(board,player,1100, total<=8?11:8);
+  return search(board,player,2600, total<=10?18:13); // very hard
 }
 
 // ================= sound =================
@@ -302,9 +303,9 @@ function dIndex(r,c){const p=disp(r,c);return p.r*8+p.c;}
 function applyLang(){const t=T[lang];
   $('wrap').setAttribute('dir', lang==='ar'?'rtl':'ltr');
   $('tTitle').textContent=t.title;$('tSub').textContent=t.sub;$('newgame').textContent=t.new;
-  $('mode').options[0].text=t.pvp;$('mode').options[1].text=t.ai;
+  $('mode').options[0].text=t.pvp;$('mode').options[1].text=t.ai;$('mode').options[2].text=t.cvc;
   updateSideBtn();
-  $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;
+  $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('playAgain').textContent=t.playAgain;
   const rb=$('rulesbtn'),rl=$('rules');
@@ -317,6 +318,7 @@ function buildLabels(){const ranks=$('ranks'),files=$('files');ranks.innerHTML='
   const letters='abcdefgh';for(let dc=0;dc<8;dc++){const s=document.createElement('span');const m=disp(0,dc);s.textContent=letters[m.c];files.appendChild(s);}}
 
 function newGame(doBounce){
+  gameId++;
   mode=$('mode').value;humanSide=sideChoice;diff=$('diff').value;style=$('style').value;
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
@@ -370,7 +372,7 @@ function render(){const t=T[lang];
   const dests=selKey&&legal.moves[selKey]?legal.moves[selKey]:[];
   const destSet=new Set(dests.map(d=>d.r+','+d.c));
   const pickable=new Set(Object.keys(legal.moves));
-  const canInput=!winner&&!thinking&&!animating&&(mode==='pvp'||turn===humanSide);
+  const canInput=!winner&&!thinking&&!animating&&(mode==='pvp'||(mode==='ai'&&turn===humanSide));
 
   boardEl.innerHTML='';
   for(let dr=0;dr<8;dr++)for(let dc=0;dc<8;dc++){
@@ -443,9 +445,16 @@ function animateMove(mv,prevBoard,promoted,done){
   } else { setTimeout(finish,total+40); }
 }
 
-function maybeAI(){ if(winner||mode!=='ai'||turn===humanSide)return;thinking=true;render();
-  setTimeout(()=>{const mv=aiMove(board,turn);thinking=false;
-    if(!mv){winner=turn===1?2:1;render();showWin();return;}apply(mv);},30);}
+function maybeAI(){ if(winner)return;
+  const aiTurn=(mode==='ai'&&turn!==humanSide)||mode==='cvc';
+  if(!aiTurn)return;
+  thinking=true;render();
+  const pace=(mode==='cvc')?600:30, g=gameId;
+  setTimeout(()=>{if(g!==gameId||winner){thinking=false;return;}
+    const mv=aiMove(board,turn);
+    if(g!==gameId)return;
+    thinking=false;
+    if(!mv){winner=turn===1?2:1;render();showWin();return;}apply(mv);},pace);}
 
 function showWin(){const t=T[lang];const youWon=mode==='ai'&&winner===humanSide;const w=winner===1?t.light:t.dark;
   $('winTitle').textContent=lang==='ar'?(t.wins+' '+w):(w+' '+t.wins);
