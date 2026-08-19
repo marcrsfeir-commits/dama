@@ -1507,11 +1507,10 @@ function adoptCloud(cloud){ if(cloud){ if(cloud.STATS)STATS=Object.assign({wins:
 function cloudPull(done){ if(!sb||!sbUser){ done&&done(); return; }
   sb.from('progress').select('data,updated_at').eq('user_id',sbUser.id).maybeSingle().then(function(r){
     var row=r&&r.data;
-    if(!row){ cloudPush(true,done); return; }
+    if(!row){ cloudPush(true,done); return; }                    // brand-new account → upload this device's progress as the starting point
     var marker=getCts();
-    if(!marker){ mergeCloud(row.data); persistLocal(); cloudPush(true,done); return; }   // first sync here: keep best of both
-    if((row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); done&&done(); return; }  // cloud changed elsewhere / by owner
-    cloudPush(true,done);
+    if(!marker || (row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); done&&done(); return; }  // existing account / owner edit / newer device → the cloud is the source of truth (up OR down)
+    cloudPush(true,done);                                        // this device is the latest → push
   }, function(){ done&&done(); }); }
 function doUpsert(done){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).select('updated_at').then(function(r){ var ts=r&&r.data&&r.data[0]&&r.data[0].updated_at; if(ts)setCts(ts); done&&done(); }, function(){ done&&done(); }); }catch(e){ done&&done(); } }
 function cloudPush(now,done){ if(!sb||!sbUser){ done&&done(); return; }
