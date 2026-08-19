@@ -1513,9 +1513,17 @@ function cloudPull(done){ if(!sb||!sbUser){ done&&done(); return; }
     if((row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); done&&done(); return; }  // cloud changed elsewhere / by owner
     cloudPush(true,done);
   }, function(){ done&&done(); }); }
+function doUpsert(done){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).select('updated_at').then(function(r){ var ts=r&&r.data&&r.data[0]&&r.data[0].updated_at; if(ts)setCts(ts); done&&done(); }, function(){ done&&done(); }); }catch(e){ done&&done(); } }
 function cloudPush(now,done){ if(!sb||!sbUser){ done&&done(); return; }
   if(cloudTimer){clearTimeout(cloudTimer);cloudTimer=null;}
-  var doit=function(){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).select('updated_at').then(function(r){ var ts=r&&r.data&&r.data[0]&&r.data[0].updated_at; if(ts)setCts(ts); done&&done(); }, function(){ done&&done(); }); }catch(e){ done&&done(); } };
+  var doit=function(){ try{
+    sb.from('progress').select('updated_at').eq('user_id',sbUser.id).maybeSingle().then(function(r){
+      var cloudTs=r&&r.data&&r.data.updated_at, marker=getCts();
+      if(cloudTs && marker && cloudTs>marker){                    // someone else (the owner, or another device) changed it since our last sync → don't clobber; adopt it
+        sb.from('progress').select('data,updated_at').eq('user_id',sbUser.id).maybeSingle().then(function(r2){ if(r2&&r2.data){ adoptCloud(r2.data.data); setCts(r2.data.updated_at); } done&&done(); }, function(){ done&&done(); });
+        return; }
+      doUpsert(done);
+    }, function(){ doUpsert(done); }); }catch(e){ done&&done(); } };
   if(now)doit(); else cloudTimer=setTimeout(doit,1500); }
 function cloudPushDebounced(){ if(sbUser&&!applyingCloud)cloudPush(false); }
 function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag||!navigator.onLine)return;
@@ -1599,7 +1607,12 @@ function renderOwner(){ var el=$('ownerlist'); if(!el)return;
       '<button class="btn" data-unlock="'+i+'">Unlock all</button>'+
       '<button class="btn" data-reset="'+i+'">Reset</button></div>'; }).join(''); }
 function ownerWrite(u,mutate,label){ if(!u)return; var data=u.data||{STATS:{}}; data.STATS=data.STATS||{}; mutate(data.STATS); data.STATS.equipped=data.STATS.equipped||'wood'; u.data=data;
-  sb.from('progress').upsert({user_id:u.uid,data:data,updated_at:new Date().toISOString()}).then(function(r){ if(r&&r.error){ showToast('Save failed'); return; } showToast(label+' — '+(u.name||'')); renderOwner(); }, function(){ showToast('Save failed'); }); }
+  var newTs=new Date().toISOString();
+  sb.from('progress').upsert({user_id:u.uid,data:data,updated_at:newTs}).select('updated_at').then(function(r){ if(r&&r.error){ showToast('Save failed: '+r.error.message); return; }
+    var ts=(r.data&&r.data[0]&&r.data[0].updated_at)||newTs;
+    if(u.uid===(sbUser&&sbUser.id)){ adoptCloud(data); setCts(ts); }   // editing myself → reflect on this device now & mark synced so it isn't overwritten
+    showToast(label+' — '+(u.name||'')); renderOwner();
+  }, function(){ showToast('Save failed'); }); }
 
 // ================= wire up =================
 $('newgame').addEventListener('click',onlineNewGameShared);
