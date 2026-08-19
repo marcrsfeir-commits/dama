@@ -119,6 +119,27 @@
   .hintfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;}
   .hintfab.busy{opacity:.55;}
   .hintfab.off{display:none;}
+  .coachfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:56px;height:56px;border-radius:16px;border:1px solid var(--gold);background:var(--panel);color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
+  .coachfab.show{display:flex;}
+  .coachfab:active{transform:translateY(1px);}
+  .coachfab .hicon{font-size:22px;line-height:1;}
+  .coachfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;}
+  .coachpanel{position:fixed;left:50%;bottom:12px;transform:translate(-50%,140%);width:min(520px,94vw);z-index:40;
+    background:var(--panel);border:1px solid var(--gold);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.5);
+    padding:12px 14px;opacity:0;transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s;pointer-events:none;max-height:70vh;overflow:auto;}
+  .coachpanel.show{transform:translate(-50%,0);opacity:1;pointer-events:auto;}
+  .cp-head{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:var(--gold);margin-bottom:6px;}
+  .cp-body{font-size:13px;line-height:1.5;color:var(--ink);}
+  .cp-move{font-size:14.5px;font-weight:600;margin-bottom:4px;}
+  .cp-verdict{color:var(--accent);font-size:12.5px;margin-bottom:6px;}
+  .cp-reasons{margin:0 0 8px;padding-left:18px;}
+  .cp-reasons li{margin:3px 0;}
+  .cp-threat{font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+  .cp-threat.on{color:#e0563a;font-weight:600;}
+  .cp-strat{font-size:12.5px;color:var(--ink);margin-top:4px;}
+  .cp-mat{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .cp-foot{font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--frameLine);padding-top:6px;}
   .sq.hintfrom{box-shadow:inset 0 0 0 .5px var(--grid),inset 0 0 0 4px rgba(143,174,107,.85);}
   .sq.hintto::after{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(143,174,107,.92);animation:hintpulse 1s ease-in-out infinite;pointer-events:none;}
   @keyframes hintpulse{0%,100%{opacity:.5;}50%{opacity:1;}}
@@ -228,6 +249,14 @@
 <button id="hintfab" class="hintfab off" title="Suggest a move — it advises, it doesn't move for you">
   <span class="hicon">💡</span><span class="hlbl" id="hintlbl">Hint</span>
 </button>
+<button id="coachfab" class="coachfab" title="Coach — explains the best move and why">
+  <span class="hicon">🎓</span><span class="hlbl">Coach</span>
+</button>
+<div id="coachpanel" class="coachpanel">
+  <div class="cp-head"><span>🎓 Coach</span><button id="coachpx" class="shopx" aria-label="Close">✕</button></div>
+  <div id="coachbody" class="cp-body"></div>
+  <div class="cp-foot">Advice only — you still make the move. Learn the patterns and you'll beat the engine on your own.</div>
+</div>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="shop" class="shop"><div class="shopcard">
   <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
@@ -254,6 +283,8 @@
   <div class="setrow"><label for="adminwp">Win Points</label><input type="number" id="adminwp" value="0" min="0"></div>
   <div class="setbtns"><button class="btn" id="adminadd">➕ Add</button><button class="btn" id="adminsub">➖ Remove</button><button class="btn" id="adminset">Set exact</button></div>
   <div class="setbtns"><button class="btn" id="adminall">Unlock all skins</button><button class="btn" id="adminzero">Reset unlocks (0 WP)</button></div>
+  <div class="setbtns"><button class="btn" id="admincoach">🎓 Coach mode: Off</button></div>
+  <div class="shopnote" style="margin-top:2px">Coach names the best move and explains why — captures, threats, promotions, safety, and a plan. When on, a 🎓 button shows in-game.</div>
   <div class="shopnote">Hidden menu — reveal by tapping the دامة logo 5×. Everything is stored locally on this device.</div>
 </div></div>
 
@@ -779,7 +810,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;savePrefs();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;savePrefs();hideCoachPanel();updateCoachUI();
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
   maybeAI();autoAssist();}
@@ -901,7 +932,7 @@ function apply(mv){
   const mover=turn;
   history.push({board:prev,turn,lastMove});
   recordMove(prev,mover,mv);                                   // remember move for learning
-  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;
+  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;hideCoachPanel();
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
@@ -1045,8 +1076,9 @@ function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)ret
   if(p.mode&&$('mode'))$('mode').value=p.mode; if(p.diff&&$('diff'))$('diff').value=p.diff; if(p.style&&$('style'))$('style').value=p.style;
   if(typeof p.side==='number')sideChoice=p.side;
   if(typeof p.sound==='boolean')soundOn=p.sound; if(typeof p.music==='boolean')musicOn=p.music; if(typeof p.coach==='boolean')coachOn=p.coach;
+  if(typeof p.coachMode==='boolean')coachMode=p.coachMode;
   if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus; }catch(e){} }
-function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,sfx:sfxVol,mus:musicVol})); }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol})); }catch(e){} }
 function confettiBurst(){ try{ const cols=['#e0563a','#d9a441','#8fae6b','#6db0ff','#c060e0','#ffd85a']; const N=42;
   for(let i=0;i<N;i++){ const s=document.createElement('div'); s.className='confetti';
     s.style.left=(Math.random()*100)+'vw'; s.style.background=cols[i%cols.length]; s.style.width=s.style.height=(6+Math.random()*6)+'px';
@@ -1116,6 +1148,82 @@ function adminWP(mode){ var n=parseInt($('adminwp').value,10); if(isNaN(n)||n<0)
 function adminUnlockAll(){ STATS.wp=Math.max(STATS.wp||0,MAXSKIN); afterWPChange('All skins unlocked'); }
 function adminResetUnlocks(){ STATS.wp=0; STATS.equipped='wood'; afterWPChange('Unlocks reset — WP 0'); }
 
+// ================= in-game coach (admin-gated learning aid) =================
+let coachMode=false;
+function coordLabel(r,c){ var d=disp(r,c); return String.fromCharCode(97+d.c)+(8-d.r); }
+function oppThreatSet(bd,player){ var opp=player===1?2:1, s=new Set(), lg;
+  try{ lg=computeLegal(bd,opp); }catch(e){ return s; }
+  if(lg&&lg.mustCapture){ for(var k in lg.moves){ lg.moves[k].forEach(function(m){ if(m.captured)m.captured.forEach(function(cp){ s.add(cp.r+','+cp.c); }); }); } }
+  return s; }
+function coachRank(bd,player,budgetMs,maxDepth){ var other=player===1?2:1;
+  var scored=orderMoves(allMoves(bd,player)).map(function(m){return {m:m,v:0};});
+  if(!scored.length)return []; if(scored.length===1)return scored;
+  var deadline=performance.now()+budgetMs, stable=scored.slice();
+  for(var depth=2;depth<=maxDepth;depth++){ var aborted=false;
+    for(var i=0;i<scored.length;i++){ try{ scored[i].v=-nega(makeMove(bd,scored[i].m),other,depth-1,-Infinity,Infinity,deadline); }catch(e){ aborted=true; break; } }
+    if(aborted)break; scored.sort(function(a,b){return b.v-a.v;}); stable=scored.slice();
+    if(performance.now()>deadline)break; }
+  return stable; }
+function coachVerdict(scored){ if(scored.length<=1)return 'This is your only legal move — forced.';
+  var best=scored[0].v, gap=best-scored[1].v, blunders=0;
+  for(var i=0;i<scored.length;i++){ if(best-scored[i].v>=300)blunders++; }
+  var msg; if(gap>=200)msg='Clearly the strongest move — the alternatives give up material.';
+  else if(gap>=70)msg='The best choice, with a real edge over the other moves.';
+  else msg='One of several good moves — a solid, safe pick.';
+  if(blunders)msg+=' ('+blunders+' of your other move'+(blunders>1?'s':'')+' would lose material — avoid those.)';
+  return msg; }
+function coachReasons(bd,player,mv){ var reasons=[], mover=bd[mv.from[0]][mv.from[1]]; if(!mover)return reasons;
+  var wasKing=mover.king, nb=makeMove(bd,mv), dest=nb[mv.to[0]][mv.to[1]];
+  var preT=oppThreatSet(bd,player), postT=oppThreatSet(nb,player);
+  if(mv.captured&&mv.captured.length){ var kings=0; mv.captured.forEach(function(cp){ var v=bd[cp.r][cp.c]; if(v&&v.king)kings++; });
+    var s='Captures '+mv.captured.length+' enemy '+(mv.captured.length>1?'pieces':'piece');
+    if(kings)s+=', including '+(kings>1?(kings+' kings'):'a king')+' 👑';
+    reasons.push('⚔️ '+s+' — you win material.'); }
+  if(dest&&dest.king&&!wasKing) reasons.push('👑 Reaches the far row and promotes — a king slides and captures across the whole board.');
+  if(preT.has(mv.from[0]+','+mv.from[1])) reasons.push('🛡️ Rescues a piece the opponent was about to capture.');
+  var myNext; try{ myNext=computeLegal(nb,player); }catch(e){ myNext=null; }
+  if(myNext&&myNext.mustCapture&&!(mv.captured&&mv.captured.length)) reasons.push('🎯 Sets up a capture you can play on your next turn.');
+  if(!wasKing&&!(mv.captured&&mv.captured.length)&&!(dest&&dest.king)){ var f=disp(mv.from[0],mv.from[1]), tp=disp(mv.to[0],mv.to[1]);
+    if(tp.r<f.r) reasons.push('⬆️ Pushes a man up the board, closer to promotion.');
+    else reasons.push('↔️ Repositions to a safer, more active square.'); }
+  if(!postT.size){ reasons.push('✅ Afterward the opponent has no capture in reply — your pieces stay safe.'); }
+  else if(preT.size&&postT.size<=preT.size){ reasons.push('⚠️ The opponent can still capture, but this gives up the least — the engine rated it best.'); }
+  else { reasons.push('⚠️ The opponent can capture in reply, yet this still scored best — so the follow-up is worth it. Watch their next move.'); }
+  return reasons; }
+function coachStrategy(bd,player){ var opp=player===1?2:1, my=countPieces(bd,player), op=countPieces(bd,opp), myK=0, opK=0;
+  for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=bd[r][c]; if(!p||!p.king)continue; if(p.player===player)myK++; else opK++; }
+  var ev=evalPlayer(bd,player)/100, note;
+  if(ev>=1.6) note='You’re ahead — trade pieces when it’s safe; simpler positions are easier to win.';
+  else if(ev<=-1.6) note='You’re behind — avoid straight trades, keep your pieces connected, and hunt for a capture or a king to fight back.';
+  else note='Roughly level — fight for the central files and race to promote a king first.';
+  return { note:note, mat:'You: '+my+' ('+myK+'♔) · Opponent: '+op+' ('+opK+'♔) · eval '+(ev>=0?'+':'')+ev.toFixed(1) }; }
+function coachExplain(){ if(!coachMode)return;
+  if(!canAssist()){ showToast('Coach: wait for your turn'); return; }
+  initAudio(); var fab=$('coachfab'); if(fab)fab.classList.add('busy');
+  var bd=board, pl=turn;
+  var scored=coachRank(bd,pl,360,14);
+  if(!scored.length){ showToast('No moves to advise'); if(fab)fab.classList.remove('busy'); return; }
+  var bestMv=scored[0].m;
+  hint=bestMv; dangerSet=oppThreatSet(bd,pl); render();
+  var reasons=coachReasons(bd,pl,bestMv), verdict=coachVerdict(scored), strat=coachStrategy(bd,pl);
+  var mover=bd[bestMv.from[0]][bestMv.from[1]], kind=(mover&&mover.king)?'king 👑':'man';
+  var f=coordLabel(bestMv.from[0],bestMv.from[1]), tt=coordLabel(bestMv.to[0],bestMv.to[1]);
+  var capTxt=(bestMv.captured&&bestMv.captured.length)?(' · captures '+bestMv.captured.length):'';
+  var html='<div class="cp-move">▶ Move your '+kind+' <b>'+f+'</b> → <b>'+tt+'</b>'+capTxt+'</div>';
+  html+='<div class="cp-verdict">'+verdict+'</div>';
+  html+='<ul class="cp-reasons">'+reasons.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
+  var thr=dangerSet&&dangerSet.size;
+  html+='<div class="cp-threat '+(thr?'on':'')+'">'+(thr?('⚠️ Right now '+dangerSet.size+' of your piece'+(dangerSet.size>1?'s are':' is')+' in the opponent’s capture range (glowing red on the board).'):'✅ None of your pieces can be captured right now.')+'</div>';
+  html+='<div class="cp-strat">'+strat.note+'</div><div class="cp-mat">'+strat.mat+'</div>';
+  if($('coachbody'))$('coachbody').innerHTML=html;
+  if($('coachpanel'))$('coachpanel').classList.add('show');
+  if(fab)fab.classList.remove('busy'); }
+function updateCoachUI(){ var f=$('coachfab'); if(f)f.classList.toggle('show', coachMode&&mode!=='cvc');
+  var b=$('admincoach'); if(b)b.textContent='🎓 Coach mode: '+(coachMode?'On':'Off'); }
+function setCoachMode(on){ coachMode=on; savePrefs(); updateCoachUI();
+  if(!on&&$('coachpanel'))$('coachpanel').classList.remove('show'); }
+function hideCoachPanel(){ if($('coachpanel'))$('coachpanel').classList.remove('show'); }
+
 // ================= wire up =================
 $('newgame').addEventListener('click',()=>{initAudio();newGame();});
 $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
@@ -1148,6 +1256,9 @@ $('adminsub').addEventListener('click',function(){ adminWP('sub'); });
 $('adminset').addEventListener('click',function(){ adminWP('set'); });
 $('adminall').addEventListener('click',adminUnlockAll);
 $('adminzero').addEventListener('click',adminResetUnlocks);
+$('admincoach').addEventListener('click',function(){ setCoachMode(!coachMode); });
+$('coachfab').addEventListener('click',coachExplain);
+$('coachpx').addEventListener('click',hideCoachPanel);
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
@@ -1173,6 +1284,7 @@ applySkin(STATS.equipped||'wood');
 applyLang();
 newGame();
 updateHintVisibility();
+updateCoachUI();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
