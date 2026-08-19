@@ -160,6 +160,10 @@
   .setrow input[type=range]{flex:1;max-width:60%;accent-color:var(--accent);}
   .setbtns{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px;}
   .achv-title{margin:16px 0 8px;font-size:13px;color:var(--gold);font-weight:600;}
+  .musicdrop{border:2px dashed #4a3a24;border-radius:12px;padding:16px;text-align:center;font-size:12.5px;color:var(--muted);cursor:pointer;line-height:1.5;transition:border-color .15s,background .15s;}
+  .musicdrop.drag{border-color:var(--accent);background:rgba(143,174,107,.10);color:var(--ink);}
+  .musicname{font-size:12px;color:var(--accent);margin:6px 0 2px;min-height:14px;}
+  .muted-note{font-size:10.5px;opacity:.8;}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);z-index:70;background:var(--panel);color:var(--ink);border:1px solid var(--accent);border-radius:10px;padding:11px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:88vw;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;cursor:pointer;}
   .confetti{position:fixed;top:0;z-index:65;border-radius:2px;pointer-events:none;}
@@ -234,6 +238,11 @@
   <div class="setrow"><label for="volsfx">🔊 Sound volume</label><input type="range" id="volsfx" min="0" max="100"></div>
   <div class="setbtns"><button class="btn" id="backup">⬇︎ Backup save</button><button class="btn" id="restore">⬆︎ Restore</button><button class="btn" id="resetprog">Reset progress</button></div>
   <input type="file" id="restorefile" accept="application/json" style="display:none">
+  <div class="achv-title">🎵 Your music</div>
+  <div id="musicdrop" class="musicdrop" tabindex="0" role="button" aria-label="Add your own music">Drag &amp; drop a song here, or tap to choose.<br><span class="muted-note">Saved on your device only — never uploaded.</span></div>
+  <div id="musicname" class="musicname"></div>
+  <div class="setbtns"><button class="btn" id="musicremove">Use built-in track</button></div>
+  <input type="file" id="musicfile" accept="audio/*" style="display:none">
   <div class="achv-title">🏅 Achievements</div>
   <div id="achvgrid" class="shopgrid"></div>
 </div></div>
@@ -637,7 +646,7 @@ function coachSummaryText(){ if(!coachStats)return''; const t=T[lang],parts=[];
   return parts.join(' · '); }
 
 // ================= sound =================
-let audioCtx=null, soundOn=true, musicOn=true, musicTimer=null, musicGain=null, musicStep=0, sfxGain=null, sfxVol=0.9, musicVol=0.55, bgm=null, bgmReady=false;
+let audioCtx=null, soundOn=true, musicOn=false, musicTimer=null, musicGain=null, musicStep=0, sfxGain=null, sfxVol=0.9, musicVol=0.55, bgm=null, bgmReady=false;
 function initAudio(){ if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(audioCtx&&!sfxGain){sfxGain=audioCtx.createGain();sfxGain.gain.value=sfxVol;sfxGain.connect(audioCtx.destination);}
   if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
@@ -1011,6 +1020,29 @@ function doRestore(file){ const r=new FileReader(); r.onload=function(){ try{ co
 function doReset(){ if(!window.confirm('Reset ALL progress (Win Points, skins, learning, stats)? This cannot be undone.'))return;
   try{ localStorage.removeItem('dama-stats'); localStorage.removeItem('dama-learn'); localStorage.removeItem('dama-prefs'); }catch(e){} location.reload(); }
 
+// ================= user music (drag & drop, saved on device via IndexedDB) =================
+let userMusicURL=null;
+function idbOpen(){ return new Promise(function(res,rej){ try{ var r=indexedDB.open('dama-media',1);
+  r.onupgradeneeded=function(){ try{ r.result.createObjectStore('files'); }catch(e){} };
+  r.onsuccess=function(){res(r.result);}; r.onerror=function(){rej(r.error);}; }catch(e){ rej(e); } }); }
+function idbPut(k,v){ return idbOpen().then(function(db){ return new Promise(function(res,rej){ var tx=db.transaction('files','readwrite'); tx.objectStore('files').put(v,k); tx.oncomplete=function(){res();}; tx.onerror=function(){rej(tx.error);}; }); }); }
+function idbGet(k){ return idbOpen().then(function(db){ return new Promise(function(res,rej){ var tx=db.transaction('files','readonly'); var rq=tx.objectStore('files').get(k); rq.onsuccess=function(){res(rq.result);}; rq.onerror=function(){rej(rq.error);}; }); }); }
+function idbDel(k){ return idbOpen().then(function(db){ return new Promise(function(res){ var tx=db.transaction('files','readwrite'); tx.objectStore('files').delete(k); tx.oncomplete=function(){res();}; tx.onerror=function(){res();}; }); }); }
+function setBgmSrc(src){ if(bgm){try{bgm.pause();}catch(e){}} bgm=new Audio(src); bgm.loop=true; bgm.volume=musicVol; bgmReady=false;
+  bgm.addEventListener('canplaythrough',function(){ bgmReady=true; if(musicOn)startMusic(); });
+  bgm.addEventListener('error',function(){ bgmReady=false; }); bgm.load(); }
+function setUserMusic(blob){ try{ if(userMusicURL)URL.revokeObjectURL(userMusicURL); }catch(e){} userMusicURL=URL.createObjectURL(blob); setBgmSrc(userMusicURL); }
+function handleMusicFile(file){ if(!file)return;
+  var ok=(/^audio\//.test(file.type||'')) || /\.(mp3|m4a|aac|ogg|oga|wav|flac|opus)$/i.test(file.name||'');
+  if(!ok){ showToast('Please choose an audio file.'); return; }
+  idbPut('music',file).catch(function(){ showToast('Could not save the song on this device.'); });
+  setUserMusic(file); musicOn=true; if($('music'))$('music').textContent=T[lang].musicOn; savePrefs(); initAudio(); startMusic();
+  if($('musicname'))$('musicname').textContent='♪ '+(file.name||'your track'); showToast('🎵 Saved on this device — playing your song');
+}
+function revertMusic(){ idbDel('music').catch(function(){}); try{ if(userMusicURL)URL.revokeObjectURL(userMusicURL); }catch(e){} userMusicURL=null;
+  setBgmSrc('./music.mp3'); if($('musicname'))$('musicname').textContent=''; showToast('Reverted to the built-in track'); }
+function loadUserMusic(){ try{ if(typeof indexedDB==='undefined')return; idbGet('music').then(function(b){ if(b){ setUserMusic(b); if($('musicname'))$('musicname').textContent='♪ your saved song'; } }).catch(function(){}); }catch(e){} }
+
 // ================= wire up =================
 $('newgame').addEventListener('click',()=>{initAudio();newGame();});
 $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
@@ -1027,6 +1059,14 @@ $('backup').addEventListener('click',doBackup);
 $('restore').addEventListener('click',function(){ $('restorefile').click(); });
 $('restorefile').addEventListener('change',function(){ if(this.files&&this.files[0])doRestore(this.files[0]); });
 $('resetprog').addEventListener('click',doReset);
+$('musicdrop').addEventListener('click',function(){ $('musicfile').click(); });
+$('musicfile').addEventListener('change',function(){ if(this.files&&this.files[0])handleMusicFile(this.files[0]); this.value=''; });
+$('musicremove').addEventListener('click',revertMusic);
+['dragenter','dragover'].forEach(function(ev){ $('musicdrop').addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); this.classList.add('drag'); }); });
+['dragleave','drop'].forEach(function(ev){ $('musicdrop').addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); this.classList.remove('drag'); }); });
+$('musicdrop').addEventListener('drop',function(e){ if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])handleMusicFile(e.dataTransfer.files[0]); });
+window.addEventListener('dragover',function(e){ e.preventDefault(); });
+window.addEventListener('drop',function(e){ e.preventDefault(); if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])handleMusicFile(e.dataTransfer.files[0]); });
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
@@ -1047,6 +1087,7 @@ loadLearn();
 loadStats();
 loadPrefs();
 initAIWorker();
+loadUserMusic();
 applySkin(STATS.equipped||'wood');
 applyLang();
 newGame();
