@@ -119,27 +119,30 @@
   .hintfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;}
   .hintfab.busy{opacity:.55;}
   .hintfab.off{display:none;}
-  .coachfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-    width:56px;height:56px;border-radius:16px;border:1px solid var(--gold);background:var(--panel);color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
-  .coachfab.show{display:flex;}
-  .coachfab:active{transform:translateY(1px);}
-  .coachfab .hicon{font-size:22px;line-height:1;}
-  .coachfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;}
-  .coachpanel{position:fixed;left:50%;bottom:12px;transform:translate(-50%,140%);width:min(520px,94vw);z-index:40;
-    background:var(--panel);border:1px solid var(--gold);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.5);
-    padding:12px 14px;opacity:0;transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s;pointer-events:none;max-height:70vh;overflow:auto;}
-  .coachpanel.show{transform:translate(-50%,0);opacity:1;pointer-events:auto;}
-  .cp-head{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:var(--gold);margin-bottom:6px;}
+  .playrow{display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .coachside{display:none;box-sizing:border-box;width:min(94vw,var(--sz,520px));background:var(--panel);border:1px solid var(--gold);border-radius:14px;
+    padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);align-self:center;}
+  body.coachon .coachside{display:block;}
+  .cp-head{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:var(--gold);margin-bottom:8px;}
+  .cp-refresh{background:transparent;border:1px solid var(--frameLine);color:var(--muted);border-radius:8px;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:1;}
+  .cp-refresh:active{transform:translateY(1px);}
   .cp-body{font-size:13px;line-height:1.5;color:var(--ink);}
-  .cp-move{font-size:14.5px;font-weight:600;margin-bottom:4px;}
-  .cp-verdict{color:var(--accent);font-size:12.5px;margin-bottom:6px;}
-  .cp-reasons{margin:0 0 8px;padding-left:18px;}
-  .cp-reasons li{margin:3px 0;}
-  .cp-threat{font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+  .cp-idle{color:var(--muted);font-size:12.5px;}
+  .cp-move{font-size:15px;font-weight:600;margin-bottom:5px;}
+  .cp-verdict{color:var(--accent);font-size:12.5px;margin-bottom:7px;}
+  .cp-reasons{margin:0 0 9px;padding-left:18px;}
+  .cp-reasons li{margin:4px 0;}
+  .cp-threat{font-size:12.5px;color:var(--muted);margin-bottom:7px;}
   .cp-threat.on{color:#e0563a;font-weight:600;}
   .cp-strat{font-size:12.5px;color:var(--ink);margin-top:4px;}
-  .cp-mat{font-size:11.5px;color:var(--muted);margin-top:2px;}
-  .cp-foot{font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--frameLine);padding-top:6px;}
+  .cp-mat{font-size:11.5px;color:var(--muted);margin-top:3px;}
+  .cp-foot{font-size:11px;color:var(--muted);margin-top:9px;border-top:1px solid var(--frameLine);padding-top:7px;}
+  @media (min-width:980px){
+    body.coachon .wrap{max-width:1180px;}
+    body.coachon .playrow{flex-direction:row;align-items:flex-start;justify-content:center;gap:18px;}
+    body.coachon .play{--sz:min(calc(96vw - 360px), calc(100vh - 240px), 700px);--cell:calc(var(--sz)/8);}
+    body.coachon .coachside{width:300px;flex:0 0 300px;align-self:flex-start;position:sticky;top:14px;}
+  }
   .sq.hintfrom{box-shadow:inset 0 0 0 .5px var(--grid),inset 0 0 0 4px rgba(143,174,107,.85);}
   .sq.hintto::after{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(143,174,107,.92);animation:hintpulse 1s ease-in-out infinite;pointer-events:none;}
   @keyframes hintpulse{0%,100%{opacity:.5;}50%{opacity:1;}}
@@ -232,14 +235,21 @@
   <div id="coach" class="coach"></div>
   <div id="stats" class="stats"></div>
 
-  <div class="play">
-    <div class="ranks" id="ranks"></div>
-    <div class="frame"><div class="board" id="board"></div>
-      <svg class="pathsvg" id="pathsvg"></svg>
-      <div class="overlay" id="overlay"><div class="card"><h2 id="winTitle"></h2><p id="winSub"></p>
-        <button class="btn primary" id="playAgain"></button></div></div>
+  <div class="playrow">
+    <div class="play">
+      <div class="ranks" id="ranks"></div>
+      <div class="frame"><div class="board" id="board"></div>
+        <svg class="pathsvg" id="pathsvg"></svg>
+        <div class="overlay" id="overlay"><div class="card"><h2 id="winTitle"></h2><p id="winSub"></p>
+          <button class="btn primary" id="playAgain"></button></div></div>
+      </div>
+      <div class="files" id="files"></div>
     </div>
-    <div class="files" id="files"></div>
+    <aside id="coachside" class="coachside">
+      <div class="cp-head"><span>🎓 Coach</span><button id="coachrefresh" class="cp-refresh" title="Re-analyse">↻</button></div>
+      <div id="coachbody" class="cp-body"><div class="cp-idle">Turn Coach on in the admin menu. It will point out the best move and explain why, every turn.</div></div>
+      <div class="cp-foot">Advice only — you still make the move. Learn the patterns and you'll beat the engine on your own.</div>
+    </aside>
   </div>
 
   <button class="rulesbtn" id="rulesbtn"></button>
@@ -249,14 +259,6 @@
 <button id="hintfab" class="hintfab off" title="Suggest a move — it advises, it doesn't move for you">
   <span class="hicon">💡</span><span class="hlbl" id="hintlbl">Hint</span>
 </button>
-<button id="coachfab" class="coachfab" title="Coach — explains the best move and why">
-  <span class="hicon">🎓</span><span class="hlbl">Coach</span>
-</button>
-<div id="coachpanel" class="coachpanel">
-  <div class="cp-head"><span>🎓 Coach</span><button id="coachpx" class="shopx" aria-label="Close">✕</button></div>
-  <div id="coachbody" class="cp-body"></div>
-  <div class="cp-foot">Advice only — you still make the move. Learn the patterns and you'll beat the engine on your own.</div>
-</div>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="shop" class="shop"><div class="shopcard">
   <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
@@ -813,7 +815,7 @@ function newGame(doBounce){
   moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;savePrefs();hideCoachPanel();updateCoachUI();
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
-  maybeAI();autoAssist();}
+  maybeAI();autoAssist();coachAuto();}
 function updateSideBtn(){const t=T[lang];const isL=sideChoice===1;
   $('side').innerHTML='<span class="sdot '+(isL?'l':'d')+'"></span>'+(isL?t.light:t.dark);}
 function bouncePieces(){const ps=boardEl.querySelectorAll('.piece');
@@ -932,7 +934,7 @@ function apply(mv){
   const mover=turn;
   history.push({board:prev,turn,lastMove});
   recordMove(prev,mover,mv);                                   // remember move for learning
-  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;hideCoachPanel();
+  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;coachThinking();
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
@@ -945,7 +947,7 @@ function apply(mv){
   const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
   if(moverHuman && coachOn) setTimeout(function(){ coachOnMove(prev,mover,mv); },260); // rate move AFTER it registers (non-blocking)
   animateMove(mv,prev,promoted,()=>{animating=false;
-    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();autoAssist();}});
+    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();autoAssist();coachAuto();}});
 }
 function finishGame(w){ winner=w; learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
@@ -1197,12 +1199,13 @@ function coachStrategy(bd,player){ var opp=player===1?2:1, my=countPieces(bd,pla
   else if(ev<=-1.6) note='You’re behind — avoid straight trades, keep your pieces connected, and hunt for a capture or a king to fight back.';
   else note='Roughly level — fight for the central files and race to promote a king first.';
   return { note:note, mat:'You: '+my+' ('+myK+'♔) · Opponent: '+op+' ('+opK+'♔) · eval '+(ev>=0?'+':'')+ev.toFixed(1) }; }
-function coachExplain(){ if(!coachMode)return;
-  if(!canAssist()){ showToast('Coach: wait for your turn'); return; }
-  initAudio(); var fab=$('coachfab'); if(fab)fab.classList.add('busy');
+function setCoachIdle(text){ var b=$('coachbody'); if(b)b.innerHTML='<div class="cp-idle">'+text+'</div>'; }
+function coachThinking(){ if(coachMode&&mode!=='cvc') setCoachIdle('Reading the position…'); }
+function runCoach(){ if(!coachMode)return;
+  if(!canAssist()){ setCoachIdle(winner?'Game over — start a new game for fresh coaching.':(mode==='ai'&&turn!==humanSide?'Opponent is thinking…':'…')); return; }
   var bd=board, pl=turn;
-  var scored=coachRank(bd,pl,360,14);
-  if(!scored.length){ showToast('No moves to advise'); if(fab)fab.classList.remove('busy'); return; }
+  var scored=coachRank(bd,pl,340,14);
+  if(!scored.length){ setCoachIdle('No moves available.'); return; }
   var bestMv=scored[0].m;
   hint=bestMv; dangerSet=oppThreatSet(bd,pl); render();
   var reasons=coachReasons(bd,pl,bestMv), verdict=coachVerdict(scored), strat=coachStrategy(bd,pl);
@@ -1215,14 +1218,16 @@ function coachExplain(){ if(!coachMode)return;
   var thr=dangerSet&&dangerSet.size;
   html+='<div class="cp-threat '+(thr?'on':'')+'">'+(thr?('⚠️ Right now '+dangerSet.size+' of your piece'+(dangerSet.size>1?'s are':' is')+' in the opponent’s capture range (glowing red on the board).'):'✅ None of your pieces can be captured right now.')+'</div>';
   html+='<div class="cp-strat">'+strat.note+'</div><div class="cp-mat">'+strat.mat+'</div>';
-  if($('coachbody'))$('coachbody').innerHTML=html;
-  if($('coachpanel'))$('coachpanel').classList.add('show');
-  if(fab)fab.classList.remove('busy'); }
-function updateCoachUI(){ var f=$('coachfab'); if(f)f.classList.toggle('show', coachMode&&mode!=='cvc');
-  var b=$('admincoach'); if(b)b.textContent='🎓 Coach mode: '+(coachMode?'On':'Off'); }
-function setCoachMode(on){ coachMode=on; savePrefs(); updateCoachUI();
-  if(!on&&$('coachpanel'))$('coachpanel').classList.remove('show'); }
-function hideCoachPanel(){ if($('coachpanel'))$('coachpanel').classList.remove('show'); }
+  if($('coachbody'))$('coachbody').innerHTML=html; }
+function coachAuto(){ if(!coachMode||mode==='cvc')return;
+  // let the DOM paint the "thinking" state, then analyse (analysis is synchronous)
+  setTimeout(function(){ try{ runCoach(); }catch(e){ setCoachIdle('—'); } },30); }
+function updateCoachUI(){ document.body.classList.toggle('coachon', coachMode&&mode!=='cvc');
+  var b=$('admincoach'); if(b)b.textContent='🎓 Coach mode: '+(coachMode?'On':'Off');
+  if(!coachMode) setCoachIdle('Turn Coach on in the admin menu. It will point out the best move and explain why, every turn.');
+  else if(mode==='cvc') setCoachIdle('Coach is for games you play — switch off Computer-vs-Computer to use it.'); }
+function setCoachMode(on){ coachMode=on; savePrefs(); updateCoachUI(); if(on)coachAuto(); }
+function hideCoachPanel(){ /* side panel is persistent; refreshed by coachAuto each turn */ }
 
 // ================= wire up =================
 $('newgame').addEventListener('click',()=>{initAudio();newGame();});
@@ -1257,8 +1262,7 @@ $('adminset').addEventListener('click',function(){ adminWP('set'); });
 $('adminall').addEventListener('click',adminUnlockAll);
 $('adminzero').addEventListener('click',adminResetUnlocks);
 $('admincoach').addEventListener('click',function(){ setCoachMode(!coachMode); });
-$('coachfab').addEventListener('click',coachExplain);
-$('coachpx').addEventListener('click',hideCoachPanel);
+$('coachrefresh').addEventListener('click',function(){ if(coachMode)coachAuto(); });
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
