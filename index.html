@@ -683,7 +683,7 @@ const SKINS=[
    vars:{'--bg':'#0a1016','--panel':'#111a26','--frameA':'#3a6a8a','--frameB':'#2a4a6a','--frameLine':'#0c1620','--sqLight':'#c8f0e0','--sqDark':'#5ab0a0','--gold':'#8affd0','--sel':'#a06aff','--accent':'#7ce0c0','--ink':'#eafaf4','--muted':'#9ab8b0','--lp1':'#eafff8','--lp2':'#b8f0dc','--lp3':'#7cc8b4','--dp1':'#2a4a6a','--dp2':'#182c44','--dp3':'#0c1620'}},
  {id:'galaxy',name:'Galaxy',emoji:'🪐',cost:200,rarity:'legendary',perk:{bonusWP:4,strongHint:true},swatch:['#d0d4ff','#6a68b0','#c060ff'],
    vars:{'--bg':'#06060f','--panel':'#0e0e1c','--frameA':'#33306a','--frameB':'#1c1a44','--frameLine':'#08081a','--sqLight':'#d0d4ff','--sqDark':'#6a68b0','--gold':'#c060ff','--sel':'#ff6ad0','--accent':'#8a8aff','--ink':'#ecebff','--muted':'#9a98c8','--lp1':'#f0f0ff','--lp2':'#c8c8f0','--lp3':'#9090d0','--dp1':'#2a2860','--dp2':'#161436','--dp3':'#0a0820'}},
- {id:'coronation',name:'Coronation',emoji:'♛',cost:150,rarity:'legendary',perk:{bonusWP:2,powerup:'tempkings'},swatch:['#efe0ff','#a06ad0','#ffd85a'],
+ {id:'coronation',name:'Coronation',emoji:'♛',cost:250,rarity:'legendary',perk:{bonusWP:2,powerup:'tempkings'},swatch:['#efe0ff','#a06ad0','#ffd85a'],
    vars:{'--bg':'#0f0a18','--panel':'#170f26','--frameA':'#5a3a8a','--frameB':'#331e5a','--frameLine':'#180f2a','--sqLight':'#efe0ff','--sqDark':'#a06ad0','--gold':'#ffd85a','--sel':'#ff6ad0','--accent':'#c89aff','--ink':'#f2e9ff','--muted':'#a898c8','--lp1':'#faf2ff','--lp2':'#e0c8f5','--lp3':'#b890dc','--dp1':'#4a2e78','--dp2':'#2a1850','--dp3':'#150a28'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.map(function(s){return s.cost;}));
@@ -724,7 +724,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   var _next=_lv<HINT_TIERS.length?HINT_TIERS[_lv]:null;
   var _foot=(_next!==null)?('<span class="stag">Next: Lv '+(_lv+1)+' @ '+_next+' WP</span>'):'<span class="stag ok">Max level</span>';
   html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
-  SKINS.forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
+  SKINS.slice().sort(function(a,b){return a.cost-b.cost;}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
     let foot; if(!owned) foot='<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint'); if(s.perk.powerup==='tempkings')bits.push('👑 Coronation power — crown your men as kings for 2 turns (once/game)'); perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
@@ -1129,17 +1129,18 @@ function undo(){ if(thinking||animating||!history.length)return;
   overlay.classList.remove('show');refresh();}
 
 // ================= settings / achievements / backup / prefs =================
+// ordered least-rare (easiest) → most-rare (hardest), shown left→right
 const ACHV=[
  {id:'first',emoji:'🥇',name:'First Win',t:'Win your first game.'},
- {id:'streak5',emoji:'🔥',name:'On Fire',t:'Reach a 5-win streak.'},
- {id:'vhard',emoji:'🧠',name:'Giant Slayer',t:'Beat the computer on Very Hard.'},
- {id:'quad',emoji:'💥',name:'Quad Capture',t:'Capture 4+ pieces in one move.'},
- {id:'flawless',emoji:'🛡️',name:'Flawless',t:'Beat the computer without losing a piece.'},
- {id:'wp100',emoji:'🏆',name:'Centurion',t:'Reach 100 Win Points.'},
- {id:'collector',emoji:'🎨',name:'Collector',t:'Unlock every skin.'},
  {id:'veteran',emoji:'🎖️',name:'Veteran',t:'Win 10 games.'},
- {id:'master',emoji:'♛',name:'Master',t:'Win 50 games.'},
+ {id:'streak5',emoji:'🔥',name:'On Fire',t:'Reach a 5-win streak.'},
+ {id:'quad',emoji:'💥',name:'Quad Capture',t:'Capture 4+ pieces in one move.'},
+ {id:'vhard',emoji:'🧠',name:'Giant Slayer',t:'Beat the computer on Very Hard.'},
+ {id:'wp100',emoji:'🏆',name:'Centurion',t:'Reach 100 Win Points.'},
+ {id:'flawless',emoji:'🛡️',name:'Flawless',t:'Beat the computer without losing a piece.'},
  {id:'streak10',emoji:'⚡',name:'Unstoppable',t:'Reach a 10-win streak.'},
+ {id:'master',emoji:'♛',name:'Master',t:'Win 50 games.'},
+ {id:'collector',emoji:'🎨',name:'Collector',t:'Unlock every skin.'},
  {id:'legend',emoji:'🌟',name:'Legend',t:'Reach 250 Win Points.'}
 ];
 function grantAchv(id){ if(!STATS.achv)STATS.achv={}; if(STATS.achv[id])return false; STATS.achv[id]=1; const a=ACHV.find(function(x){return x.id===id;}); if(a)pendingUnlock.push('🏅 '+a.name); return true; }
