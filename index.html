@@ -334,8 +334,8 @@
 <div id="account" class="shop"><div class="shopcard">
   <div class="shophead"><span>👤 Account</span><button id="accountclose" class="shopx" aria-label="Close">✕</button></div>
   <div id="acctout">
-    <div class="olnote">Create an account to save your Win Points, wins, skins and achievements to the cloud — then sign in on any device to pick up where you left off.</div>
-    <input id="acctemail" class="olinput" type="email" inputmode="email" autocomplete="username" placeholder="email" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px">
+    <div class="olnote">Pick a username and password to save your Win Points, wins, skins and achievements to the cloud — then sign in on any device to pick up where you left off. No email needed.</div>
+    <input id="acctuser" class="olinput" type="text" autocomplete="username" maxlength="20" placeholder="username" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px">
     <input id="acctpass" class="olinput" type="password" autocomplete="current-password" placeholder="password (6+ characters)" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px">
     <div class="setbtns"><button class="btn primary" id="acctsignin">Log in</button><button class="btn" id="acctsignup">Sign up</button></div>
     <div id="acctstatus" class="olstatus"></div>
@@ -1424,21 +1424,32 @@ function loadSupabase(cb){ if(sbCreate){cb(true);return;}
 function sbInit(cb){ if(sb){cb(true);return;} loadSupabase(function(ok){ if(!ok){cb(false);return;}
   try{ sb=sbCreate(SB_URL,SB_ANON,{auth:{persistSession:true,autoRefreshToken:true}}); cb(true); }catch(e){ cb(false); } }); }
 function acctStatus(t){ var e=$('acctstatus'); if(e)e.textContent=t||''; }
+const ACCT_DOMAIN='@dama.player';                                 // usernames map to an internal address — no real email is used
+function userToEmail(u){ return u.toLowerCase().replace(/[^a-z0-9._-]/g,'')+ACCT_DOMAIN; }
+function emailToUser(e){ return (e||'').replace(ACCT_DOMAIN,''); }
 function acctRefresh(){ var inl=!!sbUser;
   if($('acctin'))$('acctin').style.display=inl?'block':'none';
   if($('acctout'))$('acctout').style.display=inl?'none':'block';
-  if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+((sbUser&&sbUser.email)||'you'); }
+  if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+emailToUser((sbUser&&sbUser.email)||'you'); }
 function openAccount(){ if($('account'))$('account').classList.add('show'); acctRefresh();
   if(!sbUser){ sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); } }
 function closeAccount(){ if($('account'))$('account').classList.remove('show'); }
-function acctAuth(kind){ var email=(($('acctemail')&&$('acctemail').value)||'').trim(), pass=($('acctpass')&&$('acctpass').value)||'';
-  if(!email||pass.length<6){ acctStatus('Enter an email and a password of at least 6 characters.'); return; }
+function acctAuth(kind){ var uname=(($('acctuser')&&$('acctuser').value)||'').trim(), pass=($('acctpass')&&$('acctpass').value)||'';
+  var clean=uname.toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  if(clean.length<3){ acctStatus('Pick a username of at least 3 letters/numbers.'); return; }
+  if(pass.length<6){ acctStatus('Password must be at least 6 characters.'); return; }
+  var email=userToEmail(clean);
   acctStatus(kind==='signup'?'Creating your account…':'Signing in…');
   sbInit(function(ok){ if(!ok){ acctStatus('Couldn’t reach the account service — check your connection.'); return; }
     var p=kind==='signup'?sb.auth.signUp({email:email,password:pass}):sb.auth.signInWithPassword({email:email,password:pass});
-    p.then(function(r){ if(r.error){ acctStatus(r.error.message||'That didn’t work — check your details.'); return; }
+    p.then(function(r){ if(r.error){ var msg=String(r.error.message||'');
+        if(/already registered|already exists|User already/i.test(msg)) msg='That username is taken — try logging in, or pick another.';
+        else if(/Invalid login/i.test(msg)) msg='Wrong username or password.';
+        else if(/confirm/i.test(msg)) msg='Almost there — try logging in now.';
+        acctStatus(msg||'That didn’t work — check your details.'); return; }
       var u=r.data&&r.data.user, session=r.data&&r.data.session;
-      if(kind==='signup'&&!session){ acctStatus('Account created — check your email to confirm, then log in.'); return; }
+      if(kind==='signup'&&!session){ // email-confirm still on: sign straight in (no real email exists to confirm)
+        sb.auth.signInWithPassword({email:email,password:pass}).then(function(r2){ if(r2.error){ acctStatus('Account made — tap Log in.'); return; } sbUser=r2.data.user; onSignedIn(false); }); return; }
       sbUser=u; onSignedIn(false);
     }, function(){ acctStatus('Network error — please try again.'); }); }); }
 function onSignedIn(silent){ acctRefresh(); if(!silent)acctStatus('');
