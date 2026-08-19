@@ -1417,12 +1417,12 @@ function onlineNewGameShared(){ initAudio();
 // ================= accounts (cloud progress via Supabase) =================
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
-let sb=null, sbUser=null, cloudTimer=null;
-function loadSupabase(cb){ if(window.supabase&&window.supabase.createClient){cb(true);return;}
-  var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-  s.onload=function(){ cb(!!(window.supabase&&window.supabase.createClient)); }; s.onerror=function(){ cb(false); }; document.head.appendChild(s); }
+let sb=null, sbUser=null, cloudTimer=null, sbCreate=null;
+function loadSupabase(cb){ if(sbCreate){cb(true);return;}
+  try{ import('https://esm.sh/@supabase/supabase-js@2').then(function(m){ if(m&&m.createClient){ sbCreate=m.createClient; cb(true); } else cb(false); }, function(){ cb(false); }); }
+  catch(e){ cb(false); } }
 function sbInit(cb){ if(sb){cb(true);return;} loadSupabase(function(ok){ if(!ok){cb(false);return;}
-  try{ sb=window.supabase.createClient(SB_URL,SB_ANON); cb(true); }catch(e){ cb(false); } }); }
+  try{ sb=sbCreate(SB_URL,SB_ANON,{auth:{persistSession:true,autoRefreshToken:true}}); cb(true); }catch(e){ cb(false); } }); }
 function acctStatus(t){ var e=$('acctstatus'); if(e)e.textContent=t||''; }
 function acctRefresh(){ var inl=!!sbUser;
   if($('acctin'))$('acctin').style.display=inl?'block':'none';
