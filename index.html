@@ -138,6 +138,17 @@
     padding:11px 12px;font-size:18px;letter-spacing:3px;text-align:center;text-transform:uppercase;margin-bottom:9px;}
   .olstatus{font-size:12.5px;color:var(--accent);min-height:18px;margin-top:6px;}
   .olconnok{font-size:16px;font-weight:700;color:#8fae6b;margin-bottom:8px;}
+  .statsgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stile{background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:12px;padding:12px;text-align:center;}
+  .stile .snum{font-size:22px;font-weight:800;color:var(--gold);line-height:1.1;}
+  .stile .slbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;}
+  .resumebar{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:8px;
+    background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:8px 12px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:94vw;}
+  .resumebar .btn{padding:6px 12px;font-size:12px;}
+  .clocks{display:flex;justify-content:center;gap:14px;margin:-2px 0 10px;}
+  .clk{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:9px;padding:5px 12px;letter-spacing:.5px;}
+  .clk.active{color:var(--ink);border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
+  .clk.low{color:#e0563a;border-color:#e0563a;}
   .friendlist{display:flex;flex-direction:column;gap:8px;margin:8px 0;max-height:52vh;overflow:auto;}
   .frow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:10px;padding:9px 11px;flex-wrap:wrap;}
   .fdot{width:9px;height:9px;border-radius:50%;background:#5a5a5a;flex:0 0 auto;}
@@ -264,6 +275,7 @@
   <div class="status"><div id="statusMain" class="turn"></div><div class="count" id="count"></div></div>
   <div id="coach" class="coach"></div>
   <div id="stats" class="stats"></div>
+  <div id="clocks" class="clocks" style="display:none"><span id="clkL" class="clk"></span><span id="clkD" class="clk"></span></div>
 
   <div class="playrow">
     <div class="play">
@@ -304,6 +316,9 @@
   <div class="shophead"><span>⚙️ Settings</span><button id="setclose" class="shopx" aria-label="Close">✕</button></div>
   <div class="setrow"><label for="volmus">🎵 Music volume</label><input type="range" id="volmus" min="0" max="100"></div>
   <div class="setrow"><label for="volsfx">🔊 Sound volume</label><input type="range" id="volsfx" min="0" max="100"></div>
+  <div class="setrow"><label for="animspeed">⚡ Animation speed</label><input type="range" id="animspeed" min="50" max="250"></div>
+  <div class="setrow"><label for="blitz">⏱️ Blitz timer</label><select id="blitz"><option value="0">Off</option><option value="300">5 min each</option><option value="180">3 min each</option><option value="60">1 min each</option></select></div>
+  <div class="setbtns"><button class="btn" id="statsopen">📊 My stats</button></div>
   <div class="setbtns"><button class="btn" id="backup">⬇︎ Backup save</button><button class="btn" id="restore">⬆︎ Restore</button><button class="btn" id="resetprog">Reset progress</button></div>
   <input type="file" id="restorefile" accept="application/json" style="display:none">
   <div class="achv-title">🎵 Your music</div>
@@ -314,6 +329,11 @@
   <div class="achv-title">🏅 Achievements</div>
   <div id="achvgrid" class="shopgrid"></div>
 </div></div>
+<div id="statsmodal" class="shop"><div class="shopcard">
+  <div class="shophead"><span>📊 Your stats</span><button id="statsclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="statsgrid" class="statsgrid"></div>
+</div></div>
+<div id="resumebar" class="resumebar" style="display:none"><span>⏸️ You have a game in progress.</span><button class="btn primary" id="resumebtn">Resume</button><button class="btn" id="resumedismiss">Dismiss</button></div>
 <div id="toast" class="toast" role="status"></div>
 <div id="online" class="shop"><div class="shopcard">
   <div class="shophead"><span>🌐 Play online</span><button id="onlineclose" class="shopx" aria-label="Close">✕</button></div>
@@ -881,6 +901,7 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
+let animSpeed=1;                                                  // move-animation speed multiplier (Settings)
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -912,8 +933,10 @@ function newGame(doBounce){
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
   moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;savePrefs();hideCoachPanel();updateCoachUI();
+  clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
+  initBlitz();
   maybeAI();autoAssist();coachAuto();}
 function updateSideBtn(){const t=T[lang];const isL=sideChoice===1;
   $('side').innerHTML='<span class="sdot '+(isL?'l':'d')+'"></span>'+(isL?t.light:t.dark);}
@@ -1044,14 +1067,16 @@ function apply(mv){
   if(mv.captured||wasMan){ noProg=0; posCounts={}; } else { noProg++; }
   const pk=posKey(board,turn); posCounts[pk]=(posCounts[pk]||0)+1;
   const draw=!over && (posCounts[pk]>=3 || noProg>=60);
-  if(mv.captured){ if(mover===humanSide && mv.captured.length>=4) gQuad=true; if(navigator.vibrate){try{navigator.vibrate(25);}catch(e){}} }
+  if(mv.captured){ if(mover===humanSide && mv.captured.length>=4) gQuad=true;
+    if(mover===humanSide && mv.captured.length>(STATS.bigCap||0)){ STATS.bigCap=mv.captured.length; saveStats(); }   // track biggest single-move capture
+    if(navigator.vibrate){try{navigator.vibrate(25);}catch(e){}} }
   animating=true;render();
   const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
   if(moverHuman && coachOn) setTimeout(function(){ coachOnMove(prev,mover,mv); },260); // rate move AFTER it registers (non-blocking)
   animateMove(mv,prev,promoted,()=>{animating=false;
-    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();autoAssist();coachAuto();}});
+    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();autoAssist();coachAuto();saveGameSnapshot();}});
 }
-function finishGame(w){ winner=w; learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
+function finishGame(w){ winner=w; stopClock(); renderClocks(); clearGameSnapshot(); learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if((mode==='ai'||mode==='online')&&turn!==humanSide)return false; return true; }
 
 // ---- Coronation power-up (from the Coronation skin): crown your men as kings for 2 of your turns ----
@@ -1113,7 +1138,7 @@ function animateMove(mv,prevBoard,promoted,done){
   const dTo=disp(mv.to[0],mv.to[1]);
   const positions=[{r:mv.from[0],c:mv.from[1]}].concat(mv.path&&mv.path.length?mv.path:[{r:mv.to[0],c:mv.to[1]}]);
   const segs=positions.length-1;
-  const perSeg=mv.captured?150:150;
+  const perSeg=Math.max(40,Math.round(150/(animSpeed||1)));       // animation speed (Settings slider)
   const total=Math.max(perSeg,segs*perSeg);
 
   const ghosts=[];
@@ -1207,8 +1232,9 @@ function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)ret
   if(typeof p.side==='number')sideChoice=p.side;
   if(typeof p.sound==='boolean')soundOn=p.sound; if(typeof p.music==='boolean')musicOn=p.music; if(typeof p.coach==='boolean')coachOn=p.coach;
   if(typeof p.coachMode==='boolean')coachMode=p.coachMode;
-  if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus; }catch(e){} }
-function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol})); }catch(e){} }
+  if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus;
+  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:blitzSecs})); }catch(e){} }
 function confettiBurst(){ try{ const cols=['#e0563a','#d9a441','#8fae6b','#6db0ff','#c060e0','#ffd85a']; const N=42;
   for(let i=0;i<N;i++){ const s=document.createElement('div'); s.className='confetti';
     s.style.left=(Math.random()*100)+'vw'; s.style.background=cols[i%cols.length]; s.style.width=s.style.height=(6+Math.random()*6)+'px';
@@ -1221,7 +1247,54 @@ function showToast(msg,onClick){ const el=$('toast'); if(!el)return; el.textCont
   if(toastTimer)clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},9000); }
 function renderAchv(){ const g=$('achvgrid'); if(!g)return; let html=''; ACHV.forEach(function(a){ const got=STATS.achv&&STATS.achv[a.id];
   html+='<div class="scard '+(got?'owned':'locked')+'"><div class="sname">'+a.emoji+' '+a.name+'</div><div class="sdesc">'+a.t+'</div><div class="sfoot"><span class="stag '+(got?'ok':'')+'">'+(got?'Earned':'Locked')+'</span></div></div>'; }); g.innerHTML=html; }
-function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); renderAchv(); $('setmodal').classList.add('show'); }
+function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(blitzSecs||0); renderAchv(); $('setmodal').classList.add('show'); }
+// ---- ranks / tiers (used by stats + progression) ----
+const RANKS=[[0,'Bronze','🥉'],[40,'Silver','🥈'],[90,'Gold','🥇'],[160,'Platinum','💠'],[260,'Diamond','🔷'],[400,'Master','👑']];
+function rankInfo(wp){ var r=RANKS[0]; for(var i=0;i<RANKS.length;i++){ if((wp||0)>=RANKS[i][0])r=RANKS[i]; } return r; }
+function rankName(wp){ var r=rankInfo(wp); return r[2]+' '+r[1]; }
+// ---- resume an unfinished game ----
+function serializeGame(){ return board.map(function(row){return row.map(function(c){return c?{p:c.player,k:c.king?1:0}:0;});}); }
+function saveGameSnapshot(){ try{ if((mode!=='pvp'&&mode!=='ai')||winner)return;
+  localStorage.setItem('dama-game', JSON.stringify({ mode:mode, humanSide:humanSide, diff:diff, style:style, side:sideChoice, turn:turn, flip:flip, board:serializeGame(), lastMove:lastMove })); }catch(e){} }
+function clearGameSnapshot(){ try{ localStorage.removeItem('dama-game'); }catch(e){} }
+function hasSnapshot(){ try{ return !!localStorage.getItem('dama-game'); }catch(e){ return false; } }
+function offerResume(){ if(hasSnapshot()&&$('resumebar'))$('resumebar').style.display='flex'; }
+function doResume(){ var snap; try{ snap=JSON.parse(localStorage.getItem('dama-game')); }catch(e){} if(!snap){ if($('resumebar'))$('resumebar').style.display='none'; return; }
+  gameId++; mode=snap.mode; humanSide=snap.humanSide; diff=snap.diff; style=snap.style||'classic'; if(typeof snap.side==='number')sideChoice=snap.side;
+  flip=(typeof snap.flip==='boolean')?snap.flip:(humanSide===2);
+  if($('mode'))$('mode').value=mode; if($('diff'))$('diff').value=diff; if($('style'))$('style').value=style;
+  boardEl.classList.toggle('mono',style==='trad');
+  board=snap.board.map(function(row){return row.map(function(c){return c?{player:c.p,king:!!c.k}:null;});});
+  turn=snap.turn||1; selected=null; winner=null; lastMove=snap.lastMove||null; history=[]; thinking=false; animating=false; hint=null;
+  moveTrail=[]; coachStats={}; noProg=0; posCounts={}; gQuad=false; dangerSet=null; powerUp=null; powerUsed=false; legal=computeLegal(board,turn);
+  overlay.classList.remove('show'); if($('resumebar'))$('resumebar').style.display='none';
+  buildLabels(); refresh(); updateSideBtn(); showCoachIdle(); updateCoachUI(); maybeAI(); autoAssist(); coachAuto(); showToast('▶️ Resumed your game'); }
+// ---- stats page ----
+function openStats(){ renderStats(); $('statsmodal').classList.add('show'); }
+function closeStats(){ $('statsmodal').classList.remove('show'); }
+function renderStats(){ var g=$('statsgrid'); if(!g)return;
+  var wins=STATS.wins||0, losses=STATS.losses||0, games=STATS.games||0, wr=games>0?Math.round(wins/games*100):0;
+  var achv=STATS.achv?Object.keys(STATS.achv).length:0, skinsOwned=SKINS.filter(function(s){return ownsSkin(s);}).length;
+  var tiles=[['🏆 '+(STATS.wp||0),'Win Points'],[rankName(STATS.wp||0),'Rank'],[wins,'Wins'],[losses,'Losses'],[wr+'%','Win rate'],
+    [(STATS.streak||0),'Streak'],[(STATS.best||0),'Best streak'],[games,'Games'],[(STATS.bigCap||0),'Biggest capture'],
+    [achv+'/'+ACHV.length,'Achievements'],[skinsOwned+'/'+SKINS.length,'Skins'],[(LEARN.games||0),'AI learned from']];
+  g.innerHTML=tiles.map(function(t){ return '<div class="stile"><div class="snum">'+t[0]+'</div><div class="slbl">'+t[1]+'</div></div>'; }).join(''); }
+// ---- blitz timer ----
+let blitzSecs=0, clk={1:0,2:0}, clkTimer=null, clkLast=0;
+function fmtClock(s){ s=Math.max(0,Math.ceil(s)); var m=Math.floor(s/60), ss=s%60; return m+':'+(ss<10?'0':'')+ss; }
+function blitzActive(){ return blitzSecs>0 && (mode==='pvp'||mode==='ai'); }
+function renderClocks(){ var el=$('clocks'); if(!el)return; if(!blitzActive()){ el.style.display='none'; return; }
+  el.style.display='flex'; var L=$('clkL'), D=$('clkD');
+  L.textContent='⚪ '+fmtClock(clk[1]); D.textContent='⚫ '+fmtClock(clk[2]);
+  L.classList.toggle('active', turn===1&&!winner); D.classList.toggle('active', turn===2&&!winner);
+  L.classList.toggle('low', clk[1]<=15); D.classList.toggle('low', clk[2]<=15); }
+function startClock(){ stopClock(); if(!blitzActive())return; clkLast=performance.now(); clkTimer=setInterval(tickClock,200); }
+function stopClock(){ if(clkTimer){clearInterval(clkTimer);clkTimer=null;} }
+function tickClock(){ if(winner||!blitzActive()){ stopClock(); return; }
+  var now=performance.now(), dt=(now-clkLast)/1000; clkLast=now;
+  if(!animating){ clk[turn]-=dt; if(clk[turn]<=0){ clk[turn]=0; renderClocks(); stopClock(); showToast('⏱️ Out of time!'); finishGame(turn===1?2:1); return; } }
+  renderClocks(); }
+function initBlitz(){ if(blitzActive()){ clk={1:blitzSecs,2:blitzSecs}; renderClocks(); startClock(); } else { stopClock(); renderClocks(); } }
 function closeSettings(){ $('setmodal').classList.remove('show'); }
 function doBackup(){ try{ const data={stats:localStorage.getItem('dama-stats'),learn:localStorage.getItem('dama-learn'),prefs:localStorage.getItem('dama-prefs'),_v:1};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'}); const url=URL.createObjectURL(blob);
@@ -1443,7 +1516,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v50';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v51';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1636,6 +1709,13 @@ $('setclose').addEventListener('click',closeSettings);
 $('setmodal').addEventListener('click',function(e){ if(e.target===$('setmodal'))closeSettings(); });
 $('volmus').addEventListener('input',function(){ musicVol=(+this.value)/100; if(musicGain)musicGain.gain.value=musicVol; if(bgm)bgm.volume=musicVol; savePrefs(); });
 $('volsfx').addEventListener('input',function(){ sfxVol=(+this.value)/100; if(sfxGain)sfxGain.gain.value=sfxVol; savePrefs(); });
+$('animspeed').addEventListener('input',function(){ animSpeed=(+this.value)/100; savePrefs(); });
+$('blitz').addEventListener('change',function(){ blitzSecs=+this.value||0; savePrefs(); initBlitz(); });
+$('statsopen').addEventListener('click',openStats);
+$('statsclose').addEventListener('click',closeStats);
+$('statsmodal').addEventListener('click',function(e){ if(e.target===$('statsmodal'))closeStats(); });
+$('resumebtn').addEventListener('click',function(){ initAudio(); doResume(); });
+$('resumedismiss').addEventListener('click',function(){ clearGameSnapshot(); $('resumebar').style.display='none'; });
 $('backup').addEventListener('click',doBackup);
 $('restore').addEventListener('click',function(){ $('restorefile').click(); });
 $('restorefile').addEventListener('change',function(){ if(this.files&&this.files[0])doRestore(this.files[0]); });
@@ -1717,6 +1797,7 @@ newGame();
 updateHintVisibility();
 updateCoachUI();
 acctRestoreOnLoad();
+offerResume();
 if($('verline'))$('verline').textContent='App version '+APP_VERSION;
 if($('verfoot'))$('verfoot').textContent='Dama '+APP_VERSION;
 </script>
