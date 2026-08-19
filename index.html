@@ -1550,16 +1550,19 @@ function renderFriends(){ var el=$('friendlist'); if(!el)return; var fr=myFriend
       '<button class="btn'+(on?' primary':'')+'" data-battle="'+f.uid+'" data-name="'+f.name+'">⚔️ Battle</button>'+
       '<button class="btn" data-unfriend="'+f.uid+'">✕</button>'+
       '<span class="fmeta">'+(on?'online now':'offline — they’ll get the challenge when they open the game')+'</span></div>'; }).join(''); }
-function addFriend(){ var name=(($('friendadd')&&$('friendadd').value)||'').toLowerCase().replace(/[^a-z0-9._-]/g,'');
+function addFriend(){ var name=(($('friendadd')&&$('friendadd').value)||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'');
   if(name.length<3){ $('friendstatus').textContent='Enter a username.'; return; }
   if(name===myName){ $('friendstatus').textContent='That’s you!'; return; }
-  if(!sb)return; $('friendstatus').textContent='Looking up '+name+'…';
-  sb.from('profiles').select('user_id,username').eq('username',name).maybeSingle().then(function(r){
-    if(!r.data){ $('friendstatus').textContent='No player called “'+name+'”.'; return; }
-    var fr=myFriends(); if(fr.some(function(x){return x.uid===r.data.user_id;})){ $('friendstatus').textContent='Already your friend.'; return; }
-    fr.push({uid:r.data.user_id,name:r.data.username}); saveStats(); $('friendadd').value=''; $('friendstatus').textContent='Added '+name+' ✓'; renderFriends();
-    inboxSend(r.data.user_id,{type:'ping'}); setTimeout(renderFriends,2600);
-  }, function(){ $('friendstatus').textContent='Lookup failed — try again.'; }); }
+  if(!sb||!sbUser){ $('friendstatus').textContent='Sign in first.'; return; }
+  $('friendstatus').textContent='Looking up '+name+'…';
+  sb.from('profiles').select('user_id,username').ilike('username',name).limit(1).then(function(r){
+    if(r.error){ $('friendstatus').textContent='Lookup error: '+(r.error.message||'try again'); return; }
+    var row=r.data&&r.data[0];
+    if(!row){ $('friendstatus').textContent='No player called “'+name+'” yet — they need to open the game and log in once on this version.'; return; }
+    var fr=myFriends(); if(fr.some(function(x){return x.uid===row.user_id;})){ $('friendstatus').textContent='Already your friend.'; return; }
+    fr.push({uid:row.user_id,name:row.username}); saveStats(); $('friendadd').value=''; $('friendstatus').textContent='Added '+row.username+' ✓'; renderFriends();
+    inboxSend(row.user_id,{type:'ping'}); setTimeout(renderFriends,2600);
+  }, function(e){ $('friendstatus').textContent='Lookup failed — '+String(e&&e.message||e); }); }
 function unfriend(uid){ STATS.friends=myFriends().filter(function(x){return x.uid!==uid;}); saveStats(); renderFriends(); }
 function battleFriend(uid,name){ inboxConnect(); var room=genCode();
   inboxSend(uid,{type:'challenge',room:room});
