@@ -429,6 +429,7 @@
 
 <script type="text/js-worker" id="wsrc">
 var diff;
+var SHIELD=new Set();                                             // Fortress power-up: squares the opponent can't capture
 function posKey(){return '';}
 function learnScore(){return 0;}
 const SIZE=8, KING_DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -436,12 +437,13 @@ const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
 const clone=b=>b.map(row=>row.map(c=>c?{player:c.player,king:c.king}:null));
 function initialBoard(){const b=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
   for(let c=0;c<SIZE;c++){b[1][c]={player:2,king:false};b[2][c]={player:2,king:false};b[5][c]={player:1,king:false};b[6][c]={player:1,king:false};}return b;}
+function isShielded(r,c){ return SHIELD && SHIELD.has && SHIELD.has(r+','+c); }
 function singleCaptures(board,r,c,piece){const opts=[],enemy=piece.player===1?2:1;
   if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
-    if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;let lr=nr+dr,lc=nc+dc;
+    if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;if(isShielded(nr,nc))continue;let lr=nr+dr,lc=nc+dc;
     while(inB(lr,lc)&&!board[lr][lc]){opts.push({capR:nr,capC:nc,landR:lr,landC:lc});lr+=dr;lc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const er=r+dr,ec=c+dc,lr=r+2*dr,lc=c+2*dc;
-    if(inB(lr,lc)&&board[er]&&board[er][ec]&&board[er][ec].player===enemy&&!board[lr][lc])opts.push({capR:er,capC:ec,landR:lr,landC:lc});}}return opts;}
+    if(inB(lr,lc)&&board[er]&&board[er][ec]&&board[er][ec].player===enemy&&!isShielded(er,ec)&&!board[lr][lc])opts.push({capR:er,capC:ec,landR:lr,landC:lc});}}return opts;}
 function captureSequences(board,r,c){const piece=board[r][c],out=[];
   (function rec(bd,cr,cc,captured,path,lastDir){const single=singleCaptures(bd,cr,cc,piece);let ext=false;
     for(const cap of single){
@@ -552,7 +554,7 @@ function aiMove(board,player){
   if(diff==='hard') return search(board,player,1400, total<=10?14:10);
   return search(board,player,2400, total<=12?22:16); // very hard
 }
-self.onmessage=function(e){var d=e.data; diff=d.diff; var mv=aiMove(d.board,d.player); postMessage({id:d.id, mv:mv});};
+self.onmessage=function(e){var d=e.data; diff=d.diff; SHIELD=new Set(d.shield||[]); var mv=aiMove(d.board,d.player); postMessage({id:d.id, mv:mv});};
 </script>
 <script>
 // Hide the loading splash after ~1s — registered first so it always fires, even if init hiccups.
@@ -593,12 +595,13 @@ const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
 const clone=b=>b.map(row=>row.map(c=>c?{player:c.player,king:c.king}:null));
 function initialBoard(){const b=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
   for(let c=0;c<SIZE;c++){b[1][c]={player:2,king:false};b[2][c]={player:2,king:false};b[5][c]={player:1,king:false};b[6][c]={player:1,king:false};}return b;}
+function isShielded(r,c){ return SHIELD && SHIELD.has && SHIELD.has(r+','+c); }
 function singleCaptures(board,r,c,piece){const opts=[],enemy=piece.player===1?2:1;
   if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
-    if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;let lr=nr+dr,lc=nc+dc;
+    if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;if(isShielded(nr,nc))continue;let lr=nr+dr,lc=nc+dc;
     while(inB(lr,lc)&&!board[lr][lc]){opts.push({capR:nr,capC:nc,landR:lr,landC:lc});lr+=dr;lc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const er=r+dr,ec=c+dc,lr=r+2*dr,lc=c+2*dc;
-    if(inB(lr,lc)&&board[er]&&board[er][ec]&&board[er][ec].player===enemy&&!board[lr][lc])opts.push({capR:er,capC:ec,landR:lr,landC:lc});}}return opts;}
+    if(inB(lr,lc)&&board[er]&&board[er][ec]&&board[er][ec].player===enemy&&!isShielded(er,ec)&&!board[lr][lc])opts.push({capR:er,capC:ec,landR:lr,landC:lc});}}return opts;}
 function captureSequences(board,r,c){const piece=board[r][c],out=[];
   (function rec(bd,cr,cc,captured,path,lastDir){const single=singleCaptures(bd,cr,cc,piece);let ext=false;
     for(const cap of single){
@@ -777,7 +780,15 @@ const SKINS=[
  {id:'ramadan',name:'Ramadan Nights',emoji:'🌙',cost:44,rarity:'epic',perk:{bonusWP:1},swatch:['#f5e6b0','#caa24a','#3a5a8a'],
    vars:{'--bg':'#0a0e1a','--panel':'#111830','--frameA':'#caa24a','--frameB':'#7a5a1a','--frameLine':'#2a1e0a','--sqLight':'#f5e6b0','--sqDark':'#8a7a4a','--gold':'#ffd85a','--sel':'#5a8ad0','--accent':'#e0c060','--ink':'#f6efd8','--muted':'#c0b088','--lp1':'#fff6d8','--lp2':'#f0d488','--lp3':'#caa24a','--dp1':'#2a3a6a','--dp2':'#16224a','--dp3':'#0a1024'}},
  {id:'winter',name:'Winter Holiday',emoji:'🎄',cost:38,rarity:'rare',swatch:['#f0faff','#c03a3a','#2a7a4a'],
-   vars:{'--bg':'#0a1412','--panel':'#0f1f18','--frameA':'#2a7a4a','--frameB':'#174a2c','--frameLine':'#0c2416','--sqLight':'#f0faff','--sqDark':'#a8c8d0','--gold':'#e0c85a','--sel':'#c03a3a','--accent':'#4fae7a','--ink':'#eef8f4','--muted':'#9fc0b0','--lp1':'#ffffff','--lp2':'#d8ecf0','--lp3':'#a8c8d8','--dp1':'#2a7a4a','--dp2':'#174a2c','--dp3':'#0c2416'}}
+   vars:{'--bg':'#0a1412','--panel':'#0f1f18','--frameA':'#2a7a4a','--frameB':'#174a2c','--frameLine':'#0c2416','--sqLight':'#f0faff','--sqDark':'#a8c8d0','--gold':'#e0c85a','--sel':'#c03a3a','--accent':'#4fae7a','--ink':'#eef8f4','--muted':'#9fc0b0','--lp1':'#ffffff','--lp2':'#d8ecf0','--lp3':'#a8c8d8','--dp1':'#2a7a4a','--dp2':'#174a2c','--dp3':'#0c2416'}},
+ {id:'tempest',name:'Tempest',emoji:'🌀',cost:120,rarity:'epic',perk:{powerup:'secondwind'},swatch:['#dbeaf5','#5a8ab0','#7fe0d0'],
+   vars:{'--bg':'#08121a','--panel':'#0f1e2a','--frameA':'#2a5a7a','--frameB':'#16384a','--frameLine':'#0a1e2a','--sqLight':'#dbeaf5','--sqDark':'#6a95b0','--gold':'#7fe0d0','--sel':'#40c0e0','--accent':'#8ac0dc','--ink':'#e8f4fa','--muted':'#9ab4c4','--lp1':'#eefaff','--lp2':'#c0e0ee','--lp3':'#88b8cc','--dp1':'#2a5a7a','--dp2':'#163848','--dp3':'#0a1e2a'}},
+ {id:'bastion',name:'Bastion',emoji:'🛡️',cost:130,rarity:'epic',perk:{powerup:'fortress'},swatch:['#e6e2d8','#9a8a6a','#c8a24a'],
+   vars:{'--bg':'#14120e','--panel':'#1e1b14','--frameA':'#6a5a3a','--frameB':'#3f3420','--frameLine':'#221a0e','--sqLight':'#e6e2d8','--sqDark':'#9a8a6a','--gold':'#c8a24a','--sel':'#c07a3a','--accent':'#b0a078','--ink':'#f0ece0','--muted':'#b0a488','--lp1':'#f6f2e8','--lp2':'#d8ceb8','--lp3':'#a89870','--dp1':'#5a4a30','--dp2':'#342a18','--dp3':'#1a140a'}},
+ {id:'leapfrog',name:'Leapfrog',emoji:'🐸',cost:140,rarity:'epic',perk:{powerup:'doublejump'},swatch:['#e0f5d0','#7aae4a','#e0c85a'],
+   vars:{'--bg':'#0d140a','--panel':'#151e10','--frameA':'#4a7a2a','--frameB':'#2c4a18','--frameLine':'#12240c','--sqLight':'#e0f5d0','--sqDark':'#7aae4a','--gold':'#e0c85a','--sel':'#5ac03a','--accent':'#9ace6a','--ink':'#eef8e6','--muted':'#a8c090','--lp1':'#f2fbe8','--lp2':'#cfe6b0','--lp3':'#8fc270','--dp1':'#4a7a2a','--dp2':'#2c4a18','--dp3':'#12240c'}},
+ {id:'oracle',name:'Oracle',emoji:'👁️',cost:170,rarity:'legendary',perk:{bonusWP:1,powerup:'foresight'},swatch:['#e6dcff','#8a6ad0','#ffd85a'],
+   vars:{'--bg':'#0d0a18','--panel':'#160f26','--frameA':'#4a2e8a','--frameB':'#2a1a5a','--frameLine':'#140f2a','--sqLight':'#e6dcff','--sqDark':'#8a6ad0','--gold':'#ffd85a','--sel':'#b06aff','--accent':'#b89aff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#f6f2ff','--lp2':'#d8c8f5','--lp3':'#a888dc','--dp1':'#3a2a6a','--dp2':'#221648','--dp3':'#100a24'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.map(function(s){return s.cost;}));
 let pendingUnlock=[];
@@ -834,7 +845,10 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   SKINS.slice().sort(function(a,b){return a.cost-b.cost;}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
     let foot; if(!owned) foot='<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
-    let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint'); if(s.perk.powerup==='tempkings')bits.push('👑 Coronation power — crown your men as kings for 2 turns (once/game)'); perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
+    let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
+      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move'};
+      if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
+      perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
   grid.innerHTML=html;
@@ -953,6 +967,7 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
 let animSpeed=1;                                                  // move-animation speed multiplier (Settings)
+let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress shield + power-up piece-select mode
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -983,7 +998,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1096,6 +1111,7 @@ function drawPaths(capMoves,hintMv,normMoves){ const svg=$('pathsvg'); if(!svg)r
 function handleCell(r,c){ initAudio();
   if(winner||thinking||animating)return;
   if((mode==='ai'||mode==='online')&&turn!==humanSide)return;
+  if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
     if(mv){apply({from:selected,to:[r,c],captured:mv.captured,path:mv.path});return;}}
@@ -1110,10 +1126,13 @@ function apply(mv){
   recordMove(prev,mover,mv);                                   // remember move for learning
   board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;coachThinking();
   powerTrack(mover,mv);                                          // update / expire the Coronation crowns before scoring the position
+  shieldTrack(mover,mv);                                          // Fortress shield follows its piece
   if(onlineActive&&!applyingRemote) sendMsg({type:'move',mv:mv});// mirror my move to my online opponent
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
-  const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
+  const next=turn===1?2:1;turn=next;
+  if(SHIELD.size && next===shieldOwner){ SHIELD=new Set(); }      // shield expires once its owner's turn comes around again
+  legal=computeLegal(board,turn);
   const over=countPieces(board,next)===0||Object.keys(legal.moves).length===0;
   if(mv.captured||wasMan){ noProg=0; posCounts={}; } else { noProg++; }
   const pk=posKey(board,turn); posCounts[pk]=(posCounts[pk]||0)+1;
@@ -1132,28 +1151,57 @@ function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false;
 
 // ---- Coronation power-up (from the Coronation skin): crown your men as kings for 2 of your turns ----
 let powerUp=null, powerUsed=false;
-function hasPower(){ return equippedPerk('powerup')==='tempkings'; }
-function canUsePower(){ return hasPower() && !powerUsed && !powerUp && canAssist(); }
-function updatePowerUI(){ var b=$('powerfab'); if(b)b.classList.toggle('show', canUsePower());
-  var badge=$('powerbadge'); if(badge){ if(powerUp&&powerUp.remaining>0){ badge.classList.add('show'); badge.textContent='👑 kings: '+powerUp.remaining+' turn'+(powerUp.remaining>1?'s':'')+' left'; } else badge.classList.remove('show'); } }
-function activatePower(){ if(!canUsePower())return; initAudio();
-  var owner=turn, cells=new Set();
+const POWER_META={ tempkings:{icon:'♛',label:'Crown'}, doublejump:{icon:'🐸',label:'Leap'}, fortress:{icon:'🛡️',label:'Shield'}, secondwind:{icon:'🌀',label:'Rewind'}, foresight:{icon:'👁️',label:'Foresee'} };
+function powerType(){ return equippedPerk('powerup')||''; }
+function hasPower(){ return !!POWER_META[powerType()]; }
+function canUsePower(){ return hasPower() && !powerUsed && !powerUp && !powerSelectMode && canAssist(); }
+function updatePowerUI(){ var b=$('powerfab'); if(b){ b.classList.toggle('show', canUsePower());
+    var m=POWER_META[powerType()]; if(m){ var ic=b.querySelector('.hicon'), lb=b.querySelector('.hlbl'); if(ic)ic.textContent=m.icon; if(lb)lb.textContent=m.label; } }
+  var badge=$('powerbadge'); if(badge){ var show=false, txt='';
+    if(powerUp&&powerUp.remaining>0){ show=true; txt='♛ '+powerUp.remaining+' turn'+(powerUp.remaining>1?'s':'')+' of kings'; }
+    else if(SHIELD.size){ show=true; txt='🛡️ 1 piece shielded'; }
+    else if(powerSelectMode){ show=true; txt='Tap one of your pieces…'; }
+    badge.classList.toggle('show',show); if(show)badge.textContent=txt; } }
+function activatePower(){ if(!canUsePower())return; initAudio(); var t=powerType();
+  if(t==='tempkings') powerCoronation();
+  else if(t==='doublejump'){ powerSelectMode='doublejump'; render(); updatePowerUI(); showToast('🐸 Tap a normal man — it will leap like a king this move.'); }
+  else if(t==='fortress'){ powerSelectMode='fortress'; render(); updatePowerUI(); showToast('🛡️ Tap one of your pieces to shield it for a turn.'); }
+  else if(t==='secondwind') powerSecondWind();
+  else if(t==='foresight') powerForesight(); }
+function powerCoronation(){ var owner=turn, cells=new Set();
   for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===owner&&!p.king){ p.king=true; cells.add(r+','+c); } }
   if(!cells.size){ showToast('No ordinary men to crown right now.'); return; }
-  powerUp={owner:owner,remaining:2,cells:cells}; powerUsed=true;
-  legal=computeLegal(board,turn); selected=null; hint=null;
-  try{ sPromote(); }catch(e){}
-  render(); showToast('👑 Coronation! Your men fight as kings for 2 turns.'); if(coachMode)coachAuto(); }
+  powerUp={owner:owner,remaining:2,cells:cells}; powerUsed=true; legal=computeLegal(board,turn); selected=null; hint=null;
+  try{ sPromote(); }catch(e){} render(); updatePowerUI(); showToast('👑 Coronation! Your men fight as kings for 2 turns.'); if(coachMode)coachAuto(); }
+function applyPowerToPiece(r,c){ var p=board[r][c]; if(!p||p.player!==turn)return;
+  if(powerSelectMode==='doublejump'){ if(p.king){ showToast('Pick a normal man, not a king.'); return; }
+    p.king=true; powerUp={owner:turn,remaining:1,cells:new Set([r+','+c])}; powerUsed=true; powerSelectMode=null;
+    legal=computeLegal(board,turn); selected=[r,c]; try{sPromote();}catch(e){} render(); updatePowerUI(); showToast('🐸 Leap armed — move this man like a king now.'); }
+  else if(powerSelectMode==='fortress'){ SHIELD=new Set([r+','+c]); shieldOwner=turn; powerUsed=true; powerSelectMode=null;
+    selected=null; legal=computeLegal(board,turn); render(); updatePowerUI(); showToast('🛡️ Shielded — safe from capture through the next turn.'); } }
+function powerSecondWind(){ var me=turn, opp=me===1?2:1, restored=0, found=false;
+  for(var i=history.length-1;i>=0;i--){ if(history[i].turn===opp){ found=true; var before=history[i].board;
+    for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var pb=before[r][c]; if(pb&&pb.player===me && !board[r][c]){ board[r][c]={player:pb.player,king:pb.king}; restored++; } } break; } }
+  if(!restored){ showToast(found?'Nothing to bring back — no piece was taken.':'Nothing to rewind yet.'); return; }
+  powerUsed=true; legal=computeLegal(board,turn); render(); updatePowerUI(); if(coachMode)coachAuto();
+  showToast('🌀 Second Wind — brought back '+restored+' piece'+(restored>1?'s':'')+'!'); }
+function powerForesight(){ powerUsed=true; showToast('👁️ Foreseeing the opponent…'); updatePowerUI();
+  var opp=turn===1?2:1, g=gameId, bd=board;
+  aiThink(bd,opp,function(mv){ if(g!==gameId)return; if(!mv){ showToast('No move to foresee.'); return; }
+    hint={from:mv.from,to:mv.to,captured:mv.captured,path:mv.path}; render();
+    showToast('👁️ Opponent is planning '+coordLabel(mv.from[0],mv.from[1])+' → '+coordLabel(mv.to[0],mv.to[1])); }, diff); }
 function powerTrack(mover,mv){ if(!powerUp)return;
   if(mv.captured)mv.captured.forEach(function(cp){ powerUp.cells.delete(cp.r+','+cp.c); });
   if(mover===powerUp.owner){ var fk=mv.from[0]+','+mv.from[1];
     if(powerUp.cells.has(fk)){ powerUp.cells.delete(fk);
-      var promoRow=powerUp.owner===1?0:7; if(mv.to[0]!==promoRow) powerUp.cells.add(mv.to[0]+','+mv.to[1]); }  // a temp king that reaches the far row keeps its crown for good
+      var promoRow=powerUp.owner===1?0:7; if(mv.to[0]!==promoRow) powerUp.cells.add(mv.to[0]+','+mv.to[1]); }
     powerUp.remaining--; if(powerUp.remaining<=0) powerRevert(); } }
 function powerRevert(){ if(!powerUp)return; var owner=powerUp.owner, promoRow=owner===1?0:7;
   powerUp.cells.forEach(function(k){ var a=k.split(','),r=+a[0],c=+a[1],p=board[r][c];
-    if(p&&p.player===owner&&r!==promoRow) p.king=false; });   // crowns fade back to men (kings earned on the back row stay)
+    if(p&&p.player===owner&&r!==promoRow) p.king=false; });
   powerUp=null; }
+function shieldTrack(mover,mv){ if(!SHIELD.size)return; var fk=mv.from[0]+','+mv.from[1];
+  if(mover===shieldOwner && SHIELD.has(fk)) SHIELD=new Set([mv.to[0]+','+mv.to[1]]); }   // shield follows its piece
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -1220,7 +1268,7 @@ function initAIWorker(){ try{ const el=$('wsrc'); if(!el||typeof Worker==='undef
 }catch(e){ aiWorker=null; } }
 function aiThink(bd,player,cb,diffOverride){ var dd=diffOverride||diff;
   if(aiWorker){ const id=++aiSeq; aiCbs[id]=cb;
-    try{ aiWorker.postMessage({id:id,board:bd,player:player,diff:dd}); }
+    try{ aiWorker.postMessage({id:id,board:bd,player:player,diff:dd,shield:Array.from(SHIELD)}); }
     catch(e){ delete aiCbs[id]; setTimeout(function(){ var o=diff;diff=dd;var mv=aiMove(bd,player);diff=o;cb(mv); },0); } }
   else setTimeout(function(){ var o=diff;diff=dd;var mv=aiMove(bd,player);diff=o;cb(mv); },0);
 }
@@ -1567,7 +1615,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v52';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v53';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
