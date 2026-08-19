@@ -1355,8 +1355,9 @@ function keepAwake(on){ try{ if(on){ if('wakeLock' in navigator && !wakeLock){ n
 function sendMsg(m){ try{ if(mqc&&mqc.connected&&roomTopic){ m.sid=myId; mqc.publish(roomTopic, JSON.stringify(m)); } }catch(e){} }
 function serializeBoard(){ return board.map(function(row){ return row.map(function(c){ return c?{p:c.player,k:c.king?1:0}:0; }); }); }
 function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(function(c){ return c?{player:c.p,king:!!c.k}:null; }); });
+  mode='online'; humanSide=onlineSide; flip=(humanSide===2);        // guest: lock in MY side + orient the board so my pieces sit at the bottom
   turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
-  legal=computeLegal(board,turn); overlay.classList.remove('show'); render(); if(coachMode)coachAuto(); }
+  legal=computeLegal(board,turn); overlay.classList.remove('show'); buildLabels(); render(); updateSideBtn(); if(coachMode)coachAuto(); }
 function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn}); }
 function cleanupMqtt(){ if(joinTimer){clearInterval(joinTimer);joinTimer=null;} try{ if(mqc)mqc.end(true); }catch(e){} mqc=null; roomTopic=''; keepAwake(false); }
 function connectBroker(onReady){ loadMqtt(function(ok){ if(!ok){ olStatus('Couldn’t load online — check your connection.'); return; }
