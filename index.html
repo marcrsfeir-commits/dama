@@ -1486,8 +1486,8 @@ function onSignedIn(silent){ myName=emailToUser((sbUser&&sbUser.email)||''); acc
   try{ sb.from('profiles').upsert({user_id:sbUser.id, username:myName, updated_at:new Date().toISOString()}).then(function(){},function(){}); }catch(e){}   // register username in the public directory
   if($('acctsync'))$('acctsync').textContent='Syncing your progress…';
   cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced'); });
-  inboxConnect(); }
-function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; myName=''; inboxDisconnect(); try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
+  inboxConnect(); startCloudPoll(); }
+function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; myName=''; inboxDisconnect(); stopCloudPoll(); try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
 
 // ---- sync: first login on a device merges best-of; afterwards last-write-wins by timestamp (so owner edits & other devices win) ----
 function progressBlob(){ return { STATS:STATS, LEARN:LEARN, name:myName }; }
@@ -1525,6 +1525,14 @@ function cloudPush(now,done){ if(!sb||!sbUser){ done&&done(); return; }
     }, function(){ doUpsert(done); }); }catch(e){ done&&done(); } };
   if(now)doit(); else cloudTimer=setTimeout(doit,1500); }
 function cloudPushDebounced(){ if(sbUser&&!applyingCloud)cloudPush(false); }
+let pollTimer=null;
+function cloudPullOnly(){ if(!sb||!sbUser)return;
+  sb.from('progress').select('data,updated_at').eq('user_id',sbUser.id).maybeSingle().then(function(r){
+    var row=r&&r.data; if(!row)return; var marker=getCts();
+    if((row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); showToast('↻ Your progress was updated'); }  // owner edit / other device — apply live
+  }, function(){}); }
+function startCloudPoll(){ if(pollTimer)clearInterval(pollTimer); pollTimer=setInterval(cloudPullOnly,25000); }
+function stopCloudPoll(){ if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
 function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag||!navigator.onLine)return;
   sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); }
 
