@@ -158,6 +158,7 @@
   .shopnote{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.4;}
   .setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;font-size:13px;color:var(--ink);}
   .setrow input[type=range]{flex:1;max-width:60%;accent-color:var(--accent);}
+  #adminwp{width:110px;background:var(--panel);color:var(--ink);border:1px solid #3a2f24;border-radius:8px;padding:6px 8px;font-size:14px;}
   .setbtns{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px;}
   .achv-title{margin:16px 0 8px;font-size:13px;color:var(--gold);font-weight:600;}
   .musicdrop{border:2px dashed #4a3a24;border-radius:12px;padding:16px;text-align:center;font-size:12.5px;color:var(--muted);cursor:pointer;line-height:1.5;transition:border-color .15s,background .15s;}
@@ -184,7 +185,7 @@
   <div class="head">
     <h1><span id="tTitle">Dama</span><span class="sub" id="tSub">Lebanese draughts</span></h1>
     <div class="headbtns">
-      <span class="wordmark">دامة</span>
+      <span class="wordmark" id="wordmark">دامة</span>
       <button class="btn primary" id="newgame">New game</button>
     </div>
   </div>
@@ -247,6 +248,12 @@
   <div id="achvgrid" class="shopgrid"></div>
 </div></div>
 <div id="toast" class="toast" role="status"></div>
+<div id="admin" class="shop"><div class="shopcard">
+  <div class="shophead"><span>🛠️ Admin</span><button id="adminclose" class="shopx" aria-label="Close">✕</button></div>
+  <div class="setrow"><label for="adminwp">Win Points to add</label><input type="number" id="adminwp" value="100" min="1"></div>
+  <div class="setbtns"><button class="btn" id="admingrant">➕ Grant WP</button><button class="btn" id="adminmax">+1000 WP</button><button class="btn" id="adminall">Unlock all skins</button></div>
+  <div class="shopnote">Hidden menu — reveal by tapping the دامة logo 5×. Everything is stored locally on this device.</div>
+</div></div>
 
 <script type="text/js-worker" id="wsrc">
 var diff;
@@ -573,8 +580,25 @@ const SKINS=[
  {id:'phoenix',name:'Phoenix',emoji:'🔥',cost:90,rarity:'legendary',perk:{bonusWP:2,strongHint:true},swatch:['#f6d9b0','#d67a3a','#ff5a2a'],
    vars:{'--bg':'#160a08','--panel':'#20100c','--frameA':'#8a3320','--frameB':'#5a1e10','--frameLine':'#2a0e06','--sqLight':'#f6d9b0','--sqDark':'#d67a3a','--gold':'#ff8a3a','--sel':'#ff5a2a','--accent':'#ffab5a','--ink':'#fbeadd','--muted':'#c89a80','--lp1':'#ffe8c8','--lp2':'#ffb070','--lp3':'#e0702a','--dp1':'#5a1e10','--dp2':'#360f08','--dp3':'#1c0704'}},
  {id:'celestial',name:'Celestial',emoji:'🌌',cost:140,rarity:'legendary',perk:{bonusWP:3,strongHint:true},swatch:['#cdd6f5','#6f7cc0','#8ad0ff'],
-   vars:{'--bg':'#080a16','--panel':'#101426','--frameA':'#3a4a8a','--frameB':'#1e2650','--frameLine':'#0a0e20','--sqLight':'#cdd6f5','--sqDark':'#6f7cc0','--gold':'#8ad0ff','--sel':'#c08aff','--accent':'#8ad0ff','--ink':'#eef2ff','--muted':'#9aa4c8','--lp1':'#eaf0ff','--lp2':'#b0c0f0','--lp3':'#8090d0','--dp1':'#26305a','--dp2':'#151c3a','--dp3':'#0a0e20'}}
+   vars:{'--bg':'#080a16','--panel':'#101426','--frameA':'#3a4a8a','--frameB':'#1e2650','--frameLine':'#0a0e20','--sqLight':'#cdd6f5','--sqDark':'#6f7cc0','--gold':'#8ad0ff','--sel':'#c08aff','--accent':'#8ad0ff','--ink':'#eef2ff','--muted':'#9aa4c8','--lp1':'#eaf0ff','--lp2':'#b0c0f0','--lp3':'#8090d0','--dp1':'#26305a','--dp2':'#151c3a','--dp3':'#0a0e20'}},
+ {id:'noir',name:'Noir',emoji:'🎞️',cost:15,rarity:'common',swatch:['#d8d8d8','#8a8a8a','#bdbdbd'],
+   vars:{'--bg':'#101010','--panel':'#181818','--frameA':'#3a3a3a','--frameB':'#222222','--frameLine':'#0c0c0c','--sqLight':'#d8d8d8','--sqDark':'#8a8a8a','--gold':'#cfcfcf','--sel':'#f0a030','--accent':'#b0b0b0','--ink':'#f0f0f0','--muted':'#9a9a9a','--lp1':'#ffffff','--lp2':'#dcdcdc','--lp3':'#b4b4b4','--dp1':'#4a4a4a','--dp2':'#2a2a2a','--dp3':'#141414'}},
+ {id:'candy',name:'Candy',emoji:'🍭',cost:22,rarity:'rare',swatch:['#ffe0f0','#ff9ec9','#c07adf'],
+   vars:{'--bg':'#1a1020','--panel':'#241830','--frameA':'#c86aa8','--frameB':'#8a3f78','--frameLine':'#3a1a34','--sqLight':'#ffe0f0','--sqDark':'#ff9ec9','--gold':'#ffd0ec','--sel':'#ff5aa8','--accent':'#c07adf','--ink':'#ffeaf6','--muted':'#c8a4c0','--lp1':'#fff2fb','--lp2':'#ffc4e6','--lp3':'#e88ec6','--dp1':'#8a3f78','--dp2':'#5a2350','--dp3':'#2e1028'}},
+ {id:'sunset',name:'Sunset Dunes',emoji:'🌅',cost:30,rarity:'rare',swatch:['#ffdca8','#e0925a','#ff7a3a'],
+   vars:{'--bg':'#1a1008','--panel':'#241608','--frameA':'#b5652a','--frameB':'#7a3d16','--frameLine':'#3a1e0c','--sqLight':'#ffdca8','--sqDark':'#e0925a','--gold':'#ffb84a','--sel':'#ff6a3a','--accent':'#ffa06a','--ink':'#fdecd8','--muted':'#c9a284','--lp1':'#fff0d8','--lp2':'#ffc890','--lp3':'#e0935a','--dp1':'#7a3d16','--dp2':'#4a230c','--dp3':'#241206'}},
+ {id:'ocean',name:'Deep Ocean',emoji:'🌊',cost:35,rarity:'rare',swatch:['#bfe4ec','#5aa0b0','#2ac0d0'],
+   vars:{'--bg':'#07141a','--panel':'#0e2028','--frameA':'#2a6a7a','--frameB':'#153a44','--frameLine':'#08181e','--sqLight':'#bfe4ec','--sqDark':'#5aa0b0','--gold':'#2ac0d0','--sel':'#33d0a0','--accent':'#7fd0dc','--ink':'#e6f6fa','--muted':'#8fb4bc','--lp1':'#eafafc','--lp2':'#bfe4ec','--lp3':'#7fb8c4','--dp1':'#1c4a54','--dp2':'#0e2830','--dp3':'#07161c'}},
+ {id:'jade',name:'Imperial Jade',emoji:'🐉',cost:48,rarity:'epic',perk:{strongHint:true},swatch:['#dff3e4','#5fae7c','#e6c85a'],
+   vars:{'--bg':'#0a1610','--panel':'#122018','--frameA':'#3f7a52','--frameB':'#234a30','--frameLine':'#0f2418','--sqLight':'#dff3e4','--sqDark':'#5fae7c','--gold':'#e6c85a','--sel':'#e0863a','--accent':'#6fce96','--ink':'#e9f7ee','--muted':'#9fc0a8','--lp1':'#f2fbf4','--lp2':'#cfe6d6','--lp3':'#8fc2a0','--dp1':'#265a38','--dp2':'#153420','--dp3':'#0b1c12'}},
+ {id:'crimson',name:'Crimson Court',emoji:'🩸',cost:70,rarity:'epic',perk:{bonusWP:2},swatch:['#f2d8cc','#c56a5a','#ffd85a'],
+   vars:{'--bg':'#160808','--panel':'#220e0e','--frameA':'#8a2a2a','--frameB':'#5a1616','--frameLine':'#2a0a0a','--sqLight':'#f2d8cc','--sqDark':'#c56a5a','--gold':'#ffd85a','--sel':'#ff5a3a','--accent':'#e08a7a','--ink':'#fbe6df','--muted':'#c89a90','--lp1':'#fff0ea','--lp2':'#f0c4b6','--lp3':'#d08a78','--dp1':'#7a1e1e','--dp2':'#4a1010','--dp3':'#240808'}},
+ {id:'aurora',name:'Aurora',emoji:'🌠',cost:110,rarity:'legendary',perk:{bonusWP:3,strongHint:true},swatch:['#c8f0e0','#5ab0a0','#a06aff'],
+   vars:{'--bg':'#0a1016','--panel':'#111a26','--frameA':'#3a6a8a','--frameB':'#2a4a6a','--frameLine':'#0c1620','--sqLight':'#c8f0e0','--sqDark':'#5ab0a0','--gold':'#8affd0','--sel':'#a06aff','--accent':'#7ce0c0','--ink':'#eafaf4','--muted':'#9ab8b0','--lp1':'#eafff8','--lp2':'#b8f0dc','--lp3':'#7cc8b4','--dp1':'#2a4a6a','--dp2':'#182c44','--dp3':'#0c1620'}},
+ {id:'galaxy',name:'Galaxy',emoji:'🪐',cost:200,rarity:'legendary',perk:{bonusWP:4,strongHint:true},swatch:['#d0d4ff','#6a68b0','#c060ff'],
+   vars:{'--bg':'#06060f','--panel':'#0e0e1c','--frameA':'#33306a','--frameB':'#1c1a44','--frameLine':'#08081a','--sqLight':'#d0d4ff','--sqDark':'#6a68b0','--gold':'#c060ff','--sel':'#ff6ad0','--accent':'#8a8aff','--ink':'#ecebff','--muted':'#9a98c8','--lp1':'#f0f0ff','--lp2':'#c8c8f0','--lp3':'#9090d0','--dp1':'#2a2860','--dp2':'#161436','--dp3':'#0a0820'}}
 ];
+const MAXSKIN=Math.max.apply(null,SKINS.map(function(s){return s.cost;}));
 let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
@@ -981,7 +1005,11 @@ const ACHV=[
  {id:'quad',emoji:'💥',name:'Quad Capture',t:'Capture 4+ pieces in one move.'},
  {id:'flawless',emoji:'🛡️',name:'Flawless',t:'Beat the computer without losing a piece.'},
  {id:'wp100',emoji:'🏆',name:'Centurion',t:'Reach 100 Win Points.'},
- {id:'collector',emoji:'🎨',name:'Collector',t:'Unlock every skin (140 WP).'}
+ {id:'collector',emoji:'🎨',name:'Collector',t:'Unlock every skin.'},
+ {id:'veteran',emoji:'🎖️',name:'Veteran',t:'Win 10 games.'},
+ {id:'master',emoji:'♛',name:'Master',t:'Win 50 games.'},
+ {id:'streak10',emoji:'⚡',name:'Unstoppable',t:'Reach a 10-win streak.'},
+ {id:'legend',emoji:'🌟',name:'Legend',t:'Reach 250 Win Points.'}
 ];
 function grantAchv(id){ if(!STATS.achv)STATS.achv={}; if(STATS.achv[id])return false; STATS.achv[id]=1; const a=ACHV.find(function(x){return x.id===id;}); if(a)pendingUnlock.push('🏅 '+a.name); return true; }
 function checkAchv(ctx){ if(!STATS.achv)STATS.achv={};
@@ -991,7 +1019,11 @@ function checkAchv(ctx){ if(!STATS.achv)STATS.achv={};
   if(ctx&&ctx.quad)grantAchv('quad');
   if(ctx&&ctx.flawless)grantAchv('flawless');
   if((STATS.wp||0)>=100)grantAchv('wp100');
-  if((STATS.wp||0)>=140)grantAchv('collector'); }
+  if((STATS.wp||0)>=MAXSKIN)grantAchv('collector');
+  if(STATS.wins>=10)grantAchv('veteran');
+  if(STATS.wins>=50)grantAchv('master');
+  if(STATS.best>=10)grantAchv('streak10');
+  if((STATS.wp||0)>=250)grantAchv('legend'); }
 function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)return; const p=JSON.parse(s)||{};
   if(p.mode&&$('mode'))$('mode').value=p.mode; if(p.diff&&$('diff'))$('diff').value=p.diff; if(p.style&&$('style'))$('style').value=p.style;
   if(typeof p.side==='number')sideChoice=p.side;
@@ -1045,6 +1077,19 @@ function revertMusic(){ idbDel('music').catch(function(){}); try{ if(userMusicUR
   setBgmSrc('./music.mp3'); if($('musicname'))$('musicname').textContent=''; showToast('Reverted to the built-in track'); }
 function loadUserMusic(){ try{ if(typeof indexedDB==='undefined')return; idbGet('music').then(function(b){ if(b){ setUserMusic(b); if($('musicname'))$('musicname').textContent='♪ your saved song'; } }).catch(function(){}); }catch(e){} }
 
+// ================= admin (hidden, password-gated) =================
+const ADMIN_PASS='dama2468';
+let wmTaps=0, wmTimer=null;
+function wordmarkTap(){ wmTaps++; if(wmTimer)clearTimeout(wmTimer); wmTimer=setTimeout(function(){wmTaps=0;},2500);
+  if(wmTaps>=5){ wmTaps=0; var p=window.prompt('Admin password:'); if(p===null)return; if(p===ADMIN_PASS){ openAdmin(); } else { showToast('Wrong password'); } } }
+function openAdmin(){ if($('admin'))$('admin').classList.add('show'); }
+function closeAdmin(){ if($('admin'))$('admin').classList.remove('show'); }
+function grantWP(n){ n=parseInt(n,10); if(!n||n<=0){ showToast('Enter a positive number'); return; }
+  if(!STATS.achv)STATS.achv={}; STATS.wp=(STATS.wp||0)+n; pendingUnlock=[]; checkAchv({}); pendingUnlock=[];
+  saveStats(); updateStats(); updateHintVisibility(); showToast('➕ '+n+' WP — total '+STATS.wp); }
+function adminUnlockAll(){ if(!STATS.achv)STATS.achv={}; STATS.wp=Math.max(STATS.wp||0,MAXSKIN); pendingUnlock=[]; checkAchv({}); pendingUnlock=[];
+  saveStats(); updateStats(); updateHintVisibility(); showToast('All skins unlocked'); }
+
 // ================= wire up =================
 $('newgame').addEventListener('click',()=>{initAudio();newGame();});
 $('playAgain').addEventListener('click',()=>{initAudio();newGame();});
@@ -1069,6 +1114,12 @@ $('musicremove').addEventListener('click',revertMusic);
 $('musicdrop').addEventListener('drop',function(e){ if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])handleMusicFile(e.dataTransfer.files[0]); });
 window.addEventListener('dragover',function(e){ e.preventDefault(); });
 window.addEventListener('drop',function(e){ e.preventDefault(); if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])handleMusicFile(e.dataTransfer.files[0]); });
+$('wordmark').addEventListener('click',wordmarkTap);
+$('adminclose').addEventListener('click',closeAdmin);
+$('admin').addEventListener('click',function(e){ if(e.target===$('admin'))closeAdmin(); });
+$('admingrant').addEventListener('click',function(){ grantWP($('adminwp').value); });
+$('adminmax').addEventListener('click',function(){ grantWP(1000); });
+$('adminall').addEventListener('click',adminUnlockAll);
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
