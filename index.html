@@ -247,6 +247,7 @@
     <button class="btn" id="fs"></button>
     <button class="btn" id="skins"></button>
     <button class="btn" id="onlinebtn" title="Play a friend online">🌐 Online</button>
+    <button class="btn" id="accountbtn" title="Save your progress to an account">👤 Account</button>
     <button class="btn" id="settings" aria-label="Settings">⚙️</button>
   </div>
 
@@ -329,6 +330,23 @@
     <button class="btn" id="olleave">Leave online game</button>
   </div>
   <div class="shopnote">Works over the internet on any network — no accounts. Both players just need to be online at the same time.</div>
+</div></div>
+<div id="account" class="shop"><div class="shopcard">
+  <div class="shophead"><span>👤 Account</span><button id="accountclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="acctout">
+    <div class="olnote">Create an account to save your Win Points, wins, skins and achievements to the cloud — then sign in on any device to pick up where you left off.</div>
+    <input id="acctemail" class="olinput" type="email" inputmode="email" autocomplete="username" placeholder="email" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px">
+    <input id="acctpass" class="olinput" type="password" autocomplete="current-password" placeholder="password (6+ characters)" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px">
+    <div class="setbtns"><button class="btn primary" id="acctsignin">Log in</button><button class="btn" id="acctsignup">Sign up</button></div>
+    <div id="acctstatus" class="olstatus"></div>
+  </div>
+  <div id="acctin" style="display:none">
+    <div class="olconnok">✅ Signed in</div>
+    <div id="acctwho" class="olnote"></div>
+    <div id="acctsync" class="olnote"></div>
+    <div class="setbtns"><button class="btn" id="acctsyncbtn">Sync now</button><button class="btn" id="acctsignout">Log out</button></div>
+  </div>
+  <div class="shopnote">Your progress is stored privately — only you can read or change your own data. Passwords are handled by Supabase; the game never sees them.</div>
 </div></div>
 <div id="admin" class="shop"><div class="shopcard">
   <div class="shophead"><span>🛠️ Admin</span><button id="adminclose" class="shopx" aria-label="Close">✕</button></div>
@@ -641,7 +659,7 @@ function learnFromGame(winner){ try{
 
 let STATS={wins:0,losses:0,streak:0,best:0,games:0,wp:0,equipped:'wood'};
 function loadStats(){ try{const s=localStorage.getItem('dama-stats'); if(s){const o=JSON.parse(s); if(o)STATS=Object.assign(STATS,o);}}catch(e){} }
-function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STATS)); }catch(e){} }
+function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STATS)); }catch(e){} if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
 
 // ---- progression: win points, skins, perks ----
 const THEMEVARS=['--bg','--panel','--frameA','--frameB','--frameLine','--sqLight','--sqDark','--wood','--gold','--sel','--accent','--ink','--muted','--lp1','--lp2','--lp3','--dp1','--dp2','--dp3'];
@@ -1396,6 +1414,59 @@ function onlineNewGameShared(){ initAudio();
   if(onlineActive){ if(onlineSide===1){ newGame(); sendSync(); } else { sendMsg({type:'reqnew'}); } }
   else newGame(); }
 
+// ================= accounts (cloud progress via Supabase) =================
+const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
+let sb=null, sbUser=null, cloudTimer=null;
+function loadSupabase(cb){ if(window.supabase&&window.supabase.createClient){cb(true);return;}
+  var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onload=function(){ cb(!!(window.supabase&&window.supabase.createClient)); }; s.onerror=function(){ cb(false); }; document.head.appendChild(s); }
+function sbInit(cb){ if(sb){cb(true);return;} loadSupabase(function(ok){ if(!ok){cb(false);return;}
+  try{ sb=window.supabase.createClient(SB_URL,SB_ANON); cb(true); }catch(e){ cb(false); } }); }
+function acctStatus(t){ var e=$('acctstatus'); if(e)e.textContent=t||''; }
+function acctRefresh(){ var inl=!!sbUser;
+  if($('acctin'))$('acctin').style.display=inl?'block':'none';
+  if($('acctout'))$('acctout').style.display=inl?'none':'block';
+  if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+((sbUser&&sbUser.email)||'you'); }
+function openAccount(){ if($('account'))$('account').classList.add('show'); acctRefresh();
+  if(!sbUser){ sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); } }
+function closeAccount(){ if($('account'))$('account').classList.remove('show'); }
+function acctAuth(kind){ var email=(($('acctemail')&&$('acctemail').value)||'').trim(), pass=($('acctpass')&&$('acctpass').value)||'';
+  if(!email||pass.length<6){ acctStatus('Enter an email and a password of at least 6 characters.'); return; }
+  acctStatus(kind==='signup'?'Creating your account…':'Signing in…');
+  sbInit(function(ok){ if(!ok){ acctStatus('Couldn’t reach the account service — check your connection.'); return; }
+    var p=kind==='signup'?sb.auth.signUp({email:email,password:pass}):sb.auth.signInWithPassword({email:email,password:pass});
+    p.then(function(r){ if(r.error){ acctStatus(r.error.message||'That didn’t work — check your details.'); return; }
+      var u=r.data&&r.data.user, session=r.data&&r.data.session;
+      if(kind==='signup'&&!session){ acctStatus('Account created — check your email to confirm, then log in.'); return; }
+      sbUser=u; onSignedIn(false);
+    }, function(){ acctStatus('Network error — please try again.'); }); }); }
+function onSignedIn(silent){ acctRefresh(); if(!silent)acctStatus('');
+  try{ localStorage.setItem('dama-acct','1'); }catch(e){}
+  if($('acctsync'))$('acctsync').textContent='Syncing your progress…';
+  cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced'); }); }
+function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
+function progressBlob(){ return { STATS:STATS, LEARN:LEARN }; }
+function mergeCloud(cloud){ if(!cloud)return; var cs=cloud.STATS||{};
+  ['wp','wins','losses','best','games','streak'].forEach(function(k){ STATS[k]=Math.max(STATS[k]||0, cs[k]||0); });
+  STATS.achv=STATS.achv||{}; if(cs.achv)for(var a in cs.achv){ STATS.achv[a]=1; }
+  if(cs.equipped && !ownsSkin(skinById(STATS.equipped))) STATS.equipped=cs.equipped;
+  var cl=cloud.LEARN; if(cl&&cl.book&&(cl.games||0)>(LEARN.games||0)){ LEARN=cl; LEARN.book=LEARN.book||{}; } }
+function cloudPull(done){ if(!sb||!sbUser){ done&&done(); return; }
+  sb.from('progress').select('data').eq('user_id',sbUser.id).maybeSingle().then(function(r){
+    mergeCloud(r&&r.data&&r.data.data);
+    saveStats(); saveLearn();
+    if(!ownsSkin(equippedSkin()))STATS.equipped='wood'; applySkin(STATS.equipped||'wood');
+    updateStats(); updateHintVisibility(); if($('shop')&&$('shop').classList.contains('show'))renderShop();
+    cloudPush(true); done&&done();
+  }, function(){ done&&done(); }); }
+function cloudPush(now){ if(!sb||!sbUser)return; if(cloudTimer){clearTimeout(cloudTimer);cloudTimer=null;}
+  var doit=function(){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).then(function(){},function(){}); }catch(e){} };
+  if(now)doit(); else cloudTimer=setTimeout(doit,1500); }
+function cloudPushDebounced(){ if(sbUser)cloudPush(false); }
+function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag||!navigator.onLine)return;
+  sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); }
+
 // ================= wire up =================
 $('newgame').addEventListener('click',onlineNewGameShared);
 $('playAgain').addEventListener('click',onlineNewGameShared);
@@ -1440,6 +1511,14 @@ $('online').addEventListener('click',function(e){ if(e.target===$('online'))clos
 $('olhost').addEventListener('click',hostGame);
 $('oljoinbtn').addEventListener('click',joinGame);
 $('olleave').addEventListener('click',leaveOnline);
+$('accountbtn').addEventListener('click',openAccount);
+$('accountclose').addEventListener('click',closeAccount);
+$('account').addEventListener('click',function(e){ if(e.target===$('account'))closeAccount(); });
+$('acctsignin').addEventListener('click',function(){ acctAuth('signin'); });
+$('acctsignup').addEventListener('click',function(){ acctAuth('signup'); });
+$('acctsignout').addEventListener('click',acctSignout);
+$('acctsyncbtn').addEventListener('click',function(){ if($('acctsync'))$('acctsync').textContent='Syncing…'; cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; showToast('Progress synced'); }); });
+$('acctpass').addEventListener('keydown',function(e){ if(e.key==='Enter')acctAuth('signin'); });
 $('skins').addEventListener('click',openShop);
 $('shopclose').addEventListener('click',closeShop);
 $('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
@@ -1463,6 +1542,7 @@ applyLang();
 newGame();
 updateHintVisibility();
 updateCoachUI();
+acctRestoreOnLoad();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
