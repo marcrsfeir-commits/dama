@@ -1153,7 +1153,7 @@ function adminResetUnlocks(){ STATS.wp=0; STATS.equipped='wood'; afterWPChange('
 
 // ================= in-game coach (admin-gated learning aid) =================
 let coachMode=false;
-function coordLabel(r,c){ var d=disp(r,c); return String.fromCharCode(97+d.c)+(8-d.r); }
+function coordLabel(r,c){ return String.fromCharCode(97+c)+(8-r); }  // board-anchored: matches the a–h / 1–8 labels drawn around the board
 function oppThreatSet(bd,player){ var opp=player===1?2:1, s=new Set(), lg;
   try{ lg=computeLegal(bd,opp); }catch(e){ return s; }
   if(lg&&lg.mustCapture){ for(var k in lg.moves){ lg.moves[k].forEach(function(m){ if(m.captured)m.captured.forEach(function(cp){ s.add(cp.r+','+cp.c); }); }); } }
@@ -1202,24 +1202,42 @@ function coachStrategy(bd,player){ var opp=player===1?2:1, my=countPieces(bd,pla
   return { note:note, mat:'You: '+my+' ('+myK+'♔) · Opponent: '+op+' ('+opK+'♔) · eval '+(ev>=0?'+':'')+ev.toFixed(1) }; }
 function setCoachIdle(text){ var b=$('coachbody'); if(b)b.innerHTML='<div class="cp-idle">'+text+'</div>'; }
 function coachThinking(){ if(coachMode&&mode!=='cvc') setCoachIdle('Reading the position…'); }
+function coachVerdictFor(scored,mv){ if(scored.length<=1)return 'This is your only legal move — forced.';
+  var mvVal=null; for(var i=0;i<scored.length;i++){ if(sameMove(scored[i].m,mv)){ mvVal=scored[i].v; break; } }
+  var others=scored.filter(function(s){return !sameMove(s.m,mv);});
+  var bestOther=others.length?others[0].v:-Infinity;
+  var ref=(mvVal===null)?scored[0].v:mvVal, gap=ref-bestOther, blunders=0;
+  for(var j=0;j<scored.length;j++){ if(ref-scored[j].v>=300)blunders++; }
+  var msg; if(gap>=200)msg='Clearly the strongest move — the alternatives give up material.';
+  else if(gap>=70)msg='The best choice, with a real edge over the other moves.';
+  else msg='One of several good moves — a solid, safe pick.';
+  if(blunders)msg+=' ('+blunders+' of your other move'+(blunders>1?'s':'')+' would lose material — avoid those.)';
+  return msg; }
+let coachSeq=0;
 function runCoach(){ if(!coachMode)return;
   if(!canAssist()){ setCoachIdle(winner?'Game over — start a new game for fresh coaching.':(mode==='ai'&&turn!==humanSide?'Opponent is thinking…':'…')); return; }
-  var bd=board, pl=turn;
-  var scored=coachRank(bd,pl,340,14);
-  if(!scored.length){ setCoachIdle('No moves available.'); return; }
-  var bestMv=scored[0].m;
-  hint=bestMv; dangerSet=oppThreatSet(bd,pl); render();
-  var reasons=coachReasons(bd,pl,bestMv), verdict=coachVerdict(scored), strat=coachStrategy(bd,pl);
-  var mover=bd[bestMv.from[0]][bestMv.from[1]], kind=(mover&&mover.king)?'king 👑':'man';
-  var f=coordLabel(bestMv.from[0],bestMv.from[1]), tt=coordLabel(bestMv.to[0],bestMv.to[1]);
-  var capTxt=(bestMv.captured&&bestMv.captured.length)?(' · captures '+bestMv.captured.length):'';
-  var html='<div class="cp-move">▶ Move your '+kind+' <b>'+f+'</b> → <b>'+tt+'</b>'+capTxt+'</div>';
-  html+='<div class="cp-verdict">'+verdict+'</div>';
-  html+='<ul class="cp-reasons">'+reasons.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
-  var thr=dangerSet&&dangerSet.size;
-  html+='<div class="cp-threat '+(thr?'on':'')+'">'+(thr?('⚠️ Right now '+dangerSet.size+' of your piece'+(dangerSet.size>1?'s are':' is')+' in the opponent’s capture range (glowing red on the board).'):'✅ None of your pieces can be captured right now.')+'</div>';
-  html+='<div class="cp-strat">'+strat.note+'</div><div class="cp-mat">'+strat.mat+'</div>';
-  if($('coachbody'))$('coachbody').innerHTML=html; }
+  var bd=board, pl=turn, g=gameId, seq=++coachSeq;
+  setCoachIdle('Analysing the position…');
+  // Recommended move comes from the FULL-STRENGTH engine (very-hard, in a background worker),
+  // so the coach is always at least as strong as the toughest opponent — never weaker than the AI you face.
+  aiThink(bd,pl,function(bestMv){
+    if(g!==gameId || seq!==coachSeq || !coachMode) return;                 // position moved on — drop stale advice
+    if(!bestMv){ setCoachIdle('No moves available.'); return; }
+    var scored; try{ scored=coachRank(bd,pl,240,10); }catch(e){ scored=[{m:bestMv,v:0}]; }  // shallow, only to gauge alternatives
+    var verdict=coachVerdictFor(scored,bestMv);
+    hint=bestMv; dangerSet=oppThreatSet(bd,pl); render();
+    var reasons=coachReasons(bd,pl,bestMv), strat=coachStrategy(bd,pl);
+    var mover=bd[bestMv.from[0]][bestMv.from[1]], kind=(mover&&mover.king)?'king 👑':'man';
+    var f=coordLabel(bestMv.from[0],bestMv.from[1]), tt=coordLabel(bestMv.to[0],bestMv.to[1]);
+    var capTxt=(bestMv.captured&&bestMv.captured.length)?(' · captures '+bestMv.captured.length):'';
+    var html='<div class="cp-move">▶ Move your '+kind+' <b>'+f+'</b> → <b>'+tt+'</b>'+capTxt+'</div>';
+    html+='<div class="cp-verdict">'+verdict+'</div>';
+    html+='<ul class="cp-reasons">'+reasons.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
+    var thr=dangerSet&&dangerSet.size;
+    html+='<div class="cp-threat '+(thr?'on':'')+'">'+(thr?('⚠️ Right now '+dangerSet.size+' of your piece'+(dangerSet.size>1?'s are':' is')+' in the opponent’s capture range (glowing red on the board).'):'✅ None of your pieces can be captured right now.')+'</div>';
+    html+='<div class="cp-strat">'+strat.note+'</div><div class="cp-mat">'+strat.mat+'</div>';
+    if($('coachbody'))$('coachbody').innerHTML=html;
+  },'vhard'); }
 function coachAuto(){ if(!coachMode||mode==='cvc')return;
   // let the DOM paint the "thinking" state, then analyse (analysis is synchronous)
   setTimeout(function(){ try{ runCoach(); }catch(e){ setCoachIdle('—'); } },30); }
