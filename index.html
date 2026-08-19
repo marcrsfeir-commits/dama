@@ -171,6 +171,7 @@
   .capdot{fill:rgba(224,122,58,.95);} .capdot.hint{fill:rgba(143,174,107,.95);}
   .sq.willeat::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
   .sq.willeathint::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(143,174,107,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
+  .sq.danger::after{content:"";position:absolute;inset:11%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.9);animation:hintpulse 1.1s ease-in-out infinite;pointer-events:none;z-index:2;}
 </style>
 </head>
 <body>
@@ -560,7 +561,8 @@ function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STAT
 
 // ---- progression: win points, skins, perks ----
 const THEMEVARS=['--bg','--panel','--frameA','--frameB','--frameLine','--sqLight','--sqDark','--wood','--gold','--sel','--accent','--ink','--muted','--lp1','--lp2','--lp3','--dp1','--dp2','--dp3'];
-const HINT_COST=10;
+const HINT_COST=10; const HINT_TIERS=[10,40,80,150];
+function hintLevel(){ var wp=STATS.wp||0, lv=0; for(var i=0;i<HINT_TIERS.length;i++){ if(wp>=HINT_TIERS[i])lv=i+1; } return lv; }
 const SKINS=[
  {id:'wood',name:'Classic Wood',emoji:'🌰',cost:0,rarity:'common',swatch:['#e6d2a8','#c69f6a','#d9a441'],vars:{}},
  {id:'midnight',name:'Midnight',emoji:'🌙',cost:4,rarity:'common',swatch:['#c3cfe0','#6f86a8','#6db0ff'],
@@ -604,7 +606,7 @@ function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
 function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
 function ownsSkin(s){ return (STATS.wp||0)>=s.cost; }
-function hintUnlocked(){ return (STATS.wp||0)>=HINT_COST; }
+function hintUnlocked(){ return hintLevel()>=1; }
 function applySkin(id){ const s=skinById(id); const root=document.documentElement;
   THEMEVARS.forEach(function(v){root.style.removeProperty(v);});
   if(s.vars) for(const k in s.vars) root.style.setProperty(k,s.vars[k]);
@@ -631,8 +633,11 @@ function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
   el.textContent='🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
 function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+wp+' WP';
   let html='';
-  const au=wp>=HINT_COST;
-  html+='<div class="scard '+(au?'owned':'locked')+'"><div class="sname">💡 Assist (Hint)</div><div class="sdesc">A button that suggests the best move for you.</div><div class="sfoot">'+(au?'<span class="stag ok">Unlocked</span>':'<span class="stag">🔒 '+HINT_COST+' WP</span>')+'</div></div>';
+  var _lv=hintLevel(); var _ln=['Locked','Best move','Deep Assist','Coach+','Auto-Pilot'];
+  var _ld=['Unlocks at '+HINT_TIERS[0]+' WP — suggests the best move.','Shows the best move and its exact route.','Adds ⚠ danger warnings + deeper search.','Adds a live position evaluation & threat count.','Best move shown automatically every turn.'];
+  var _next=_lv<HINT_TIERS.length?HINT_TIERS[_lv]:null;
+  var _foot=(_next!==null)?('<span class="stag">Next: Lv '+(_lv+1)+' @ '+_next+' WP</span>'):'<span class="stag ok">Max level</span>';
+  html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
   SKINS.forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
     let foot; if(!owned) foot='<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
@@ -744,7 +749,7 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
-let noProg=0, posCounts={}, gQuad=false;
+let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
 function dIndex(r,c){const p=disp(r,c);return p.r*8+p.c;}
@@ -773,10 +778,10 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;savePrefs();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;savePrefs();
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
-  maybeAI();}
+  maybeAI();autoAssist();}
 function updateSideBtn(){const t=T[lang];const isL=sideChoice===1;
   $('side').innerHTML='<span class="sdot '+(isL?'l':'d')+'"></span>'+(isL?t.light:t.dark);}
 function bouncePieces(){const ps=boardEl.querySelectorAll('.piece');
@@ -844,6 +849,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
     if(selKey===key)sq.classList.add('sel');
     if(hint){ if(hint.from[0]===mr&&hint.from[1]===mc)sq.classList.add('hintfrom'); if(hint.to[0]===mr&&hint.to[1]===mc)sq.classList.add('hintto'); }
     if(eatSet.has(key))sq.classList.add('willeat'); else if(eatHint.has(key))sq.classList.add('willeathint');
+    if(dangerSet&&dangerSet.has(key))sq.classList.add('danger');
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -894,7 +900,7 @@ function apply(mv){
   const mover=turn;
   history.push({board:prev,turn,lastMove});
   recordMove(prev,mover,mv);                                   // remember move for learning
-  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;
+  board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
@@ -907,17 +913,27 @@ function apply(mv){
   const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
   if(moverHuman && coachOn) setTimeout(function(){ coachOnMove(prev,mover,mv); },260); // rate move AFTER it registers (non-blocking)
   animateMove(mv,prev,promoted,()=>{animating=false;
-    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();}});
+    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();autoAssist();}});
 }
 function finishGame(w){ winner=w; learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
+function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
+  try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
+    if(lg&&lg.mustCapture){ var s=new Set();
+      for(var k in lg.moves){ lg.moves[k].forEach(function(m){ if(m.captured)m.captured.forEach(function(cp){ s.add(cp.r+','+cp.c); }); }); }
+      dangerSet=s; } }catch(e){} }
+function assistReadout(){ var lv=hintLevel(); if(lv<2)return; var el=$('coach'); if(!el)return; var msg='💡 best move shown';
+  if(lv>=3){ try{ var ev=evalPlayer(board,turn)/100; msg='💡 eval '+(ev>=0?'+':'')+ev.toFixed(1); }catch(e){} }
+  if(dangerSet&&dangerSet.size){ msg+=' · ⚠ '+dangerSet.size+' at risk'; }
+  el.className='coach'; el.textContent=msg; }
 function showHint(){ if(!hintUnlocked()||!canAssist())return; initAudio();
-  const fab=$('hintfab'); if(fab)fab.classList.add('busy');
-  const strong=equippedPerk('strongHint');
-  setTimeout(function(){ let mv=null; try{ mv=search(board,turn,strong?1500:900,strong?24:20); }catch(e){}
-    if(mv){ hint=mv; render(); }
-    if(fab)fab.classList.remove('busy'); },20);
+  var fab=$('hintfab'); if(fab)fab.classList.add('busy');
+  var g=gameId, b=board, t=turn;
+  aiThink(b,t,function(mv){ if(g!==gameId){ if(fab)fab.classList.remove('busy'); return; }
+    if(mv){ hint=mv; computeDanger(); render(); assistReadout(); }
+    if(fab)fab.classList.remove('busy'); },'vhard');
 }
+function autoAssist(){ if(hintLevel()<4)return; if(!canAssist())return; if(hint)return; showHint(); }
 function updateFSLabel(){ const on=document.body.classList.contains('boardfs'); const f=$('fs'); if(f)f.textContent=on?T[lang].fsExit:T[lang].fs; }
 function toggleBoardFS(){
   const willOn=!document.body.classList.contains('boardfs');
@@ -965,11 +981,11 @@ function initAIWorker(){ try{ const el=$('wsrc'); if(!el||typeof Worker==='undef
   aiWorker.onmessage=function(e){ const cb=aiCbs[e.data.id]; if(cb){delete aiCbs[e.data.id]; cb(e.data.mv);} };
   aiWorker.onerror=function(){ aiWorker=null; };
 }catch(e){ aiWorker=null; } }
-function aiThink(bd,player,cb){
+function aiThink(bd,player,cb,diffOverride){ var dd=diffOverride||diff;
   if(aiWorker){ const id=++aiSeq; aiCbs[id]=cb;
-    try{ aiWorker.postMessage({id:id,board:bd,player:player,diff:diff}); }
-    catch(e){ delete aiCbs[id]; setTimeout(function(){cb(aiMove(bd,player));},0); } }
-  else setTimeout(function(){cb(aiMove(bd,player));},0);
+    try{ aiWorker.postMessage({id:id,board:bd,player:player,diff:dd}); }
+    catch(e){ delete aiCbs[id]; setTimeout(function(){ var o=diff;diff=dd;var mv=aiMove(bd,player);diff=o;cb(mv); },0); } }
+  else setTimeout(function(){ var o=diff;diff=dd;var mv=aiMove(bd,player);diff=o;cb(mv); },0);
 }
 function maybeAI(){ if(winner)return;
   const aiTurn=(mode==='ai'&&turn!==humanSide)||mode==='cvc';
