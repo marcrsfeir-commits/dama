@@ -695,7 +695,9 @@ function mPerc(when,type){ if(!audioCtx||!musicGain)return; const g=audioCtx.cre
     g.gain.setValueAtTime(0.08,when); g.gain.exponentialRampToValueAtTime(0.0001,when+0.06);
     n.connect(f).connect(g); n.start(when); } }
 function startMusic(){
-  if(bgm&&bgmReady){ try{ bgm.volume=musicVol; var pp=bgm.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} return; } // play user's music.mp3 if present
+  if(bgm){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}   // a file track is in charge — never run the synth loop alongside it
+    if(bgmReady){ try{ bgm.volume=musicVol; var pp=bgm.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} }
+    return; }
   if(!audioCtx||musicTimer)return;
   if(!musicGain){musicGain=audioCtx.createGain();musicGain.gain.value=musicVol;musicGain.connect(audioCtx.destination);}
   const stepDur=0.5; let nextTime=audioCtx.currentTime+0.15;
