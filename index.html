@@ -251,8 +251,9 @@
 <div id="toast" class="toast" role="status"></div>
 <div id="admin" class="shop"><div class="shopcard">
   <div class="shophead"><span>🛠️ Admin</span><button id="adminclose" class="shopx" aria-label="Close">✕</button></div>
-  <div class="setrow"><label for="adminwp">Win Points to add</label><input type="number" id="adminwp" value="100" min="1"></div>
-  <div class="setbtns"><button class="btn" id="admingrant">➕ Grant WP</button><button class="btn" id="adminmax">+1000 WP</button><button class="btn" id="adminall">Unlock all skins</button></div>
+  <div class="setrow"><label for="adminwp">Win Points</label><input type="number" id="adminwp" value="0" min="0"></div>
+  <div class="setbtns"><button class="btn" id="adminadd">➕ Add</button><button class="btn" id="adminsub">➖ Remove</button><button class="btn" id="adminset">Set exact</button></div>
+  <div class="setbtns"><button class="btn" id="adminall">Unlock all skins</button><button class="btn" id="adminzero">Reset unlocks (0 WP)</button></div>
   <div class="shopnote">Hidden menu — reveal by tapping the دامة logo 5×. Everything is stored locally on this device.</div>
 </div></div>
 
@@ -1100,11 +1101,20 @@ function wordmarkTap(){ wmTaps++; if(wmTimer)clearTimeout(wmTimer); wmTimer=setT
   if(wmTaps>=5){ wmTaps=0; var p=window.prompt('Admin password:'); if(p===null)return; if(p===ADMIN_PASS){ openAdmin(); } else { showToast('Wrong password'); } } }
 function openAdmin(){ if($('admin'))$('admin').classList.add('show'); }
 function closeAdmin(){ if($('admin'))$('admin').classList.remove('show'); }
-function grantWP(n){ n=parseInt(n,10); if(!n||n<=0){ showToast('Enter a positive number'); return; }
-  if(!STATS.achv)STATS.achv={}; STATS.wp=(STATS.wp||0)+n; pendingUnlock=[]; checkAchv({}); pendingUnlock=[];
-  saveStats(); updateStats(); updateHintVisibility(); showToast('➕ '+n+' WP — total '+STATS.wp); }
-function adminUnlockAll(){ if(!STATS.achv)STATS.achv={}; STATS.wp=Math.max(STATS.wp||0,MAXSKIN); pendingUnlock=[]; checkAchv({}); pendingUnlock=[];
-  saveStats(); updateStats(); updateHintVisibility(); showToast('All skins unlocked'); }
+function afterWPChange(msg){ if(!STATS.achv)STATS.achv={};
+  if(!ownsSkin(equippedSkin())) STATS.equipped='wood';   // un-equip a now-locked skin
+  applySkin(STATS.equipped||'wood');
+  pendingUnlock=[]; checkAchv({}); pendingUnlock=[];
+  saveStats(); updateStats(); updateHintVisibility();
+  if($('shop')&&$('shop').classList.contains('show')) renderShop();
+  showToast(msg); }
+function adminWP(mode){ var n=parseInt($('adminwp').value,10); if(isNaN(n)||n<0)n=0;
+  if(mode==='add') STATS.wp=(STATS.wp||0)+n;
+  else if(mode==='sub') STATS.wp=Math.max(0,(STATS.wp||0)-n);
+  else STATS.wp=n;
+  afterWPChange('WP: '+STATS.wp); }
+function adminUnlockAll(){ STATS.wp=Math.max(STATS.wp||0,MAXSKIN); afterWPChange('All skins unlocked'); }
+function adminResetUnlocks(){ STATS.wp=0; STATS.equipped='wood'; afterWPChange('Unlocks reset — WP 0'); }
 
 // ================= wire up =================
 $('newgame').addEventListener('click',()=>{initAudio();newGame();});
@@ -1133,9 +1143,11 @@ window.addEventListener('drop',function(e){ e.preventDefault(); if(e.dataTransfe
 $('wordmark').addEventListener('click',wordmarkTap);
 $('adminclose').addEventListener('click',closeAdmin);
 $('admin').addEventListener('click',function(e){ if(e.target===$('admin'))closeAdmin(); });
-$('admingrant').addEventListener('click',function(){ grantWP($('adminwp').value); });
-$('adminmax').addEventListener('click',function(){ grantWP(1000); });
+$('adminadd').addEventListener('click',function(){ adminWP('add'); });
+$('adminsub').addEventListener('click',function(){ adminWP('sub'); });
+$('adminset').addEventListener('click',function(){ adminWP('set'); });
 $('adminall').addEventListener('click',adminUnlockAll);
+$('adminzero').addEventListener('click',adminResetUnlocks);
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
