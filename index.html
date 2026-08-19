@@ -286,6 +286,7 @@
     <button class="btn" id="fs"></button>
     <button class="btn" id="skins"></button>
     <button class="btn" id="onlinebtn" title="Play a friend online">🌐 Online</button>
+    <button class="btn" id="questbtn" title="Quests">🎯 Quests</button>
     <button class="btn" id="accountbtn" title="Save your progress to an account">👤 Account</button>
     <button class="btn" id="settings" aria-label="Settings">⚙️</button>
   </div>
@@ -350,6 +351,11 @@
   <input type="file" id="musicfile" accept="audio/*" style="display:none">
   <div class="achv-title">🏅 Achievements</div>
   <div id="achvgrid" class="shopgrid"></div>
+</div></div>
+<div id="questmodal" class="shop"><div class="shopcard">
+  <div class="shophead"><span>🎯 Quests</span><button id="questclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="questlist" class="friendlist"></div>
+  <div class="shopnote">Complete quests to earn bonus Win Points. They're one-time career goals — new ones may arrive in updates.</div>
 </div></div>
 <div id="statsmodal" class="shop"><div class="shopcard">
   <div class="shophead"><span>📊 Your stats</span><button id="statsclose" class="shopx" aria-label="Close">✕</button></div>
@@ -1624,7 +1630,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v54';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v55';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1668,6 +1674,10 @@ const QUESTS=[
 ];
 function checkQuests(ctx){ if(!STATS.quests)STATS.quests={};
   QUESTS.forEach(function(q){ if(STATS.quests[q.id])return; try{ if(q.check(ctx||{},STATS)){ STATS.quests[q.id]=1; STATS.wp=(STATS.wp||0)+q.wp; pendingUnlock.push('🎯 '+q.name+' (+'+q.wp+' WP)'); } }catch(e){} }); }
+function renderQuestList(){ var q=$('questlist'); if(!q)return; q.innerHTML=QUESTS.map(function(qq){ var done=STATS.quests&&STATS.quests[qq.id];
+  return '<div class="frow"><span class="fname" style="opacity:'+(done?1:.7)+'">'+(done?'✅ ':'⬜ ')+qq.name+'</span><span class="fwp">+'+qq.wp+' WP</span></div>'; }).join(''); }
+function openQuests(){ renderQuestList(); $('questmodal').classList.add('show'); }
+function closeQuests(){ $('questmodal').classList.remove('show'); }
 function openAccount(){ if($('account'))$('account').classList.add('show'); acctRefresh();
   if(!sbUser){ sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); } }
 function closeAccount(){ if($('account'))$('account').classList.remove('show'); }
@@ -1853,6 +1863,9 @@ $('animspeed').addEventListener('input',function(){ animSpeed=(+this.value)/100;
 $('blitz').addEventListener('change',function(){ blitzSecs=+this.value||0; savePrefs(); initBlitz(); });
 $('soundpack').addEventListener('change',function(){ soundPack=this.value; savePrefs(); initAudio(); sMove(); });
 $('statsopen').addEventListener('click',openStats);
+$('questbtn').addEventListener('click',openQuests);
+$('questclose').addEventListener('click',closeQuests);
+$('questmodal').addEventListener('click',function(e){ if(e.target===$('questmodal'))closeQuests(); });
 $('statsclose').addEventListener('click',closeStats);
 $('statsmodal').addEventListener('click',function(e){ if(e.target===$('statsmodal'))closeStats(); });
 $('resumebtn').addEventListener('click',function(){ initAudio(); doResume(); });
