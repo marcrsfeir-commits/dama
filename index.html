@@ -284,6 +284,7 @@
 
   <button class="rulesbtn" id="rulesbtn"></button>
   <div class="rules hidden" id="rules"></div>
+  <div id="verfoot" style="text-align:center;font-size:10px;color:var(--muted);opacity:.55;margin-top:14px;letter-spacing:.5px">v—</div>
 </div>
 
 <button id="hintfab" class="hintfab off" title="Suggest a move — it advises, it doesn't move for you">
@@ -356,6 +357,7 @@
     <div class="setbtns"><button class="btn" id="acctsyncbtn">Sync now</button><button class="btn" id="acctsignout">Log out</button></div>
   </div>
   <div class="shopnote">Your progress is stored privately — only you can read or change your own data. Passwords are handled by Supabase; the game never sees them.</div>
+  <div class="shopnote" id="verline" style="text-align:center;opacity:.75;font-weight:600">Version —</div>
 </div></div>
 <div id="friends" class="shop"><div class="shopcard">
   <div class="shophead"><span>👥 Friends</span><button id="friendsclose" class="shopx" aria-label="Close">✕</button></div>
@@ -1441,6 +1443,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
+const APP_VERSION='v50';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1714,6 +1717,8 @@ newGame();
 updateHintVisibility();
 updateCoachUI();
 acctRestoreOnLoad();
+if($('verline'))$('verline').textContent='App version '+APP_VERSION;
+if($('verfoot'))$('verfoot').textContent='Dama '+APP_VERSION;
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
