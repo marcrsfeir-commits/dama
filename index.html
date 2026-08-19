@@ -119,6 +119,15 @@
   .hintfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;}
   .hintfab.busy{opacity:.55;}
   .hintfab.off{display:none;}
+  .powerfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:56px;height:56px;border-radius:16px;border:1px solid var(--gold);background:linear-gradient(160deg,var(--panel),rgba(255,216,90,.14));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
+  .powerfab.show{display:flex;}
+  .powerfab:active{transform:translateY(1px);}
+  .powerfab .hicon{font-size:23px;line-height:1;color:var(--gold);}
+  .powerfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;}
+  .powerbadge{position:fixed;right:14px;bottom:152px;z-index:19;display:none;background:var(--panel);border:1px solid var(--gold);color:var(--gold);
+    border-radius:12px;padding:7px 11px;font-size:11px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.35);}
+  .powerbadge.show{display:block;}
   .playrow{display:flex;flex-direction:column;align-items:center;gap:12px;}
   .coachside{display:none;box-sizing:border-box;width:min(94vw,var(--sz,520px));background:var(--panel);border:1px solid var(--gold);border-radius:14px;
     padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);align-self:center;}
@@ -260,6 +269,10 @@
 <button id="hintfab" class="hintfab off" title="Suggest a move — it advises, it doesn't move for you">
   <span class="hicon">💡</span><span class="hlbl" id="hintlbl">Hint</span>
 </button>
+<button id="powerfab" class="powerfab" title="Coronation — crown your men as kings for 2 turns (once per game)">
+  <span class="hicon">♛</span><span class="hlbl">Crown</span>
+</button>
+<div id="powerbadge" class="powerbadge"></div>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="shop" class="shop"><div class="shopcard">
   <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
@@ -633,7 +646,9 @@ const SKINS=[
  {id:'aurora',name:'Aurora',emoji:'🌠',cost:110,rarity:'legendary',perk:{bonusWP:3,strongHint:true},swatch:['#c8f0e0','#5ab0a0','#a06aff'],
    vars:{'--bg':'#0a1016','--panel':'#111a26','--frameA':'#3a6a8a','--frameB':'#2a4a6a','--frameLine':'#0c1620','--sqLight':'#c8f0e0','--sqDark':'#5ab0a0','--gold':'#8affd0','--sel':'#a06aff','--accent':'#7ce0c0','--ink':'#eafaf4','--muted':'#9ab8b0','--lp1':'#eafff8','--lp2':'#b8f0dc','--lp3':'#7cc8b4','--dp1':'#2a4a6a','--dp2':'#182c44','--dp3':'#0c1620'}},
  {id:'galaxy',name:'Galaxy',emoji:'🪐',cost:200,rarity:'legendary',perk:{bonusWP:4,strongHint:true},swatch:['#d0d4ff','#6a68b0','#c060ff'],
-   vars:{'--bg':'#06060f','--panel':'#0e0e1c','--frameA':'#33306a','--frameB':'#1c1a44','--frameLine':'#08081a','--sqLight':'#d0d4ff','--sqDark':'#6a68b0','--gold':'#c060ff','--sel':'#ff6ad0','--accent':'#8a8aff','--ink':'#ecebff','--muted':'#9a98c8','--lp1':'#f0f0ff','--lp2':'#c8c8f0','--lp3':'#9090d0','--dp1':'#2a2860','--dp2':'#161436','--dp3':'#0a0820'}}
+   vars:{'--bg':'#06060f','--panel':'#0e0e1c','--frameA':'#33306a','--frameB':'#1c1a44','--frameLine':'#08081a','--sqLight':'#d0d4ff','--sqDark':'#6a68b0','--gold':'#c060ff','--sel':'#ff6ad0','--accent':'#8a8aff','--ink':'#ecebff','--muted':'#9a98c8','--lp1':'#f0f0ff','--lp2':'#c8c8f0','--lp3':'#9090d0','--dp1':'#2a2860','--dp2':'#161436','--dp3':'#0a0820'}},
+ {id:'coronation',name:'Coronation',emoji:'♛',cost:150,rarity:'legendary',perk:{bonusWP:2,powerup:'tempkings'},swatch:['#efe0ff','#a06ad0','#ffd85a'],
+   vars:{'--bg':'#0f0a18','--panel':'#170f26','--frameA':'#5a3a8a','--frameB':'#331e5a','--frameLine':'#180f2a','--sqLight':'#efe0ff','--sqDark':'#a06ad0','--gold':'#ffd85a','--sel':'#ff6ad0','--accent':'#c89aff','--ink':'#f2e9ff','--muted':'#a898c8','--lp1':'#faf2ff','--lp2':'#e0c8f5','--lp3':'#b890dc','--dp1':'#4a2e78','--dp2':'#2a1850','--dp3':'#150a28'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.map(function(s){return s.cost;}));
 let pendingUnlock=[];
@@ -676,7 +691,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   SKINS.forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
     let foot; if(!owned) foot='<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
-    let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint'); perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
+    let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint'); if(s.perk.powerup==='tempkings')bits.push('👑 Coronation power — crown your men as kings for 2 turns (once/game)'); perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
   grid.innerHTML=html;
@@ -813,7 +828,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;savePrefs();hideCoachPanel();updateCoachUI();
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
   maybeAI();autoAssist();coachAuto();}
@@ -896,6 +911,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
     boardEl.appendChild(sq);
   }
   drawPaths(capMoves,hintCap,normMoves);
+  updatePowerUI();
 }
 function drawPaths(capMoves,hintMv,normMoves){ const svg=$('pathsvg'); if(!svg)return;
   while(svg.firstChild)svg.removeChild(svg.firstChild);
@@ -936,6 +952,7 @@ function apply(mv){
   history.push({board:prev,turn,lastMove});
   recordMove(prev,mover,mv);                                   // remember move for learning
   board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;coachThinking();
+  powerTrack(mover,mv);                                          // update / expire the Coronation crowns before scoring the position
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;legal=computeLegal(board,turn);
@@ -952,6 +969,31 @@ function apply(mv){
 }
 function finishGame(w){ winner=w; learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if(mode==='ai'&&turn!==humanSide)return false; return true; }
+
+// ---- Coronation power-up (from the Coronation skin): crown your men as kings for 2 of your turns ----
+let powerUp=null, powerUsed=false;
+function hasPower(){ return equippedPerk('powerup')==='tempkings'; }
+function canUsePower(){ return hasPower() && !powerUsed && !powerUp && canAssist(); }
+function updatePowerUI(){ var b=$('powerfab'); if(b)b.classList.toggle('show', canUsePower());
+  var badge=$('powerbadge'); if(badge){ if(powerUp&&powerUp.remaining>0){ badge.classList.add('show'); badge.textContent='👑 kings: '+powerUp.remaining+' turn'+(powerUp.remaining>1?'s':'')+' left'; } else badge.classList.remove('show'); } }
+function activatePower(){ if(!canUsePower())return; initAudio();
+  var owner=turn, cells=new Set();
+  for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===owner&&!p.king){ p.king=true; cells.add(r+','+c); } }
+  if(!cells.size){ showToast('No ordinary men to crown right now.'); return; }
+  powerUp={owner:owner,remaining:2,cells:cells}; powerUsed=true;
+  legal=computeLegal(board,turn); selected=null; hint=null;
+  try{ sPromote(); }catch(e){}
+  render(); showToast('👑 Coronation! Your men fight as kings for 2 turns.'); if(coachMode)coachAuto(); }
+function powerTrack(mover,mv){ if(!powerUp)return;
+  if(mv.captured)mv.captured.forEach(function(cp){ powerUp.cells.delete(cp.r+','+cp.c); });
+  if(mover===powerUp.owner){ var fk=mv.from[0]+','+mv.from[1];
+    if(powerUp.cells.has(fk)){ powerUp.cells.delete(fk);
+      var promoRow=powerUp.owner===1?0:7; if(mv.to[0]!==promoRow) powerUp.cells.add(mv.to[0]+','+mv.to[1]); }  // a temp king that reaches the far row keeps its crown for good
+    powerUp.remaining--; if(powerUp.remaining<=0) powerRevert(); } }
+function powerRevert(){ if(!powerUp)return; var owner=powerUp.owner, promoRow=owner===1?0:7;
+  powerUp.cells.forEach(function(k){ var a=k.split(','),r=+a[0],c=+a[1],p=board[r][c];
+    if(p&&p.player===owner&&r!==promoRow) p.king=false; });   // crowns fade back to men (kings earned on the back row stay)
+  powerUp=null; }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -1045,7 +1087,7 @@ function showWin(){const t=T[lang];
 function undo(){ if(thinking||animating||!history.length)return;
   let prev=history.pop();
   if(mode==='ai'&&prev.turn!==humanSide&&history.length)prev=history.pop();
-  board=prev.board;turn=prev.turn;lastMove=prev.lastMove;selected=null;winner=null;
+  board=prev.board;turn=prev.turn;lastMove=prev.lastMove;selected=null;winner=null;powerUp=null;
   overlay.classList.remove('show');refresh();}
 
 // ================= settings / achievements / backup / prefs =================
@@ -1285,10 +1327,11 @@ $('coachrefresh').addEventListener('click',function(){ if(coachMode)coachAuto();
 $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
+$('powerfab').addEventListener('click',activatePower);
 $('skins').addEventListener('click',openShop);
 $('shopclose').addEventListener('click',closeShop);
 $('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
-$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ STATS.equipped=b.getAttribute('data-id'); saveStats(); applySkin(STATS.equipped); renderShop(); } });
+$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ STATS.equipped=b.getAttribute('data-id'); saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); } });
 function onFSChange(){ if(!document.fullscreenElement) document.body.classList.remove('boardfs'); updateFSLabel(); render(); }
 document.addEventListener('fullscreenchange',onFSChange);
 document.addEventListener('webkitfullscreenchange',onFSChange);
