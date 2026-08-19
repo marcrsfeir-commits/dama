@@ -328,7 +328,7 @@
     <div class="olnote">Use <b>New game</b> to start or rematch — it syncs to both of you. Moves happen live.</div>
     <button class="btn" id="olleave">Leave online game</button>
   </div>
-  <div class="shopnote">Peer-to-peer over the internet — no accounts. If a strict phone network blocks the direct link, try again on Wi-Fi.</div>
+  <div class="shopnote">Works over the internet on any network — no accounts. Both players just need to be online at the same time.</div>
 </div></div>
 <div id="admin" class="shop"><div class="shopcard">
   <div class="shophead"><span>🛠️ Admin</span><button id="adminclose" class="shopx" aria-label="Close">✕</button></div>
@@ -1328,63 +1328,71 @@ function updateCoachUI(){ document.body.classList.toggle('coachon', coachMode&&m
 function setCoachMode(on){ coachMode=on; savePrefs(); updateCoachUI(); if(on)coachAuto(); }
 function hideCoachPanel(){ /* side panel is persistent; refreshed by coachAuto each turn */ }
 
-// ================= online play (peer-to-peer via PeerJS + room code) =================
-let onlineActive=false, onlineSide=1, peer=null, conn=null, applyingRemote=false, myCode='';
-const PEER_PREFIX='damalb-';                                     // namespace on the public broker to avoid id clashes
-function loadPeer(cb){ if(window.Peer){cb(true);return;}
-  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js';
-  s.onload=function(){ cb(!!window.Peer); }; s.onerror=function(){ cb(false); }; document.head.appendChild(s); }
+// ================= online play (moves relayed through a public MQTT broker + room code) =================
+// Both devices make an OUTBOUND secure-WebSocket connection to a shared broker and exchange tiny move
+// messages on a topic keyed by the room code. Outbound connections always cross NAT / cellular, so this
+// works from anywhere with no relay credentials and no accounts.
+let onlineActive=false, onlineSide=1, applyingRemote=false, myCode='';
+let mqc=null, roomTopic='', myId='', oppSeen=false, joinTimer=null;
+const MQTT_URL='wss://broker.emqx.io:8084/mqtt';
+const TOPIC_PREFIX='damalb/';
+function loadMqtt(cb){ if(window.mqtt){cb(true);return;}
+  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js';
+  s.onload=function(){ cb(!!window.mqtt); }; s.onerror=function(){ cb(false); }; document.head.appendChild(s); }
 function genCode(){ var A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s=''; for(var i=0;i<5;i++)s+=A[Math.floor(Math.random()*A.length)]; return s; }
+function rid(){ var s=''; for(var i=0;i<10;i++)s+=Math.floor(Math.random()*36).toString(36); return s; }
 function olStatus(t){ var e=$('olstatus'); if(e)e.textContent=t||''; }
 function openOnline(){ if($('online'))$('online').classList.add('show'); olRefresh(); }
 function closeOnline(){ if($('online'))$('online').classList.remove('show'); }
-function olRefresh(){ var c=onlineActive&&conn;
+function olRefresh(){ var c=onlineActive;
   if($('olsetup'))$('olsetup').style.display=c?'none':'block';
   if($('olconnected'))$('olconnected').style.display=c?'block':'none';
   if(c&&$('olwho'))$('olwho').textContent='You are playing '+(onlineSide===1?'Light':'Dark')+' (your pieces at the bottom).'; }
-function sendMsg(m){ try{ if(conn&&conn.open)conn.send(m); }catch(e){} }
 function disableLocalSelectors(on){ ['mode','side','diff'].forEach(function(id){ var e=$(id); if(e)e.disabled=on; }); }
-// ICE servers: several public STUN, plus any TURN relays configured below.
-// TURN is what lets two phones on different / cellular networks connect. Paste free TURN creds into TURN_SERVERS.
-const STUN_SERVERS=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'},{urls:'stun:stun3.l.google.com:19302'},{urls:'stun:stun4.l.google.com:19302'}];
-const TURN_SERVERS=[];                                            // e.g. {urls:'turn:host:port',username:'..',credential:'..'}
-function iceServers(){ return STUN_SERVERS.concat(TURN_SERVERS); }
-function peerCfg(){ return { config:{ iceServers:iceServers() }, debug:1 }; }
 let wakeLock=null;
 function keepAwake(on){ try{ if(on){ if('wakeLock' in navigator && !wakeLock){ navigator.wakeLock.request('screen').then(function(w){ wakeLock=w; wakeLock.addEventListener('release',function(){wakeLock=null;}); }).catch(function(){}); } }
   else if(wakeLock){ try{wakeLock.release();}catch(e){} wakeLock=null; } }catch(e){} }
-function attachPeerRecovery(){ if(!peer)return;
-  peer.on('disconnected',function(){ try{ if(peer&&!peer.destroyed) peer.reconnect(); }catch(e){} }); }
-function cleanupPeer(){ try{ if(conn)conn.close(); }catch(e){} try{ if(peer)peer.destroy(); }catch(e){} conn=null; peer=null; keepAwake(false); }
-function hostGame(){ olStatus('Starting…'); loadPeer(function(ok){ if(!ok){ olStatus('Couldn’t load online — check your connection.'); return; }
-  cleanupPeer(); myCode=genCode(); peer=new Peer(PEER_PREFIX+myCode, peerCfg()); attachPeerRecovery(); keepAwake(true);
-  peer.on('open',function(){ if($('olcode'))$('olcode').textContent=myCode; if($('olcodewrap'))$('olcodewrap').style.display='block';
-    olStatus('Share this code — and keep this screen open until your opponent joins.'); });
-  peer.on('connection',function(c){ conn=c; bindConn(c,1); });
-  peer.on('error',function(err){ var t=String(err&&err.type||err); if(t.indexOf('unavailable-id')>-1){ hostGame(); } else olStatus('Connection error ('+t+') — tap Create game to retry.'); });
+function sendMsg(m){ try{ if(mqc&&mqc.connected&&roomTopic){ m.sid=myId; mqc.publish(roomTopic, JSON.stringify(m)); } }catch(e){} }
+function serializeBoard(){ return board.map(function(row){ return row.map(function(c){ return c?{p:c.player,k:c.king?1:0}:0; }); }); }
+function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(function(c){ return c?{player:c.p,king:!!c.k}:null; }); });
+  turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
+  legal=computeLegal(board,turn); overlay.classList.remove('show'); render(); if(coachMode)coachAuto(); }
+function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn}); }
+function cleanupMqtt(){ if(joinTimer){clearInterval(joinTimer);joinTimer=null;} try{ if(mqc)mqc.end(true); }catch(e){} mqc=null; roomTopic=''; keepAwake(false); }
+function connectBroker(onReady){ loadMqtt(function(ok){ if(!ok){ olStatus('Couldn’t load online — check your connection.'); return; }
+  myId=rid(); mqc=window.mqtt.connect(MQTT_URL,{connectTimeout:9000, clean:true, reconnectPeriod:2500, keepalive:30});
+  mqc.on('connect',function(){ mqc.subscribe(roomTopic,{qos:0},function(){ if(onReady){onReady();onReady=null;} }); });
+  mqc.on('message',function(t,payload){ if(t!==roomTopic)return; var m; try{ m=JSON.parse(payload.toString()); }catch(e){ return; } if(!m||m.sid===myId)return; onNet(m); });
+  mqc.on('error',function(){ olStatus('Connection trouble — retrying…'); });
 }); }
+function hostGame(){ myCode=genCode(); olStatus('Starting…'); cleanupMqtt(); roomTopic=TOPIC_PREFIX+myCode; oppSeen=false;
+  connectBroker(function(){ if($('olcode'))$('olcode').textContent=myCode; if($('olcodewrap'))$('olcodewrap').style.display='block';
+    keepAwake(true); olStatus('Share this code. Waiting for your opponent to join…'); }); }
 function joinGame(){ var code=(($('oljoin')&&$('oljoin').value)||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(code.length<5){ olStatus('Enter the 5-character code.'); return; }
-  olStatus('Connecting…'); loadPeer(function(ok){ if(!ok){ olStatus('Couldn’t load online — check your connection.'); return; }
-    cleanupPeer(); peer=new Peer(undefined, peerCfg()); attachPeerRecovery();
-    peer.on('open',function(){ var c=peer.connect(PEER_PREFIX+code,{reliable:true}); conn=c; bindConn(c,2);
-      setTimeout(function(){ if(!(conn&&conn.open)) olStatus('Still trying… make sure your friend created the game and is on that screen. If you’re on mobile data, try Wi-Fi.'); },10000); });
-    peer.on('error',function(err){ var t=String(err&&err.type||err);
-      if(t.indexOf('peer-unavailable')>-1||t.indexOf('unavailable')>-1) olStatus('No open game with that code — check the code, and that your friend created a game and is still on that screen.');
-      else olStatus('Couldn’t connect ('+t+') — try again.'); });
+  myCode=code; olStatus('Connecting…'); cleanupMqtt(); roomTopic=TOPIC_PREFIX+code; oppSeen=false;
+  connectBroker(function(){ keepAwake(true); var tries=0;
+    var announce=function(){ tries++; sendMsg({type:'join'}); if(!onlineActive)olStatus('Looking for the game… ('+tries+')');
+      if(tries>=12&&!onlineActive){ clearInterval(joinTimer); joinTimer=null; olStatus('No one is hosting that code yet — check the code and that your friend tapped Create game.'); } };
+    announce(); joinTimer=setInterval(function(){ if(onlineActive){ clearInterval(joinTimer); joinTimer=null; return; } announce(); },2000);
   }); }
-function bindConn(c,mySide){
-  c.on('open',function(){ onlineActive=true; onlineSide=mySide; disableLocalSelectors(true); keepAwake(true);
-    if(mySide===1){ newGame(); sendMsg({type:'newgame'}); }        // host resets the board and syncs it to the guest
-    olStatus('Connected!'); olRefresh(); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); });
-  c.on('data',onData); c.on('close',onClose); c.on('error',function(){}); }
-function onData(m){ if(!m||typeof m!=='object')return;
-  if(m.type==='newgame'){ applyingRemote=true; try{ newGame(); }catch(e){} applyingRemote=false; }
-  else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv); }catch(e){} applyingRemote=false; } }
-function onClose(){ if(!onlineActive)return; onlineActive=false; conn=null; disableLocalSelectors(false); keepAwake(false); showToast('Opponent disconnected'); olRefresh(); }
-function leaveOnline(){ cleanupPeer(); onlineActive=false; disableLocalSelectors(false); showToast('Left the online game'); newGame(); closeOnline(); }
-document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && peer && !peer.destroyed && peer.disconnected){ try{ peer.reconnect(); }catch(e){} } });
-function onlineNewGameShared(){ initAudio(); newGame(); if(onlineActive&&conn) sendMsg({type:'newgame'}); }
+function onNet(m){
+  if(m.type==='join'){                                            // host: a guest is knocking → welcome them with the board
+    if(!onlineActive){ onlineActive=true; onlineSide=1; disableLocalSelectors(true); keepAwake(true); newGame(); }
+    sendSync(); markConnected();
+  } else if(m.type==='sync'){                                     // guest: host sent the current board
+    if(!onlineActive){ onlineActive=true; onlineSide=2; disableLocalSelectors(true); keepAwake(true); }
+    if(joinTimer){clearInterval(joinTimer);joinTimer=null;}
+    loadOnlineState(m.bd,m.t); markConnected();
+  } else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv); }catch(e){} applyingRemote=false; }
+  else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
+  else if(m.type==='bye'){ showToast('Opponent left the game'); }
+}
+function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
+function leaveOnline(){ sendMsg({type:'bye'}); cleanupMqtt(); onlineActive=false; oppSeen=false; disableLocalSelectors(false); showToast('Left the online game'); newGame(); closeOnline(); }
+function onlineNewGameShared(){ initAudio();
+  if(onlineActive){ if(onlineSide===1){ newGame(); sendSync(); } else { sendMsg({type:'reqnew'}); } }
+  else newGame(); }
 
 // ================= wire up =================
 $('newgame').addEventListener('click',onlineNewGameShared);
