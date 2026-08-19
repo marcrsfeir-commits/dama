@@ -138,6 +138,14 @@
     padding:11px 12px;font-size:18px;letter-spacing:3px;text-align:center;text-transform:uppercase;margin-bottom:9px;}
   .olstatus{font-size:12.5px;color:var(--accent);min-height:18px;margin-top:6px;}
   .olconnok{font-size:16px;font-weight:700;color:#8fae6b;margin-bottom:8px;}
+  .friendlist{display:flex;flex-direction:column;gap:8px;margin:8px 0;max-height:52vh;overflow:auto;}
+  .frow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:10px;padding:9px 11px;flex-wrap:wrap;}
+  .fdot{width:9px;height:9px;border-radius:50%;background:#5a5a5a;flex:0 0 auto;}
+  .fdot.on{background:#4fd06b;box-shadow:0 0 6px #4fd06b;}
+  .fname{font-weight:600;font-size:14px;color:var(--ink);flex:1;min-width:70px;}
+  .fmeta{font-size:11.5px;color:var(--muted);width:100%;}
+  .frow .btn{padding:6px 10px;font-size:12px;}
+  .frow input{width:64px;background:var(--bg);border:1px solid var(--frameLine);color:var(--ink);border-radius:8px;padding:5px 6px;font-size:13px;text-align:center;}
   .playrow{display:flex;flex-direction:column;align-items:center;gap:12px;}
   .coachside{display:none;box-sizing:border-box;width:min(94vw,var(--sz,520px));background:var(--panel);border:1px solid var(--gold);border-radius:14px;
     padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);align-self:center;}
@@ -344,9 +352,27 @@
     <div class="olconnok">✅ Signed in</div>
     <div id="acctwho" class="olnote"></div>
     <div id="acctsync" class="olnote"></div>
+    <div class="setbtns"><button class="btn" id="acctfriends">👥 Friends</button><button class="btn" id="acctowner" style="display:none">🛠️ Owner tools</button></div>
     <div class="setbtns"><button class="btn" id="acctsyncbtn">Sync now</button><button class="btn" id="acctsignout">Log out</button></div>
   </div>
   <div class="shopnote">Your progress is stored privately — only you can read or change your own data. Passwords are handled by Supabase; the game never sees them.</div>
+</div></div>
+<div id="friends" class="shop"><div class="shopcard">
+  <div class="shophead"><span>👥 Friends</span><button id="friendsclose" class="shopx" aria-label="Close">✕</button></div>
+  <div class="setbtns" style="margin-bottom:4px"><input id="friendadd" class="olinput" type="text" maxlength="20" placeholder="add friend by username" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px;margin:0;flex:1"><button class="btn" id="friendaddbtn">Add</button></div>
+  <div id="friendstatus" class="olstatus"></div>
+  <div id="friendlist" class="friendlist"></div>
+  <div class="shopnote">Add a friend by their username, then tap ⚔️ to challenge them to a live game — no code needed. A green dot means they're online right now.</div>
+</div></div>
+<div id="owner" class="shop"><div class="shopcard">
+  <div class="shophead"><span>🛠️ Owner tools — all players</span><button id="ownerclose" class="shopx" aria-label="Close">✕</button></div>
+  <div class="setbtns" style="margin-bottom:6px"><button class="btn" id="ownerrefresh">↻ Refresh</button><span id="ownercount" class="olnote" style="margin:0;align-self:center"></span></div>
+  <div id="ownerlist" class="friendlist"></div>
+  <div class="shopnote">Changes save to that player's account and take effect next time they open the game. Set a WP total, unlock everything, or reset a player.</div>
+</div></div>
+<div id="challenge" class="shop"><div class="shopcard" style="max-width:360px;text-align:center">
+  <div id="challengetext" style="font-size:16px;margin:6px 0 14px"></div>
+  <div class="setbtns" style="justify-content:center"><button class="btn primary" id="challengeaccept">Accept ⚔️</button><button class="btn" id="challengedecline">Decline</button></div>
 </div></div>
 <div id="admin" class="shop"><div class="shopcard">
   <div class="shophead"><span>🛠️ Admin</span><button id="adminclose" class="shopx" aria-label="Close">✕</button></div>
@@ -1417,7 +1443,9 @@ function onlineNewGameShared(){ initAudio();
 // ================= accounts (cloud progress via Supabase) =================
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
-let sb=null, sbUser=null, cloudTimer=null, sbCreate=null;
+const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
+let sb=null, sbUser=null, cloudTimer=null, sbCreate=null, applyingCloud=false, myName='';
+function isAdmin(){ return !!(sbUser && sbUser.id===ADMIN_UID); }
 function loadSupabase(cb){ if(sbCreate){cb(true);return;}
   try{ import('https://esm.sh/@supabase/supabase-js@2').then(function(m){ if(m&&m.createClient){ sbCreate=m.createClient; cb(true); } else cb(false); }, function(){ cb(false); }); }
   catch(e){ cb(false); } }
@@ -1430,7 +1458,8 @@ function emailToUser(e){ return (e||'').replace(ACCT_DOMAIN,''); }
 function acctRefresh(){ var inl=!!sbUser;
   if($('acctin'))$('acctin').style.display=inl?'block':'none';
   if($('acctout'))$('acctout').style.display=inl?'none':'block';
-  if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+emailToUser((sbUser&&sbUser.email)||'you'); }
+  if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+emailToUser((sbUser&&sbUser.email)||'you');
+  if($('acctowner'))$('acctowner').style.display=isAdmin()?'inline-block':'none'; }
 function openAccount(){ if($('account'))$('account').classList.add('show'); acctRefresh();
   if(!sbUser){ sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); } }
 function closeAccount(){ if($('account'))$('account').classList.remove('show'); }
@@ -1452,31 +1481,122 @@ function acctAuth(kind){ var uname=(($('acctuser')&&$('acctuser').value)||'').tr
         sb.auth.signInWithPassword({email:email,password:pass}).then(function(r2){ if(r2.error){ acctStatus('Account made — tap Log in.'); return; } sbUser=r2.data.user; onSignedIn(false); }); return; }
       sbUser=u; onSignedIn(false);
     }, function(){ acctStatus('Network error — please try again.'); }); }); }
-function onSignedIn(silent){ acctRefresh(); if(!silent)acctStatus('');
+function onSignedIn(silent){ myName=emailToUser((sbUser&&sbUser.email)||''); acctRefresh(); if(!silent)acctStatus('');
   try{ localStorage.setItem('dama-acct','1'); }catch(e){}
+  try{ sb.from('profiles').upsert({user_id:sbUser.id, username:myName, updated_at:new Date().toISOString()}).then(function(){},function(){}); }catch(e){}   // register username in the public directory
   if($('acctsync'))$('acctsync').textContent='Syncing your progress…';
-  cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced'); }); }
-function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
-function progressBlob(){ return { STATS:STATS, LEARN:LEARN }; }
+  cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced'); });
+  inboxConnect(); }
+function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; myName=''; inboxDisconnect(); try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
+
+// ---- sync: first login on a device merges best-of; afterwards last-write-wins by timestamp (so owner edits & other devices win) ----
+function progressBlob(){ return { STATS:STATS, LEARN:LEARN, name:myName }; }
+function ctsKey(){ return 'dama-cts-'+((sbUser&&sbUser.id)||'x'); }
+function getCts(){ try{ return localStorage.getItem(ctsKey())||''; }catch(e){ return ''; } }
+function setCts(ts){ try{ if(ts)localStorage.setItem(ctsKey(),ts); }catch(e){} }
+function persistLocal(){ applyingCloud=true; try{ saveStats(); saveLearn(); }finally{ applyingCloud=false; }
+  if(!ownsSkin(equippedSkin()))STATS.equipped='wood'; applySkin(STATS.equipped||'wood');
+  updateStats(); updateHintVisibility(); updatePowerUI(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); }
 function mergeCloud(cloud){ if(!cloud)return; var cs=cloud.STATS||{};
   ['wp','wins','losses','best','games','streak'].forEach(function(k){ STATS[k]=Math.max(STATS[k]||0, cs[k]||0); });
-  STATS.achv=STATS.achv||{}; if(cs.achv)for(var a in cs.achv){ STATS.achv[a]=1; }
-  if(cs.equipped && !ownsSkin(skinById(STATS.equipped))) STATS.equipped=cs.equipped;
+  STATS.achv=STATS.achv||{}; if(cs.achv)for(var a in cs.achv)STATS.achv[a]=1;
+  if(cs.friends&&(!STATS.friends||!STATS.friends.length))STATS.friends=cs.friends;
+  if(cs.equipped && !ownsSkin(skinById(STATS.equipped)))STATS.equipped=cs.equipped;
   var cl=cloud.LEARN; if(cl&&cl.book&&(cl.games||0)>(LEARN.games||0)){ LEARN=cl; LEARN.book=LEARN.book||{}; } }
+function adoptCloud(cloud){ if(cloud){ if(cloud.STATS)STATS=Object.assign({wins:0,losses:0,streak:0,best:0,games:0,wp:0,equipped:'wood',achv:{},friends:[]}, cloud.STATS); if(cloud.LEARN&&cloud.LEARN.book)LEARN=cloud.LEARN; } persistLocal(); }
 function cloudPull(done){ if(!sb||!sbUser){ done&&done(); return; }
-  sb.from('progress').select('data').eq('user_id',sbUser.id).maybeSingle().then(function(r){
-    mergeCloud(r&&r.data&&r.data.data);
-    saveStats(); saveLearn();
-    if(!ownsSkin(equippedSkin()))STATS.equipped='wood'; applySkin(STATS.equipped||'wood');
-    updateStats(); updateHintVisibility(); if($('shop')&&$('shop').classList.contains('show'))renderShop();
-    cloudPush(true); done&&done();
+  sb.from('progress').select('data,updated_at').eq('user_id',sbUser.id).maybeSingle().then(function(r){
+    var row=r&&r.data;
+    if(!row){ cloudPush(true,done); return; }
+    var marker=getCts();
+    if(!marker){ mergeCloud(row.data); persistLocal(); cloudPush(true,done); return; }   // first sync here: keep best of both
+    if((row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); done&&done(); return; }  // cloud changed elsewhere / by owner
+    cloudPush(true,done);
   }, function(){ done&&done(); }); }
-function cloudPush(now){ if(!sb||!sbUser)return; if(cloudTimer){clearTimeout(cloudTimer);cloudTimer=null;}
-  var doit=function(){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).then(function(){},function(){}); }catch(e){} };
+function cloudPush(now,done){ if(!sb||!sbUser){ done&&done(); return; }
+  if(cloudTimer){clearTimeout(cloudTimer);cloudTimer=null;}
+  var doit=function(){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).select('updated_at').then(function(r){ var ts=r&&r.data&&r.data[0]&&r.data[0].updated_at; if(ts)setCts(ts); done&&done(); }, function(){ done&&done(); }); }catch(e){ done&&done(); } };
   if(now)doit(); else cloudTimer=setTimeout(doit,1500); }
-function cloudPushDebounced(){ if(sbUser)cloudPush(false); }
+function cloudPushDebounced(){ if(sbUser&&!applyingCloud)cloudPush(false); }
 function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag||!navigator.onLine)return;
   sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); }
+
+// ---- friends + presence + live challenges (relayed over MQTT) ----
+let inboxMqc=null, presenceOn={}, pendingChallenge=null, ownerRows=[];
+function myFriends(){ if(!STATS.friends)STATS.friends=[]; return STATS.friends; }
+function inboxTopic(uid){ return 'damalb/u/'+uid; }
+function inboxConnect(){ if(!sbUser||inboxMqc)return;
+  loadMqtt(function(ok){ if(!ok||!sbUser)return;
+    inboxMqc=window.mqtt.connect(MQTT_URL,{clean:true,reconnectPeriod:3000,keepalive:30});
+    inboxMqc.on('connect',function(){ if(sbUser)inboxMqc.subscribe(inboxTopic(sbUser.id),{qos:0}); });
+    inboxMqc.on('message',function(t,payload){ var m; try{m=JSON.parse(payload.toString());}catch(e){return;} onInbox(m); }); }); }
+function inboxDisconnect(){ try{ if(inboxMqc)inboxMqc.end(true); }catch(e){} inboxMqc=null; presenceOn={}; }
+function inboxSend(uid,m){ try{ if(inboxMqc&&inboxMqc.connected&&sbUser){ m.from=sbUser.id; m.fromName=myName; inboxMqc.publish(inboxTopic(uid),JSON.stringify(m)); } }catch(e){} }
+function onInbox(m){ if(!m||!m.from||m.from===(sbUser&&sbUser.id))return;
+  if(m.type==='ping'){ inboxSend(m.from,{type:'pong'}); }
+  else if(m.type==='pong'){ presenceOn[m.from]=true; renderFriends(); }
+  else if(m.type==='challenge'){ pendingChallenge={from:m.from,name:m.fromName||'A friend',room:m.room}; showChallenge(); }
+  else if(m.type==='chaldecline'){ showToast((m.fromName||'They')+' declined the challenge'); try{leaveOnline();}catch(e){} }
+}
+function openFriends(){ if(!sbUser){ openAccount(); acctStatus('Sign in first to use friends.'); return; }
+  $('friends').classList.add('show'); if($('friendstatus'))$('friendstatus').textContent=''; renderFriends();
+  inboxConnect(); setTimeout(pingFriends,600); }
+function closeFriends(){ $('friends').classList.remove('show'); }
+function pingFriends(){ presenceOn={}; myFriends().forEach(function(f){ inboxSend(f.uid,{type:'ping'}); }); setTimeout(renderFriends,2600); }
+function renderFriends(){ var el=$('friendlist'); if(!el)return; var fr=myFriends();
+  if(!fr.length){ el.innerHTML='<div class="olnote">No friends yet — add one by username above.</div>'; return; }
+  el.innerHTML=fr.map(function(f){ var on=!!presenceOn[f.uid];
+    return '<div class="frow"><span class="fdot '+(on?'on':'')+'"></span><span class="fname">'+f.name+'</span>'+
+      '<button class="btn'+(on?' primary':'')+'" data-battle="'+f.uid+'" data-name="'+f.name+'">⚔️ Battle</button>'+
+      '<button class="btn" data-unfriend="'+f.uid+'">✕</button>'+
+      '<span class="fmeta">'+(on?'online now':'offline — they’ll get the challenge when they open the game')+'</span></div>'; }).join(''); }
+function addFriend(){ var name=(($('friendadd')&&$('friendadd').value)||'').toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  if(name.length<3){ $('friendstatus').textContent='Enter a username.'; return; }
+  if(name===myName){ $('friendstatus').textContent='That’s you!'; return; }
+  if(!sb)return; $('friendstatus').textContent='Looking up '+name+'…';
+  sb.from('profiles').select('user_id,username').eq('username',name).maybeSingle().then(function(r){
+    if(!r.data){ $('friendstatus').textContent='No player called “'+name+'”.'; return; }
+    var fr=myFriends(); if(fr.some(function(x){return x.uid===r.data.user_id;})){ $('friendstatus').textContent='Already your friend.'; return; }
+    fr.push({uid:r.data.user_id,name:r.data.username}); saveStats(); $('friendadd').value=''; $('friendstatus').textContent='Added '+name+' ✓'; renderFriends();
+    inboxSend(r.data.user_id,{type:'ping'}); setTimeout(renderFriends,2600);
+  }, function(){ $('friendstatus').textContent='Lookup failed — try again.'; }); }
+function unfriend(uid){ STATS.friends=myFriends().filter(function(x){return x.uid!==uid;}); saveStats(); renderFriends(); }
+function battleFriend(uid,name){ inboxConnect(); var room=genCode();
+  inboxSend(uid,{type:'challenge',room:room});
+  cleanupMqtt(); roomTopic=TOPIC_PREFIX+room; oppSeen=false;
+  connectBroker(function(){ keepAwake(true); });                       // host the room; guest joins on accept
+  closeFriends(); closeAccount(); showToast('⚔️ Challenge sent to '+name+' — waiting for them to accept…'); }
+function showChallenge(){ if(!pendingChallenge)return; $('challengetext').innerHTML='⚔️ <b>'+pendingChallenge.name+'</b> challenges you to a game!'; $('challenge').classList.add('show'); }
+function acceptChallenge(){ if(!pendingChallenge)return; var c=pendingChallenge; pendingChallenge=null; $('challenge').classList.remove('show'); closeFriends(); closeAccount();
+  cleanupMqtt(); roomTopic=TOPIC_PREFIX+c.room; oppSeen=false;
+  connectBroker(function(){ keepAwake(true); var tries=0;
+    var announce=function(){ tries++; sendMsg({type:'join'}); if(tries>=10&&!onlineActive){ clearInterval(joinTimer); joinTimer=null; } };
+    announce(); joinTimer=setInterval(function(){ if(onlineActive){ clearInterval(joinTimer); joinTimer=null; return; } announce(); },1500); });
+  showToast('Joining '+c.name+'’s game…'); }
+function declineChallenge(){ if(pendingChallenge)inboxSend(pendingChallenge.from,{type:'chaldecline'}); pendingChallenge=null; $('challenge').classList.remove('show'); }
+
+// ---- owner tools (visible only to the owner account) ----
+function openOwner(){ if(!isAdmin())return; $('owner').classList.add('show'); ownerLoad(); }
+function closeOwner(){ $('owner').classList.remove('show'); }
+function ownerLoad(){ if(!sb||!isAdmin())return; $('ownerlist').innerHTML='<div class="olnote">Loading players…</div>';
+  Promise.all([ sb.from('profiles').select('user_id,username'), sb.from('progress').select('user_id,data') ]).then(function(res){
+    var profs=(res[0]&&res[0].data)||[], progs=(res[1]&&res[1].data)||[], byId={};
+    profs.forEach(function(p){ byId[p.user_id]={uid:p.user_id,name:p.username,data:null}; });
+    progs.forEach(function(p){ if(!byId[p.user_id])byId[p.user_id]={uid:p.user_id,name:(p.data&&p.data.name)||'(unnamed)'}; byId[p.user_id].data=p.data; if(!byId[p.user_id].name)byId[p.user_id].name=(p.data&&p.data.name)||'(unnamed)'; });
+    ownerRows=Object.keys(byId).map(function(k){return byId[k];}).sort(function(a,b){return ((b.data&&b.data.STATS&&b.data.STATS.wp)||0)-((a.data&&a.data.STATS&&a.data.STATS.wp)||0);});
+    if($('ownercount'))$('ownercount').textContent=ownerRows.length+' players';
+    renderOwner();
+  }, function(){ $('ownerlist').innerHTML='<div class="olnote">Couldn’t load (owner access only).</div>'; }); }
+function renderOwner(){ var el=$('ownerlist'); if(!el)return;
+  el.innerHTML=ownerRows.map(function(u,i){ var s=(u.data&&u.data.STATS)||{};
+    return '<div class="frow"><span class="fname">'+(u.name||'?')+(u.uid===ADMIN_UID?' 👑':'')+'</span>'+
+      '<span class="fmeta">'+(s.wp||0)+' WP · '+(s.wins||0)+' wins · best streak '+(s.best||0)+'</span>'+
+      '<input type="number" min="0" value="'+(s.wp||0)+'" data-wp="'+i+'">'+
+      '<button class="btn" data-setwp="'+i+'">Set WP</button>'+
+      '<button class="btn" data-unlock="'+i+'">Unlock all</button>'+
+      '<button class="btn" data-reset="'+i+'">Reset</button></div>'; }).join(''); }
+function ownerWrite(u,mutate,label){ if(!u)return; var data=u.data||{STATS:{}}; data.STATS=data.STATS||{}; mutate(data.STATS); data.STATS.equipped=data.STATS.equipped||'wood'; u.data=data;
+  sb.from('progress').upsert({user_id:u.uid,data:data,updated_at:new Date().toISOString()}).then(function(r){ if(r&&r.error){ showToast('Save failed'); return; } showToast(label+' — '+(u.name||'')); renderOwner(); }, function(){ showToast('Save failed'); }); }
 
 // ================= wire up =================
 $('newgame').addEventListener('click',onlineNewGameShared);
@@ -1530,6 +1650,23 @@ $('acctsignup').addEventListener('click',function(){ acctAuth('signup'); });
 $('acctsignout').addEventListener('click',acctSignout);
 $('acctsyncbtn').addEventListener('click',function(){ if($('acctsync'))$('acctsync').textContent='Syncing…'; cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; showToast('Progress synced'); }); });
 $('acctpass').addEventListener('keydown',function(e){ if(e.key==='Enter')acctAuth('signin'); });
+$('acctfriends').addEventListener('click',openFriends);
+$('acctowner').addEventListener('click',openOwner);
+$('friendsclose').addEventListener('click',closeFriends);
+$('friends').addEventListener('click',function(e){ if(e.target===$('friends'))closeFriends(); });
+$('friendaddbtn').addEventListener('click',addFriend);
+$('friendadd').addEventListener('keydown',function(e){ if(e.key==='Enter')addFriend(); });
+$('friendlist').addEventListener('click',function(e){ var b=e.target.closest('[data-battle]'); if(b){ battleFriend(b.getAttribute('data-battle'), b.getAttribute('data-name')); return; }
+  var u=e.target.closest('[data-unfriend]'); if(u){ unfriend(u.getAttribute('data-unfriend')); } });
+$('ownerclose').addEventListener('click',closeOwner);
+$('owner').addEventListener('click',function(e){ if(e.target===$('owner'))closeOwner(); });
+$('ownerrefresh').addEventListener('click',ownerLoad);
+$('ownerlist').addEventListener('click',function(e){ var t=e.target;
+  var sw=t.closest('[data-setwp]'); if(sw){ var i=+sw.getAttribute('data-setwp'); var inp=$('ownerlist').querySelector('[data-wp="'+i+'"]'); var n=Math.max(0,parseInt(inp&&inp.value,10)||0); ownerWrite(ownerRows[i],function(s){s.wp=n;},'Set WP '+n); return; }
+  var ul=t.closest('[data-unlock]'); if(ul){ var j=+ul.getAttribute('data-unlock'); ownerWrite(ownerRows[j],function(s){s.wp=Math.max(s.wp||0,MAXSKIN);},'Unlocked all'); return; }
+  var rs=t.closest('[data-reset]'); if(rs){ var k=+rs.getAttribute('data-reset'); ownerWrite(ownerRows[k],function(s){s.wp=0;s.equipped='wood';},'Reset'); } });
+$('challengeaccept').addEventListener('click',acceptChallenge);
+$('challengedecline').addEventListener('click',declineChallenge);
 $('skins').addEventListener('click',openShop);
 $('shopclose').addEventListener('click',closeShop);
 $('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
