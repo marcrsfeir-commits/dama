@@ -173,6 +173,10 @@
   .fmeta{font-size:11.5px;color:var(--muted);width:100%;}
   .frow .btn{padding:6px 10px;font-size:12px;}
   .frow input{width:64px;background:var(--bg);border:1px solid var(--frameLine);color:var(--ink);border-radius:8px;padding:5px 6px;font-size:13px;text-align:center;}
+  .frow.meRow{border-color:var(--gold);background:rgba(217,164,65,.08);}
+  .frank{font-weight:800;color:var(--muted);font-size:13px;min-width:26px;}
+  .fava{font-size:20px;}
+  .fwp{font-weight:700;color:var(--gold);font-size:13px;}
   .playrow{display:flex;flex-direction:column;align-items:center;gap:12px;}
   .coachside{display:none;box-sizing:border-box;width:min(94vw,var(--sz,520px));background:var(--panel);border:1px solid var(--gold);border-radius:14px;
     padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);align-self:center;}
@@ -350,6 +354,8 @@
 <div id="statsmodal" class="shop"><div class="shopcard">
   <div class="shophead"><span>📊 Your stats</span><button id="statsclose" class="shopx" aria-label="Close">✕</button></div>
   <div id="statsgrid" class="statsgrid"></div>
+  <div class="achv-title" style="margin-top:14px">🎯 Quests</div>
+  <div id="statsquests" class="friendlist"></div>
 </div></div>
 <div id="resumebar" class="resumebar" style="display:none"><span>⏸️ You have a game in progress.</span><button class="btn primary" id="resumebtn">Resume</button><button class="btn" id="resumedismiss">Dismiss</button></div>
 <div id="toast" class="toast" role="status"></div>
@@ -830,11 +836,12 @@ function recordResult(w){ pendingUnlock=[];
   if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
   SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
   const flawless = mode==='ai' && countPieces(board,humanSide)===16;
-  checkAchv({win:true, mode:mode, diff:diff, quad:gQuad, flawless:flawless});
+  var qctx={win:true, mode:mode, diff:diff, quad:gQuad, flawless:flawless};
+  checkAchv(qctx); checkQuests(qctx);
   saveStats(); updateStats(); updateHintVisibility();
 }
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
-  el.textContent='🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
+  el.textContent=rankName(STATS.wp||0)+'  ·  🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
 function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+wp+' WP';
   let html='';
   var _lv=hintLevel(); var _ln=['Locked','Best move','Deep Assist','Coach+','Auto-Pilot'];
@@ -1377,7 +1384,9 @@ function renderStats(){ var g=$('statsgrid'); if(!g)return;
   var tiles=[['🏆 '+(STATS.wp||0),'Win Points'],[rankName(STATS.wp||0),'Rank'],[wins,'Wins'],[losses,'Losses'],[wr+'%','Win rate'],
     [(STATS.streak||0),'Streak'],[(STATS.best||0),'Best streak'],[games,'Games'],[(STATS.bigCap||0),'Biggest capture'],
     [achv+'/'+ACHV.length,'Achievements'],[skinsOwned+'/'+SKINS.length,'Skins'],[(LEARN.games||0),'AI learned from']];
-  g.innerHTML=tiles.map(function(t){ return '<div class="stile"><div class="snum">'+t[0]+'</div><div class="slbl">'+t[1]+'</div></div>'; }).join(''); }
+  g.innerHTML=tiles.map(function(t){ return '<div class="stile"><div class="snum">'+t[0]+'</div><div class="slbl">'+t[1]+'</div></div>'; }).join('');
+  var q=$('statsquests'); if(q){ q.innerHTML=QUESTS.map(function(qq){ var done=STATS.quests&&STATS.quests[qq.id];
+    return '<div class="frow"><span class="fname" style="opacity:'+(done?1:.7)+'">'+(done?'✅ ':'⬜ ')+qq.name+'</span><span class="fwp">+'+qq.wp+' WP</span></div>'; }).join(''); } }
 // ---- blitz timer ----
 let blitzSecs=0, clk={1:0,2:0}, clkTimer=null, clkLast=0;
 function fmtClock(s){ s=Math.max(0,Math.ceil(s)); var m=Math.floor(s/60), ss=s%60; return m+':'+(ss<10?'0':'')+ss; }
@@ -1615,7 +1624,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v53';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v54';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1640,7 +1649,25 @@ const AVATARS=['🙂','😎','🦁','🐉','👑','🔥','🌙','⭐','🐺','�
 function playerTitle(){ for(var i=ACHV.length-1;i>=0;i--){ if(STATS.achv&&STATS.achv[ACHV[i].id])return ACHV[i].emoji+' '+ACHV[i].name; } return rankName(STATS.wp||0); }
 function renderAvatars(){ var row=$('avarow'); if(!row)return; var cur=STATS.avatar||'🙂';
   row.innerHTML=AVATARS.map(function(a){ return '<button class="avabtn'+(a===cur?' sel':'')+'" data-ava="'+a+'">'+a+'</button>'; }).join(''); }
-function setAvatar(a){ STATS.avatar=a; saveStats(); renderAvatars(); if($('acctavatar'))$('acctavatar').textContent=a; }
+function setAvatar(a){ STATS.avatar=a; saveStats(); pushProfile(); renderAvatars(); if($('acctavatar'))$('acctavatar').textContent=a; }
+// ---- daily login streak + quests ----
+function pad2(n){return n<10?'0'+n:''+n;}
+function dayKey(off){ var d=new Date(Date.now()-(off||0)*86400000); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function checkDailyBonus(){ if(!STATS)return; var t=dayKey(0); if(STATS.lastPlay===t)return;
+  if(STATS.lastPlay===dayKey(1)) STATS.dailyStreak=(STATS.dailyStreak||0)+1; else STATS.dailyStreak=1;
+  STATS.lastPlay=t; var bonus=2*Math.min(STATS.dailyStreak,5); STATS.wp=(STATS.wp||0)+bonus;
+  saveStats(); updateStats(); updateHintVisibility();
+  setTimeout(function(){ showToast('📅 Daily bonus +'+bonus+' WP — day '+STATS.dailyStreak+' streak!'); },1400); }
+const QUESTS=[
+  {id:'q_hard',name:'Win a game on Hard or Very Hard',wp:12,check:function(c,s){return c.win&&c.mode==='ai'&&(c.diff==='hard'||c.diff==='vhard');}},
+  {id:'q_quad',name:'Capture 4+ pieces in one move',wp:15,check:function(c,s){return c.quad;}},
+  {id:'q_flawless',name:'Win without losing a piece',wp:20,check:function(c,s){return c.flawless;}},
+  {id:'q_streak3',name:'Reach a 3-win streak',wp:8,check:function(c,s){return (s.best||0)>=3;}},
+  {id:'q_win10',name:'Win 10 games total',wp:15,check:function(c,s){return (s.wins||0)>=10;}},
+  {id:'q_win25',name:'Win 25 games total',wp:25,check:function(c,s){return (s.wins||0)>=25;}}
+];
+function checkQuests(ctx){ if(!STATS.quests)STATS.quests={};
+  QUESTS.forEach(function(q){ if(STATS.quests[q.id])return; try{ if(q.check(ctx||{},STATS)){ STATS.quests[q.id]=1; STATS.wp=(STATS.wp||0)+q.wp; pendingUnlock.push('🎯 '+q.name+' (+'+q.wp+' WP)'); } }catch(e){} }); }
 function openAccount(){ if($('account'))$('account').classList.add('show'); acctRefresh();
   if(!sbUser){ sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); } }
 function closeAccount(){ if($('account'))$('account').classList.remove('show'); }
@@ -1664,7 +1691,7 @@ function acctAuth(kind){ var uname=(($('acctuser')&&$('acctuser').value)||'').tr
     }, function(){ acctStatus('Network error — please try again.'); }); }); }
 function onSignedIn(silent){ myName=emailToUser((sbUser&&sbUser.email)||''); acctRefresh(); if(!silent)acctStatus('');
   try{ localStorage.setItem('dama-acct','1'); }catch(e){}
-  try{ sb.from('profiles').upsert({user_id:sbUser.id, username:myName, updated_at:new Date().toISOString()}).then(function(){},function(){}); }catch(e){}   // register username in the public directory
+  pushProfile();                                                  // register username + WP/avatar/title in the public directory
   if($('acctsync'))$('acctsync').textContent='Syncing your progress…';
   cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced'); });
   inboxConnect(); startCloudPoll(); }
@@ -1693,7 +1720,8 @@ function cloudPull(done){ if(!sb||!sbUser){ done&&done(); return; }
     if(!marker || (row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); done&&done(); return; }  // existing account / owner edit / newer device → the cloud is the source of truth (up OR down)
     cloudPush(true,done);                                        // this device is the latest → push
   }, function(){ done&&done(); }); }
-function doUpsert(done){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).select('updated_at').then(function(r){ var ts=r&&r.data&&r.data[0]&&r.data[0].updated_at; if(ts)setCts(ts); done&&done(); }, function(){ done&&done(); }); }catch(e){ done&&done(); } }
+function pushProfile(){ if(!sb||!sbUser)return; try{ sb.from('profiles').upsert({user_id:sbUser.id, username:myName, wp:(STATS.wp||0), avatar:(STATS.avatar||'🙂'), title:playerTitle(), updated_at:new Date().toISOString()}).then(function(){},function(){}); }catch(e){} }
+function doUpsert(done){ try{ sb.from('progress').upsert({user_id:sbUser.id, data:progressBlob(), updated_at:new Date().toISOString()}).select('updated_at').then(function(r){ var ts=r&&r.data&&r.data[0]&&r.data[0].updated_at; if(ts)setCts(ts); pushProfile(); done&&done(); }, function(){ done&&done(); }); }catch(e){ done&&done(); } }
 function cloudPush(now,done){ if(!sb||!sbUser){ done&&done(); return; }
   if(cloudTimer){clearTimeout(cloudTimer);cloudTimer=null;}
   var doit=function(){ try{
@@ -1734,18 +1762,25 @@ function onInbox(m){ if(!m||!m.from||m.from===(sbUser&&sbUser.id))return;
   else if(m.type==='challenge'){ pendingChallenge={from:m.from,name:m.fromName||'A friend',room:m.room}; showChallenge(); }
   else if(m.type==='chaldecline'){ showToast((m.fromName||'They')+' declined the challenge'); try{leaveOnline();}catch(e){} }
 }
+let friendProfiles={};
+function loadFriendProfiles(cb){ if(!sb||!sbUser){cb&&cb();return;} var ids=[sbUser.id].concat(myFriends().map(function(f){return f.uid;}));
+  sb.from('profiles').select('user_id,username,wp,avatar,title').in('user_id',ids).then(function(r){ friendProfiles={}; (r.data||[]).forEach(function(p){ friendProfiles[p.user_id]=p; }); cb&&cb(); }, function(){ cb&&cb(); }); }
 function openFriends(){ if(!sbUser){ openAccount(); acctStatus('Sign in first to use friends.'); return; }
   $('friends').classList.add('show'); if($('friendstatus'))$('friendstatus').textContent=''; renderFriends();
-  inboxConnect(); setTimeout(pingFriends,600); }
+  inboxConnect(); loadFriendProfiles(renderFriends); setTimeout(pingFriends,600); }
 function closeFriends(){ $('friends').classList.remove('show'); }
 function pingFriends(){ presenceOn={}; myFriends().forEach(function(f){ inboxSend(f.uid,{type:'ping'}); }); setTimeout(renderFriends,2600); }
 function renderFriends(){ var el=$('friendlist'); if(!el)return; var fr=myFriends();
-  if(!fr.length){ el.innerHTML='<div class="olnote">No friends yet — add one by username above.</div>'; return; }
-  el.innerHTML=fr.map(function(f){ var on=!!presenceOn[f.uid];
-    return '<div class="frow"><span class="fdot '+(on?'on':'')+'"></span><span class="fname">'+f.name+'</span>'+
-      '<button class="btn'+(on?' primary':'')+'" data-battle="'+f.uid+'" data-name="'+f.name+'">⚔️ Battle</button>'+
-      '<button class="btn" data-unfriend="'+f.uid+'">✕</button>'+
-      '<span class="fmeta">'+(on?'online now':'offline — they’ll get the challenge when they open the game')+'</span></div>'; }).join(''); }
+  var mine={uid:(sbUser&&sbUser.id)||'me', name:myName||'you', me:true};
+  var entries=[mine].concat(fr.map(function(f){return {uid:f.uid,name:f.name};}));
+  entries.forEach(function(e){ var p=friendProfiles[e.uid]; e.wp=p?(p.wp||0):(e.me?(STATS.wp||0):0); e.avatar=(p&&p.avatar)||(e.me?(STATS.avatar||'🙂'):'🙂'); e.online=e.me?true:!!presenceOn[e.uid]; });
+  entries.sort(function(a,b){return (b.wp||0)-(a.wp||0);});
+  if(!fr.length){ el.innerHTML='<div class="olnote">No friends yet — add one by username above, then their live rank shows here.</div>'; return; }
+  el.innerHTML=entries.map(function(e,i){ return '<div class="frow'+(e.me?' meRow':'')+'">'+
+      '<span class="frank">#'+(i+1)+'</span><span class="fava">'+e.avatar+'</span>'+
+      '<span class="fname">'+e.name+(e.me?' (you)':'')+'</span><span class="fwp">🏆 '+(e.wp||0)+'</span>'+
+      (e.me?'':'<span class="fdot '+(e.online?'on':'')+'"></span><button class="btn'+(e.online?' primary':'')+'" data-battle="'+e.uid+'" data-name="'+e.name+'">⚔️</button><button class="btn" data-unfriend="'+e.uid+'">✕</button>')+
+      '<span class="fmeta">'+rankName(e.wp||0)+(e.me?'':(e.online?' · online now':' · offline'))+'</span></div>'; }).join(''); }
 function addFriend(){ var name=(($('friendadd')&&$('friendadd').value)||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'');
   if(name.length<3){ $('friendstatus').textContent='Enter a username.'; return; }
   if(name===myName){ $('friendstatus').textContent='That’s you!'; return; }
@@ -1905,6 +1940,7 @@ updateHintVisibility();
 updateCoachUI();
 acctRestoreOnLoad();
 offerResume();
+checkDailyBonus();
 if($('verline'))$('verline').textContent='App version '+APP_VERSION;
 if($('verfoot'))$('verfoot').textContent='Dama '+APP_VERSION;
 </script>
