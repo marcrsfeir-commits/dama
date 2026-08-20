@@ -939,7 +939,7 @@ let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
 function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
-function ownsSkin(s){ if(s.special) return ownsSpecial(s.id); return (STATS.wp||0)>=s.cost; }
+function ownsSkin(s){ if(isAdmin())return true; if(s.special) return ownsSpecial(s.id); return (STATS.wp||0)>=s.cost; }
 function hintUnlocked(){ return hintLevel()>=1; }
 function applySkin(id){ const s=skinById(id); const root=document.documentElement;
   THEMEVARS.forEach(function(v){root.style.removeProperty(v);});
@@ -1828,7 +1828,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v65';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v66';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
