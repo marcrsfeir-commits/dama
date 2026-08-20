@@ -924,9 +924,9 @@ const SKINS=[
    vars:{'--bg':'#0d140a','--panel':'#151e10','--frameA':'#4a7a2a','--frameB':'#2c4a18','--frameLine':'#12240c','--sqLight':'#e0f5d0','--sqDark':'#7aae4a','--gold':'#e0c85a','--sel':'#5ac03a','--accent':'#9ace6a','--ink':'#eef8e6','--muted':'#a8c090','--lp1':'#f2fbe8','--lp2':'#cfe6b0','--lp3':'#8fc270','--dp1':'#4a7a2a','--dp2':'#2c4a18','--dp3':'#12240c'}},
  {id:'oracle',name:'Oracle',emoji:'👁️',cost:460,rarity:'legendary',perk:{bonusWP:1,powerup:'foresight'},swatch:['#e6dcff','#8a6ad0','#ffd85a'],
    vars:{'--bg':'#0d0a18','--panel':'#160f26','--frameA':'#4a2e8a','--frameB':'#2a1a5a','--frameLine':'#140f2a','--sqLight':'#e6dcff','--sqDark':'#8a6ad0','--gold':'#ffd85a','--sel':'#b06aff','--accent':'#b89aff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#f6f2ff','--lp2':'#d8c8f5','--lp3':'#a888dc','--dp1':'#3a2a6a','--dp2':'#221648','--dp3':'#100a24'}},
- {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,earn:'Beat Joey online to earn',rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
+ {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,earn:'Beat Joey online to earn',earnByBeating:'joey',rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
    vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}},
- {id:'theasskicker',name:'The Ass Kicker',emoji:'💀',cost:0,special:true,earn:'Account-locked',rarity:'legendary',perk:{bonusWP:7,repeat:'purge'},swatch:['#e8564a','#4a4a4e','#0c0a0a'],
+ {id:'theasskicker',name:'The Ass Kicker',emoji:'💀',cost:0,special:true,earn:'Beat The Ass Kicker online to earn',earnByBeating:'theasskicker',rarity:'legendary',perk:{bonusWP:7,repeat:'purge'},swatch:['#e8564a','#4a4a4e','#0c0a0a'],
    vars:{'--bg':'#0c0707','--panel':'#160c0c','--frameA':'#7a1f1f','--frameB':'#3a1212','--frameLine':'#160808','--sqLight':'#7a1f1f','--sqDark':'#0c0a0a','--gold':'#ff5a4a','--sel':'#ff3a2a','--accent':'#e8564a','--ink':'#f6e6e4','--muted':'#c09a98','--lp1':'#ff9a8a','--lp2':'#e8564a','--lp3':'#b0342a','--dp1':'#5a5a5e','--dp2':'#3a3a3e','--dp3':'#222226'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
@@ -1828,7 +1828,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v64';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v65';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1970,8 +1970,10 @@ function startSurvival(){ closeAllModals(); onlineActive=false; puzzleActive=fal
 function startTimeAttack(secs,dfc){ closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; campaignLevel=null; survival=null;
   forcedGame={mode:'ai', side:1, diff:dfc, blitz:secs}; sideChoice=1; newGame(); }
 function postGameModes(w){
-  if(onlineActive && w===humanSide && (oppName||'').toLowerCase()==='joey'){   // beat Joey online → unlock his galaxy skin
-    if(grantSpecial('joey')) pendingUnlock.push("🌌 Joey's Galaxy unlocked — you beat Joey!");
+  if(onlineActive && w===humanSide){                             // beat a special-skin owner online → unlock their skin
+    var lo=(oppName||'').toLowerCase();
+    SKINS.forEach(function(s){ if(s.special && s.earnByBeating && s.earnByBeating===lo){
+      if(grantSpecial(s.id)) pendingUnlock.push(s.emoji+' '+s.name+' unlocked — you beat '+oppName+'!'); } });
   }
   if(campaignLevel!=null){ var i=campaignLevel, op=LADDER[i];
     if(w===humanSide && campaignProgress()===i-1){ STATS.ladder=i; STATS.wp=(STATS.wp||0)+op.wp;
