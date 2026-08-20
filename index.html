@@ -1752,15 +1752,16 @@ function activateMonkeys(){ if(!monkeyUsable())return; initAudio(); monkeyMode=t
 function monkeyAttackFX(r,c,onDone){ var f=ensureFXLayer(); if(!f){ if(onDone)onDone(); return; } var p=fxPos(r,c);
   var mk=document.createElement('div'); mk.className='fxmonkey'; mk.textContent='🐒'; mk.style.left=p.x+'px'; mk.style.top=p.y+'px'; mk.style.fontSize=(p.cell*0.72)+'px'; f.appendChild(mk);
   try{sMonkey();}catch(e){} if(navigator.vibrate){try{navigator.vibrate(20);}catch(e){}}
-  var drop=mk.animate([
+  if(mk.animate) mk.animate([
     {transform:'translate(-50%,-330%) scale(.3) rotate(-40deg)',opacity:0},
     {transform:'translate(-50%,-70%) scale(1.4) rotate(14deg)',opacity:1,offset:.5},
     {transform:'translate(-50%,-50%) scale(1.12) rotate(-6deg)',offset:.72},
     {transform:'translate(-50%,-50%) scale(1) rotate(0)'}
   ],{duration:360,easing:'cubic-bezier(.3,1.45,.5,1)'});
-  drop.onfinish=function(){ boardBurst(r,c); if(onDone)onDone();
-    mk.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(-50%,-190%) scale(.5) rotate(35deg)',opacity:0}],{duration:280,easing:'ease-in'}).onfinish=function(){mk.remove();}; };
-  drop.oncancel=function(){ if(onDone)onDone(); mk.remove(); }; }
+  setTimeout(function(){ boardBurst(r,c); if(onDone)onDone();               // removal on a timer (fires even if the tab is backgrounded / anim stalls)
+    if(mk.animate){ mk.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(-50%,-190%) scale(.5) rotate(35deg)',opacity:0}],{duration:280,easing:'ease-in'}); }
+    setTimeout(function(){ if(mk.parentNode)mk.remove(); }, 320);
+  }, 360); }
 function monkeyPick(r,c){ var pc=board[r][c];
   if(!pc||pc.player===turn){ showToast('Tap an ENEMY pawn.'); return; }
   if(pc.king){ showToast('Monkeys grab pawns, not damas.'); return; }
@@ -2209,7 +2210,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v79';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v80';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
