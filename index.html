@@ -132,6 +132,10 @@
     width:56px;height:56px;border-radius:16px;border:1px solid #c060ff;background:linear-gradient(160deg,var(--panel),rgba(185,140,255,.18));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
   .giftfab.show{display:flex;} .giftfab:active{transform:translateY(1px);}
   .giftfab .hicon{font-size:22px;line-height:1;} .giftfab .hlbl{font-size:8px;letter-spacing:.4px;color:#c9a6ff;text-transform:uppercase;}
+  .strikefab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:56px;height:56px;border-radius:16px;border:1px solid #ff5a4a;background:linear-gradient(160deg,var(--panel),rgba(255,90,74,.2));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;animation:hintpulse 1.3s ease-in-out infinite;}
+  .strikefab.show{display:flex;} .strikefab:active{transform:translateY(1px);}
+  .strikefab .hicon{font-size:22px;line-height:1;} .strikefab .hlbl{font-size:8px;letter-spacing:.4px;color:#ff8a7a;text-transform:uppercase;}
   .powerfab:active{transform:translateY(1px);}
   .powerfab .hicon{font-size:23px;line-height:1;color:var(--gold);}
   .powerfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;}
@@ -193,6 +197,17 @@
       radial-gradient(1.2px 1.2px at 74% 70%, #9070dc, transparent 60%),
       radial-gradient(circle at 42% 38%, #2c1c57 0%, #180f36 55%, #090517 100%);
     box-shadow:inset 0 0 0 2px rgba(170,132,255,.9), inset 0 -3px 6px rgba(0,0,0,.5), 0 0 10px rgba(150,100,255,.5), 0 2px 5px rgba(0,0,0,.6);}
+  /* The Ass Kicker — light pawns = lighter red with a black centre dot; dark pawns = dark grey with a red streak */
+  [data-skin="theasskicker"] .piece.l{
+    background:
+      radial-gradient(circle at 50% 50%, #0b0808 0, #0b0808 15%, transparent 17%),
+      radial-gradient(circle at 40% 33%, #ffa294 0%, #ef5f52 45%, #b8362b 100%);
+    box-shadow:inset 0 0 0 1.6px rgba(255,205,196,.55), inset 0 -3px 6px rgba(70,8,8,.5), 0 2px 5px rgba(0,0,0,.55);}
+  [data-skin="theasskicker"] .piece.d{
+    background:
+      linear-gradient(118deg, transparent 39%, #d8332a 45%, #ff6a5a 50%, #d8332a 55%, transparent 61%),
+      radial-gradient(circle at 40% 33%, #61616a 0%, #3d3d44 55%, #202024 100%);
+    box-shadow:inset 0 0 0 1.6px rgba(255,110,92,.6), inset 0 -3px 6px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.6);}
   .friendlist{display:flex;flex-direction:column;gap:8px;margin:8px 0;max-height:52vh;overflow:auto;}
   .frow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:10px;padding:9px 11px;flex-wrap:wrap;}
   .fdot{width:9px;height:9px;border-radius:50%;background:#5a5a5a;flex:0 0 auto;}
@@ -310,6 +325,8 @@
   .badge-diff{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;margin-left:6px;vertical-align:middle;}
   .d-easy{color:#8fae6b;} .d-medium{color:#e0a13a;} .d-hard{color:#e0563a;}
   .sq.wrongflash::after{content:"";position:absolute;inset:8%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(224,60,50,.95);animation:hintpulse .5s ease-in-out 2;z-index:4;pointer-events:none;}
+  .sq.strikable::after{content:"💀";position:absolute;top:2px;right:3px;font-size:calc(var(--cell)*.3);z-index:4;pointer-events:none;filter:drop-shadow(0 0 2px #000);animation:hintpulse 1s ease-in-out infinite;}
+  .sq.strikable{box-shadow:inset 0 0 0 3px rgba(255,60,50,.85);cursor:crosshair;}
 </style>
 </head>
 <body>
@@ -394,6 +411,9 @@
 <div id="powerbadge" class="powerbadge"></div>
 <button id="giftfab" class="giftfab" title="Give Joey's Galaxy skin to your online opponent">
   <span class="hicon">🎁</span><span class="hlbl">Gift skin</span>
+</button>
+<button id="strikefab" class="strikefab" title="Strike — delete an enemy man (kings immune)">
+  <span class="hicon">💀</span><span class="hlbl">Strike</span>
 </button>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="fsdock" class="fsdock">
@@ -896,13 +916,17 @@ const SKINS=[
    vars:{'--bg':'#0d140a','--panel':'#151e10','--frameA':'#4a7a2a','--frameB':'#2c4a18','--frameLine':'#12240c','--sqLight':'#e0f5d0','--sqDark':'#7aae4a','--gold':'#e0c85a','--sel':'#5ac03a','--accent':'#9ace6a','--ink':'#eef8e6','--muted':'#a8c090','--lp1':'#f2fbe8','--lp2':'#cfe6b0','--lp3':'#8fc270','--dp1':'#4a7a2a','--dp2':'#2c4a18','--dp3':'#12240c'}},
  {id:'oracle',name:'Oracle',emoji:'👁️',cost:460,rarity:'legendary',perk:{bonusWP:1,powerup:'foresight'},swatch:['#e6dcff','#8a6ad0','#ffd85a'],
    vars:{'--bg':'#0d0a18','--panel':'#160f26','--frameA':'#4a2e8a','--frameB':'#2a1a5a','--frameLine':'#140f2a','--sqLight':'#e6dcff','--sqDark':'#8a6ad0','--gold':'#ffd85a','--sel':'#b06aff','--accent':'#b89aff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#f6f2ff','--lp2':'#d8c8f5','--lp3':'#a888dc','--dp1':'#3a2a6a','--dp2':'#221648','--dp3':'#100a24'}},
- {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
-   vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}}
+ {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,earn:'Beat Joey online to earn',rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
+   vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}},
+ {id:'theasskicker',name:'The Ass Kicker',emoji:'💀',cost:0,special:true,earn:'Account-locked',rarity:'legendary',perk:{bonusWP:7,repeat:'purge'},swatch:['#e8564a','#4a4a4e','#0c0a0a'],
+   vars:{'--bg':'#0c0707','--panel':'#160c0c','--frameA':'#7a1f1f','--frameB':'#3a1212','--frameLine':'#160808','--sqLight':'#7a1f1f','--sqDark':'#0c0a0a','--gold':'#ff5a4a','--sel':'#ff3a2a','--accent':'#e8564a','--ink':'#f6e6e4','--muted':'#c09a98','--lp1':'#ff9a8a','--lp2':'#e8564a','--lp3':'#b0342a','--dp1':'#5a5a5e','--dp2':'#3a3a3e','--dp3':'#222226'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
 function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); }
 function grantSpecial(id){ if(!STATS.owned)STATS.owned=[]; if(STATS.owned.indexOf(id)<0){ STATS.owned.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; } return false; }
-function seedSpecialSkins(){ if(isAdmin()||((myName||'').toLowerCase()==='joey')) grantSpecial('joey'); }
+function seedSpecialSkins(){ var n=(myName||'').toLowerCase();
+  if(isAdmin()||n==='joey') grantSpecial('joey');
+  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker'); }
 let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
@@ -966,10 +990,11 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
   SKINS.slice().sort(function(a,b){return (a.special?1e9:a.cost)-(b.special?1e9:b.cost);}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
-    let foot; if(!owned) foot= s.special ? '<span class="stag">🌌 Beat Joey to earn</span>' : '<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
+    let foot; if(!owned) foot= s.special ? '<span class="stag">🔒 '+(s.earn||'Special')+'</span>' : '<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
       const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
+      if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
@@ -1094,6 +1119,7 @@ let forcedGame=null, campaignLevel=null, survival=null, userBlitz=0;   // Campai
 let diffUsage={};                                                // how many AI turns were played at each difficulty this game (for WP)
 let puzzleActive=false, puzzle=null;                             // Puzzle mode state
 let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress shield + power-up piece-select mode
+let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;   // The Ass Kicker: delete an enemy man every 10 of your moves
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1126,7 +1152,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1200,6 +1226,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
     if(hint){ if(hint.from[0]===mr&&hint.from[1]===mc)sq.classList.add('hintfrom'); if(hint.to[0]===mr&&hint.to[1]===mc)sq.classList.add('hintto'); }
     if(eatSet.has(key))sq.classList.add('willeat'); else if(eatHint.has(key))sq.classList.add('willeathint');
     if(dangerSet&&dangerSet.has(key))sq.classList.add('danger');
+    if(strikeSelectMode&&cell&&cell.player!==turn&&!cell.king)sq.classList.add('strikable');
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -1214,6 +1241,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   updatePowerUI();
   updateFSDock();
   updateGiftUI();
+  updateStrikeUI();
 }
 function canGiftJoey(){ return onlineActive && !winner && ownsSpecial('joey') && (isAdmin() || ((myName||'').toLowerCase()==='joey')); }
 function updateGiftUI(){ var b=$('giftfab'); if(b) b.classList.toggle('show', canGiftJoey()); }
@@ -1247,6 +1275,7 @@ function drawPaths(capMoves,hintMv,normMoves){ const svg=$('pathsvg'); if(!svg)r
 function handleCell(r,c){ initAudio();
   if(winner||thinking||animating)return;
   if((mode==='ai'||mode==='online')&&turn!==humanSide)return;
+  if(strikeSelectMode){ doStrike(r,c); return; }
   if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
@@ -1262,6 +1291,7 @@ function apply(mv){
   history.push({board:prev,turn,lastMove});
   recordMove(prev,mover,mv);                                   // remember move for learning
   board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;coachThinking();
+  purgeTrack(mover);                                             // The Ass Kicker: tally moves, grant a Strike every 10
   powerTrack(mover,mv);                                          // update / expire the Coronation crowns before scoring the position
   shieldTrack(mover,mv);                                          // Fortress shield follows its piece
   if(onlineActive&&!applyingRemote) sendMsg({type:'move',mv:mv});// mirror my move to my online opponent
@@ -1342,6 +1372,29 @@ function powerRevert(){ if(!powerUp)return; var owner=powerUp.owner, promoRow=ow
   powerUp=null; }
 function shieldTrack(mover,mv){ if(!SHIELD.size)return; var fk=mv.from[0]+','+mv.from[1];
   if(mover===shieldOwner && SHIELD.has(fk)) SHIELD=new Set([mv.to[0]+','+mv.to[1]]); }   // shield follows its piece
+// ---- The Ass Kicker: Strike power (delete an enemy man every 10 of your moves) ----
+function purgeEligible(side){ if(equippedPerk('repeat')!=='purge')return false;
+  if(mode==='ai'||mode==='online') return side===humanSide;   // only your own moves count (AI/opponent never gets Strikes)
+  if(mode==='pvp') return true;                                // pass-and-play: both sides wear it
+  return false; }
+function purgeTrack(mover){ if(!purgeEligible(mover))return;
+  purgeCnt[mover]=(purgeCnt[mover]||0)+1;
+  if(purgeCnt[mover]%10===0){ purgeCharge[mover]=true; setTimeout(function(){ showToast('💀 Strike ready — tap the skull, then an enemy man.'); },300); } }
+function canStrike(){ return equippedPerk('repeat')==='purge' && !winner && !thinking && !animating && purgeCharge[turn] && purgeEligible(turn) && (mode==='pvp'||turn===humanSide); }
+function updateStrikeUI(){ var b=$('strikefab'); if(b) b.classList.toggle('show', canStrike()||strikeSelectMode); }
+function activateStrike(){ if(!canStrike())return; initAudio(); strikeSelectMode=true; render(); updateStrikeUI(); showToast('💀 Tap an enemy man to delete (kings are immune).'); }
+function doStrike(r,c){ var p=board[r][c]; if(!p){ return; }
+  if(p.player===turn){ showToast('Pick an ENEMY piece.'); return; }
+  if(p.king){ showToast('Kings can’t be struck — pick a man.'); return; }
+  board[r][c]=null; purgeCharge[turn]=false; strikeSelectMode=false;
+  if(onlineActive&&!applyingRemote) sendMsg({type:'strike', r:r, c:c});
+  try{ sCapture(); }catch(e){} try{ captureFX(boardEl.children[dIndex(r,c)]); }catch(e){}
+  var opp=turn===1?2:1; legal=computeLegal(board,turn);
+  var over=countPieces(board,opp)===0 || Object.keys(computeLegal(board,opp).moves).length===0;
+  render(); updateStrikeUI();
+  showToast('💀 Struck! Now make your move.');
+  if(over && countPieces(board,opp)===0){ finishGame(turn); } }
+function applyRemoteStrike(r,c){ if(board[r]&&board[r][c]){ board[r][c]=null; try{sCapture();}catch(e){} try{captureFX(boardEl.children[dIndex(r,c)]);}catch(e){} legal=computeLegal(board,turn); render(); } }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -1722,6 +1775,7 @@ function serializeBoard(){ return board.map(function(row){ return row.map(functi
 function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(function(c){ return c?{player:c.p,king:!!c.k}:null; }); });
   mode='online'; humanSide=onlineSide; flip=(humanSide===2);        // guest: lock in MY side + orient the board so my pieces sit at the bottom
   turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
+  purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;
   legal=computeLegal(board,turn); overlay.classList.remove('show'); buildLabels(); render(); updateSideBtn(); if(coachMode)coachAuto(); }
 function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn, nm:myName}); }
 function cleanupMqtt(){ if(joinTimer){clearInterval(joinTimer);joinTimer=null;} try{ if(mqc)mqc.end(true); }catch(e){} mqc=null; roomTopic=''; keepAwake(false); }
@@ -1755,6 +1809,7 @@ function onNet(m){
   } else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv); }catch(e){} applyingRemote=false; }
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
   else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
+  else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
   else if(m.type==='bye'){ showToast('Opponent left the game'); }
 }
 function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
@@ -1765,7 +1820,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v62';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v63';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2240,6 +2295,7 @@ $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
 $('powerfab').addEventListener('click',activatePower);
 $('giftfab').addEventListener('click',giftJoeySkin);
+$('strikefab').addEventListener('click',activateStrike);
 $('onlinebtn').addEventListener('click',openOnline);
 $('onlineclose').addEventListener('click',closeOnline);
 $('online').addEventListener('click',function(e){ if(e.target===$('online'))closeOnline(); });
