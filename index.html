@@ -216,6 +216,22 @@
       linear-gradient(118deg, transparent 39%, #d8332a 45%, #ff6a5a 50%, #d8332a 55%, transparent 61%),
       radial-gradient(circle at 40% 33%, #61616a 0%, #3d3d44 55%, #202024 100%);
     box-shadow:inset 0 0 0 1.6px rgba(255,110,92,.6), inset 0 -3px 6px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.6);}
+  /* Sovereign — ornate gilded pawns with a central gem, filigree rings and a rotating shimmer */
+  [data-skin="sovereign"] .piece.l{
+    background:
+      radial-gradient(circle at 50% 50%, #fff9e4 0 9%, rgba(255,249,228,0) 12%),
+      radial-gradient(circle at 38% 31%, #fff6d6 0%, #ffe294 36%, #d9a637 72%, #8a6420 100%);
+    box-shadow:inset 0 0 0 2px rgba(120,80,20,.5), inset 0 0 0 4px rgba(255,236,158,.65), inset 0 -3px 6px rgba(80,50,10,.4), 0 0 9px rgba(255,210,90,.4), 0 2px 6px rgba(0,0,0,.5);}
+  [data-skin="sovereign"] .piece.d{
+    background:
+      radial-gradient(circle at 50% 50%, #ffe08a 0 8%, rgba(255,224,138,0) 11%),
+      radial-gradient(circle at 38% 31%, #a67f30 0%, #5c4319 45%, #281c09 100%);
+    box-shadow:inset 0 0 0 2px rgba(255,216,110,.75), inset 0 0 0 4px rgba(90,62,22,.6), inset 0 -3px 6px rgba(0,0,0,.5), 0 0 9px rgba(255,200,80,.35), 0 2px 6px rgba(0,0,0,.55);}
+  [data-skin="sovereign"] .piece::before{
+    content:"";position:absolute;inset:13%;border-radius:50%;box-shadow:none;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(255,246,205,.55) 42deg, transparent 96deg, transparent 210deg, rgba(255,222,120,.42) 256deg, transparent 312deg);
+    mix-blend-mode:screen;animation:galaxyswirl 5s linear infinite;pointer-events:none;z-index:1;}
+  [data-skin="sovereign"] .king::after{ z-index:3; }
   .friendlist{display:flex;flex-direction:column;gap:8px;margin:8px 0;max-height:52vh;overflow:auto;}
   .frow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:10px;padding:9px 11px;flex-wrap:wrap;}
   .fdot{width:9px;height:9px;border-radius:50%;background:#5a5a5a;flex:0 0 auto;}
@@ -289,6 +305,7 @@
   .scard.locked{opacity:.6;}
   .scard.eq{box-shadow:inset 0 0 0 2px var(--accent);}
   .scard.r-rare{border-color:#5a86c0;} .scard.r-epic{border-color:#c89a3a;} .scard.r-legendary{border-color:#c060e0;}
+  .scard.r-mythic{border-color:#ffd24a;box-shadow:0 0 16px rgba(255,210,74,.35);background:linear-gradient(160deg,rgba(255,210,90,.08),rgba(0,0,0,0));}
   .sname{font-size:13px;font-weight:600;color:var(--ink);}
   .sdesc{font-size:11px;color:var(--muted);line-height:1.35;}
   .swrow{display:flex;gap:5px;} .swd{width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.35);}
@@ -335,6 +352,14 @@
   .sq.wrongflash::after{content:"";position:absolute;inset:8%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(224,60,50,.95);animation:hintpulse .5s ease-in-out 2;z-index:4;pointer-events:none;}
   .sq.strikable::after{content:"💀";position:absolute;top:2px;right:3px;font-size:calc(var(--cell)*.3);z-index:4;pointer-events:none;filter:drop-shadow(0 0 2px #000);animation:hintpulse 1s ease-in-out infinite;}
   .sq.strikable{box-shadow:inset 0 0 0 3px rgba(255,60,50,.85);cursor:crosshair;}
+  .godbar{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:30;display:none;flex-direction:column;gap:7px;}
+  .godbar.show{display:flex;}
+  .godbar button{width:54px;height:50px;border-radius:13px;border:1px solid var(--gold);background:linear-gradient(160deg,var(--panel),rgba(255,220,110,.18));color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 13px rgba(0,0,0,.45);transition:transform .1s;}
+  .godbar button:active{transform:scale(.94);}
+  .godbar button.on{background:linear-gradient(160deg,var(--gold),#ffca3a);color:#2a1e08;box-shadow:0 0 14px var(--gold);border-color:#fff2c0;}
+  .godbar button .gi{font-size:19px;line-height:1;} .godbar button .gl{font-size:7.5px;text-transform:uppercase;letter-spacing:.3px;opacity:.9;}
+  .sq.godtarget{box-shadow:inset 0 0 0 3px var(--gold);cursor:pointer;animation:hintpulse 1.1s ease-in-out infinite;}
+  @media(max-width:600px){ .godbar{left:4px;gap:5px;} .godbar button{width:44px;height:42px;} .godbar button .gi{font-size:16px;} }
   /* persistent board effects layer (survives the per-move re-render) */
   .fxlayer{position:absolute;pointer-events:none;z-index:6;overflow:visible;}
   .fxpt{position:absolute;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 7px currentColor,0 0 2px #fff;}
@@ -434,6 +459,7 @@
 <button id="strikefab" class="strikefab" title="Strike — delete an enemy man (kings immune)">
   <span class="hicon">💀</span><span class="hlbl">Strike</span>
 </button>
+<div id="godbar" class="godbar"></div>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="fsdock" class="fsdock">
   <button id="fsnew" title="New game">🔄<span class="l">New</span></button>
@@ -938,14 +964,17 @@ const SKINS=[
  {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,earn:'Beat Joey online to earn',earnByBeating:'joey',rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
    vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}},
  {id:'theasskicker',name:'The Ass Kicker',emoji:'💀',cost:0,special:true,earn:'Beat The Ass Kicker online to earn',earnByBeating:'theasskicker',rarity:'legendary',perk:{bonusWP:7,repeat:'purge'},swatch:['#e8564a','#4a4a4e','#0c0a0a'],
-   vars:{'--bg':'#0c0707','--panel':'#160c0c','--frameA':'#7a1f1f','--frameB':'#3a1212','--frameLine':'#160808','--sqLight':'#7a1f1f','--sqDark':'#0c0a0a','--gold':'#ff5a4a','--sel':'#ff3a2a','--accent':'#e8564a','--ink':'#f6e6e4','--muted':'#c09a98','--lp1':'#ff9a8a','--lp2':'#e8564a','--lp3':'#b0342a','--dp1':'#5a5a5e','--dp2':'#3a3a3e','--dp3':'#222226'}}
+   vars:{'--bg':'#0c0707','--panel':'#160c0c','--frameA':'#7a1f1f','--frameB':'#3a1212','--frameLine':'#160808','--sqLight':'#7a1f1f','--sqDark':'#0c0a0a','--gold':'#ff5a4a','--sel':'#ff3a2a','--accent':'#e8564a','--ink':'#f6e6e4','--muted':'#c09a98','--lp1':'#ff9a8a','--lp2':'#e8564a','--lp3':'#b0342a','--dp1':'#5a5a5e','--dp2':'#3a3a3e','--dp3':'#222226'}},
+ {id:'sovereign',name:'Sovereign',emoji:'👑',cost:0,special:true,ownerOnly:true,earn:'Owner exclusive',rarity:'mythic',perk:{bonusWP:20,god:true},swatch:['#ffe9a8','#c8952e','#2a1e08'],
+   vars:{'--bg':'#0f0b04','--panel':'#1c1408','--frameA':'#b8862a','--frameB':'#6e4d12','--frameLine':'#2e1f08','--sqLight':'#f3dc8e','--sqDark':'#3a2a10','--gold':'#ffdf6a','--sel':'#ffca3a','--accent':'#f0c862','--ink':'#fdf3d6','--muted':'#cbb282','--lp1':'#fff6d6','--lp2':'#f2cf72','--lp3':'#b78a2e','--dp1':'#6e5320','--dp2':'#3c2c10','--dp3':'#1a1206'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
 function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); }
 function grantSpecial(id){ if(!STATS.owned)STATS.owned=[]; if(STATS.owned.indexOf(id)<0){ STATS.owned.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; } return false; }
 function seedSpecialSkins(){ var n=(myName||'').toLowerCase();
   if(isAdmin()||n==='joey') grantSpecial('joey');
-  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker'); }
+  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker');
+  if(isAdmin()) grantSpecial('sovereign'); }                      // owner-exclusive god skin
 let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
@@ -961,7 +990,7 @@ function applySkin(id){ const s=skinById(id); const root=document.documentElemen
 }
 function pieceFinish(s){ if(!s)return ''; if(['royalgold','crimson','marble','coronation','sunset'].indexOf(s.id)>=0)return 'metal'; if(['obsidian','celestial','ocean','candy','winter'].indexOf(s.id)>=0)return 'glass'; if(['galaxy','phoenix','aurora','ramadan'].indexOf(s.id)>=0)return 'neon'; return ''; }
 function skinFX(s){ if(!s)return ''; if(['galaxy','celestial','aurora','joey'].indexOf(s.id)>=0)return 'stars'; if(['phoenix','crimson','theasskicker'].indexOf(s.id)>=0)return 'embers'; if(s.rarity==='legendary'||s.rarity==='epic')return 'shimmer'; return ''; }
-function skinFXKind(){ var id=STATS.equipped||'wood'; if(id==='joey')return 'galaxy'; if(id==='theasskicker')return 'fire'; return 'default'; }
+function skinFXKind(){ var id=STATS.equipped||'wood'; if(id==='joey')return 'galaxy'; if(id==='theasskicker')return 'fire'; if(id==='sovereign')return 'royal'; return 'default'; }
 function applyBoardFX(s){ var fx=document.getElementById('boardfx'); if(!fx)return; fx.className='boardfx'; fx.innerHTML='';
   var t=skinFX(s); if(!t)return; fx.classList.add('fx-'+t);
   if(t==='stars'||t==='embers'){ var n=t==='stars'?16:12; for(var i=0;i<n;i++){ var d=document.createElement('div'); d.className=(t==='stars'?'starp':'emberp');
@@ -996,6 +1025,14 @@ function boardBurst(r,c){ var f=ensureFXLayer(); if(!f)return; var p=fxPos(r,c),
     for(var i=0;i<20;i++){ var a=(Math.PI*2*i)/20+Math.random()*.5, ds=p.cell*(0.5+Math.random()*1.0);
       fxParticle(f,p.x,p.y,gc[i%gc.length],3+Math.random()*5,Math.cos(a)*ds,Math.sin(a)*ds,620+Math.random()*400,'cubic-bezier(.15,.7,.3,1)',180); }
     return; }
+  if(kind==='royal'){                                             // Sovereign — golden burst: bright flash, gilded rings, gold dust + sparkles
+    fxFlash(f,p.x,p.y,p.cell*1.2,'rgba(255,235,150,.98)');
+    fxRing(f,p.x,p.y,p.cell*.9,'#ffdf6a','#ffca3a',560,.2,2.1,.98);
+    fxRing(f,p.x,p.y,p.cell*.6,'#fff6d6','#ffdf6a',680,.15,2.5,.85);
+    var rc=['#fff6d6','#ffdf6a','#f2cf72','#ffca3a','#ffffff'];
+    for(var m=0;m<22;m++){ var am=(Math.PI*2*m)/22+Math.random()*.5, dm=p.cell*(0.5+Math.random()*1.05);
+      fxParticle(f,p.x,p.y,rc[m%rc.length],3+Math.random()*6,Math.cos(am)*dm,Math.sin(am)*dm-p.cell*.1,640+Math.random()*420,'cubic-bezier(.15,.7,.3,1)',200); }
+    return; }
   if(kind==='fire'){                                              // The Ass Kicker — explosion: red flash, shock ring, rising embers + sparks
     fxFlash(f,p.x,p.y,p.cell*1.15,'rgba(255,140,80,.95)');
     fxRing(f,p.x,p.y,p.cell*.9,'#ff5a2a','#ff3a1a',460,.25,1.9,.95);
@@ -1011,8 +1048,8 @@ function boardBurst(r,c){ var f=ensureFXLayer(); if(!f)return; var p=fxPos(r,c),
   for(var q=0;q<14;q++){ var a3=(Math.PI*2*q)/14+Math.random()*.5, d3=p.cell*(0.45+Math.random()*0.8);
     fxParticle(f,p.x,p.y,cols[q%cols.length],5+Math.random()*6,Math.cos(a3)*d3,Math.sin(a3)*d3-p.cell*.15,460+Math.random()*220,null,0); } }
 function landPulse(r,c){ var f=ensureFXLayer(); if(!f)return; var p=fxPos(r,c), kind=skinFXKind();
-  var col = kind==='galaxy' ? '#c9b6ff' : kind==='fire' ? '#ff6a3a' : 'rgba(255,255,255,.7)';
-  var glow = kind==='galaxy' ? '#8f6ad0' : kind==='fire' ? '#ff3a1a' : 'rgba(255,255,255,.4)';
+  var col = kind==='galaxy' ? '#c9b6ff' : kind==='fire' ? '#ff6a3a' : kind==='royal' ? '#ffdf6a' : 'rgba(255,255,255,.7)';
+  var glow = kind==='galaxy' ? '#8f6ad0' : kind==='fire' ? '#ff3a1a' : kind==='royal' ? '#ffca3a' : 'rgba(255,255,255,.4)';
   var ring=document.createElement('div'); ring.className='fxland';
   ring.style.left=p.x+'px'; ring.style.top=p.y+'px'; ring.style.width=(p.cell*.62)+'px'; ring.style.height=(p.cell*.62)+'px'; ring.style.borderColor=col; ring.style.boxShadow='0 0 8px '+glow;
   f.appendChild(ring);
@@ -1024,7 +1061,7 @@ function spawnTrail(positions,total,kind){ var f=ensureFXLayer(); if(!f||kind===
     for(var k2=0;k2<dps;k2++){ (function(s,k2,a,b){ var t=k2/dps, x=(a.c+(b.c-a.c)*t+0.5)*cell, y=(a.r+(b.r-a.r)*t+0.5)*cell;
       setTimeout(function(){ trailDot(x,y,kind); }, Math.round(s*perSeg + t*perSeg)); })(s,k2,a,b); } } }
 function trailDot(x,y,kind){ var f=ensureFXLayer(); if(!f)return;
-  var col = kind==='galaxy' ? (Math.random()<.5?'#cbb8ff':(Math.random()<.5?'#ffffff':'#8fd0ff')) : kind==='fire' ? (Math.random()<.5?'#ff7a2a':'#ffc04a') : 'rgba(255,255,255,.55)';
+  var col = kind==='galaxy' ? (Math.random()<.5?'#cbb8ff':(Math.random()<.5?'#ffffff':'#8fd0ff')) : kind==='fire' ? (Math.random()<.5?'#ff7a2a':'#ffc04a') : kind==='royal' ? (Math.random()<.5?'#ffdf6a':(Math.random()<.5?'#fff6d6':'#ffca3a')) : 'rgba(255,255,255,.55)';
   var d=document.createElement('div'); d.className='fxtrail'; d.style.left=x+'px'; d.style.top=y+'px'; d.style.background=col; d.style.boxShadow='0 0 9px '+col;
   var sz=(kind==='default')?4:5+Math.random()*4; d.style.width=sz+'px'; d.style.height=sz+'px'; f.appendChild(d);
   var rise=kind==='fire'?-(6+Math.random()*10):0;
@@ -1064,13 +1101,14 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   var _next=_lv<HINT_TIERS.length?HINT_TIERS[_lv]:null;
   var _foot=(_next!==null)?('<span class="stag">Next: Lv '+(_lv+1)+' @ '+_next+' WP</span>'):'<span class="stag ok">Max level</span>';
   html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
-  SKINS.slice().sort(function(a,b){return (a.special?1e9:a.cost)-(b.special?1e9:b.cost);}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
+  SKINS.slice().filter(function(s){ return !s.ownerOnly || isAdmin(); }).sort(function(a,b){return (a.special?1e9:a.cost)-(b.special?1e9:b.cost);}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
     let foot; if(!owned) foot= s.special ? '<span class="stag">🔒 '+(s.earn||'Special')+'</span>' : '<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
       const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
+      if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
       perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
@@ -1196,6 +1234,7 @@ let diffUsage={};                                                // how many AI 
 let puzzleActive=false, puzzle=null;                             // Puzzle mode state
 let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress shield + power-up piece-select mode
 let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;   // The Ass Kicker: delete an enemy man every 10 of your moves
+let godPower=null, godTeleFrom=null;                             // Sovereign (owner): infinite god powers
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1228,7 +1267,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1303,6 +1342,14 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
     if(eatSet.has(key))sq.classList.add('willeat'); else if(eatHint.has(key))sq.classList.add('willeathint');
     if(dangerSet&&dangerSet.has(key))sq.classList.add('danger');
     if(strikeSelectMode&&cell&&cell.player!==turn&&!cell.king)sq.classList.add('strikable');
+    if(godPower){ var gv=false;
+      if(godPower==='strike')gv=(cell&&cell.player!==turn&&!cell.king);
+      else if(godPower==='smite')gv=(cell&&cell.player!==turn);
+      else if(godPower==='crown')gv=(cell&&cell.player===turn&&!cell.king);
+      else if(godPower==='enslave')gv=(cell&&cell.player!==turn&&!cell.king);
+      else if(godPower==='summon')gv=!cell;
+      else if(godPower==='teleport')gv=godTeleFrom?!cell:(cell&&cell.player===turn);
+      if(gv)sq.classList.add('godtarget'); }
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -1318,6 +1365,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   updateFSDock();
   updateGiftUI();
   updateStrikeUI();
+  updateGodUI();
 }
 function canGiftJoey(){ return onlineActive && !winner && ownsSpecial('joey') && (isAdmin() || ((myName||'').toLowerCase()==='joey')); }
 function updateGiftUI(){ var b=$('giftfab'); if(b) b.classList.toggle('show', canGiftJoey()); }
@@ -1352,6 +1400,7 @@ function handleCell(r,c){ initAudio();
   if(winner||thinking||animating)return;
   if((mode==='ai'||mode==='online')&&turn!==humanSide)return;
   if(strikeSelectMode){ doStrike(r,c); return; }
+  if(godPower){ applyGod(r,c); return; }
   if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
@@ -1477,6 +1526,8 @@ function jaggedPath(x1,y1,x2,y2,seg,jit){ var dx=x2-x1,dy=y2-y1,len=Math.hypot(d
   for(var i=1;i<seg;i++){ var t=i/seg,bx=x1+dx*t,by=y1+dy*t,off=(Math.random()*2-1)*jit*(1-Math.abs(t-0.5)); out.push('L'+(bx+nx*off).toFixed(1)+' '+(by+ny*off).toFixed(1)); }
   out.push('L'+x2+' '+y2); return out.join(' '); }
 function strikeFX(r,c,onImpact){ animating=true;
+  var royal=(skinFXKind()==='royal');
+  var cGlow=royal?'#ffce4a':'#ff5a4a', cMid=royal?'#fff0b0':'#ff9a6a', cFork=royal?'#fff6d6':'#ffb89a', cFlash=royal?'rgba(255,235,150,.9)':'rgba(255,180,150,.85)', cFlash2=royal?'rgba(255,200,60,.4)':'rgba(255,60,50,.35)';
   var NS='http://www.w3.org/2000/svg';
   var sq=boardEl.children[dIndex(r,c)], rect=sq?sq.getBoundingClientRect():null;
   var ex=rect?rect.left+rect.width/2:innerWidth/2, ey=rect?rect.top+rect.height/2:innerHeight/2;
@@ -1488,17 +1539,17 @@ function strikeFX(r,c,onImpact){ animating=true;
     pth.setAttribute('fill','none'); pth.setAttribute('stroke',col); pth.setAttribute('stroke-width',w);
     pth.setAttribute('stroke-linecap','round'); pth.setAttribute('stroke-linejoin','round'); pth.setAttribute('opacity',op);
     pth.setAttribute('style','filter:drop-shadow(0 0 8px '+col+');'); svg.appendChild(pth); return pth; }
-  var glow=bolt(10,'#ff5a4a',0.9), mid=bolt(5,'#ff9a6a',0.95), core=bolt(2,'#ffffff',1);
+  var glow=bolt(10,cGlow,0.9), mid=bolt(5,cMid,0.95), core=bolt(2,'#ffffff',1);
   var forks=[];                                                    // a few jagged branches splitting off the main bolt
   for(var fi=0;fi<3;fi++){ var ft=0.35+fi*0.2, bx=sx+(ex-sx)*ft, by=sy+(ey-sy)*ft;
     var flen=Math.hypot(ex-sx,ey-sy)*(0.12+Math.random()*0.12), fang=Math.atan2(ey-sy,ex-sx)+(Math.random()<.5?1:-1)*(0.5+Math.random()*0.6);
     var fd=jaggedPath(bx,by,bx+Math.cos(fang)*flen,by+Math.sin(fang)*flen,5,14);
-    var fp=document.createElementNS(NS,'path'); fp.setAttribute('d',fd); fp.setAttribute('fill','none'); fp.setAttribute('stroke','#ffb89a'); fp.setAttribute('stroke-width',2.5); fp.setAttribute('stroke-linecap','round'); fp.setAttribute('opacity',0.9); fp.setAttribute('style','filter:drop-shadow(0 0 6px #ff5a4a);'); svg.appendChild(fp); forks.push(fp); }
+    var fp=document.createElementNS(NS,'path'); fp.setAttribute('d',fd); fp.setAttribute('fill','none'); fp.setAttribute('stroke',cFork); fp.setAttribute('stroke-width',2.5); fp.setAttribute('stroke-linecap','round'); fp.setAttribute('opacity',0.9); fp.setAttribute('style','filter:drop-shadow(0 0 6px '+cGlow+');'); svg.appendChild(fp); forks.push(fp); }
   document.body.appendChild(svg);
   [glow,mid,core].concat(forks).forEach(function(pth){ var L=pth.getTotalLength(); pth.style.strokeDasharray=L; pth.style.strokeDashoffset=L;
     pth.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:170,easing:'linear',fill:'forwards'}); });
   var flash=document.createElement('div');
-  flash.setAttribute('style','position:fixed;inset:0;z-index:199;pointer-events:none;background:radial-gradient(circle at '+ex+'px '+ey+'px, rgba(255,180,150,.85), rgba(255,60,50,.35) 30%, transparent 60%);opacity:0;');
+  flash.setAttribute('style','position:fixed;inset:0;z-index:199;pointer-events:none;background:radial-gradient(circle at '+ex+'px '+ey+'px, '+cFlash+', '+cFlash2+' 30%, transparent 60%);opacity:0;');
   document.body.appendChild(flash);
   try{ sCapture(); }catch(e){}
   setTimeout(function(){                                             // impact
@@ -1520,6 +1571,49 @@ function jumpPieces(sr,sc){ var d0=disp(sr,sc);
       {transform:'translateY(-7%) scale(1.02)',offset:.91},
       {transform:'translateY(0) scale(1)'}
     ],{duration:540,delay:delay,easing:'cubic-bezier(.3,1.5,.5,1)'}); } }
+// ================= Sovereign — owner-only god powers (infinite use) =================
+const GOD_POWERS=[
+  {id:'strike',  icon:'⚡',  label:'Strike',   hint:'Tap an enemy man to vaporise it (kings immune).'},
+  {id:'smite',   icon:'💥',  label:'Smite',    hint:'Tap ANY enemy piece to obliterate it — even a dama.'},
+  {id:'crown',   icon:'👑',  label:'Crown',    hint:'Tap one of your men to crown it a dama.'},
+  {id:'summon',  icon:'✨',  label:'Summon',   hint:'Tap any empty square to summon a new man for you.'},
+  {id:'teleport',icon:'🌀',  label:'Teleport', hint:'Tap your piece, then an empty square to blink it there.'},
+  {id:'enslave', icon:'⛓️',  label:'Enslave',  hint:'Tap an enemy man to turn it to your side.'}
+];
+function isGod(){ return equippedPerk('god')===true; }
+function godUsable(){ return isGod() && !winner && !thinking && !animating && (mode==='pvp'||turn===humanSide); }
+function updateGodUI(){ var b=$('godbar'); if(!b)return; var show=isGod() && !winner && (mode==='pvp'||turn===humanSide); b.classList.toggle('show',show); if(show)renderGodBar(); }
+function renderGodBar(){ var b=$('godbar'); if(!b)return;
+  b.innerHTML=GOD_POWERS.map(function(g){ return '<button data-god="'+g.id+'" class="'+(godPower===g.id?'on':'')+'"><span class="gi">'+g.icon+'</span><span class="gl">'+g.label+'</span></button>'; }).join(''); }
+function selectGod(id){ if(!isGod())return; if(!godUsable()){ showToast('Wait for your turn.'); return; }
+  godPower=(godPower===id)?null:id; godTeleFrom=null; selected=null; renderGodBar(); render();
+  if(godPower){ var g=GOD_POWERS.find(function(x){return x.id===id;}); if(g)showToast(g.icon+' '+g.hint); } }
+function godSync(pw){ if(onlineActive&&!applyingRemote) sendMsg({type:'god', pw:pw, bd:serializeBoard(), t:turn}); }
+function godRefresh(){ legal=computeLegal(board,turn); render(); renderGodBar(); }
+function checkGodWin(){ var opp=turn===1?2:1; if(countPieces(board,opp)===0){ finishGame(turn); return true; } return false; }
+function applyGod(r,c){ var p=board[r][c];
+  if(godPower==='strike'){ if(!p||p.player===turn){showToast('Tap an ENEMY man.');return;} if(p.king){showToast('Kings are immune to Strike — use 💥 Smite.');return;} godStrike(r,c); }
+  else if(godPower==='smite'){ if(!p||p.player===turn){showToast('Tap an ENEMY piece.');return;} godStrike(r,c); }
+  else if(godPower==='crown'){ if(!p||p.player!==turn){showToast('Tap one of YOUR men.');return;} if(p.king){showToast('That is already a dama.');return;} godCrown(r,c); }
+  else if(godPower==='summon'){ if(p){showToast('Pick an EMPTY square.');return;} godSummon(r,c); }
+  else if(godPower==='enslave'){ if(!p||p.player===turn){showToast('Tap an ENEMY man.');return;} if(p.king){showToast('Only men can be enslaved.');return;} godEnslave(r,c); }
+  else if(godPower==='teleport'){
+    if(!godTeleFrom){ if(!p||p.player!==turn){showToast('Tap one of YOUR pieces first.');return;} godTeleFrom=[r,c]; selected=[r,c]; render(); showToast('🌀 Now tap an empty square.'); return; }
+    if(p){showToast('Tap an EMPTY square.');return;} godTeleport(godTeleFrom,[r,c]); godTeleFrom=null; } }
+function godStrike(r,c){ strikeFX(r,c,function(){ board[r][c]=null; godRefresh(); jumpPieces(r,c); godSync('strike'); checkGodWin(); }); }
+function godCrown(r,c){ if(board[r][c])board[r][c].king=true; godRefresh(); boardBurst(r,c);
+  var sq=boardEl.children[dIndex(r,c)], pc=sq&&sq.querySelector('.piece'); if(pc){ try{sPromote();}catch(e){} pc.classList.add('promoting'); setTimeout(function(){pc.classList.remove('promoting');},640); }
+  godSync('crown'); }
+function godSummon(r,c){ board[r][c]={player:turn,king:false}; godRefresh(); boardBurst(r,c);
+  var sq=boardEl.children[dIndex(r,c)], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'scale(0) rotate(-120deg)',opacity:0},{transform:'scale(1.18) rotate(10deg)',opacity:1,offset:.7},{transform:'scale(1) rotate(0)'}],{duration:440,easing:'cubic-bezier(.3,1.6,.5,1)'}); }
+  try{sPromote();}catch(e){} godSync('summon'); }
+function godEnslave(r,c){ if(board[r][c])board[r][c].player=turn; godRefresh(); boardBurst(r,c);
+  var sq=boardEl.children[dIndex(r,c)], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'rotateY(0) scale(1)'},{transform:'rotateY(180deg) scale(1.15)',offset:.5},{transform:'rotateY(360deg) scale(1)'}],{duration:520,easing:'ease-in-out'}); }
+  try{sCapture();}catch(e){} godSync('enslave'); checkGodWin(); }
+function godTeleport(from,to){ var p=board[from[0]][from[1]]; if(!p)return; boardBurst(from[0],from[1]);
+  board[to[0]][to[1]]={player:p.player,king:p.king}; board[from[0]][from[1]]=null; godRefresh(); boardBurst(to[0],to[1]); jumpPieces(to[0],to[1]);
+  var sq=boardEl.children[dIndex(to[0],to[1])], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'scale(0) rotate(200deg)',opacity:0},{transform:'scale(1) rotate(0)',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.5,.5,1)'}); }
+  try{sMove();}catch(e){} godSync('teleport'); }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -1940,6 +2034,7 @@ function onNet(m){
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
   else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
   else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
+  else if(m.type==='god'&&m.bd){ applyingRemote=true; try{ loadOnlineState(m.bd,m.t); }catch(e){} applyingRemote=false; showToast('👑 The Sovereign wields '+(m.pw||'a power')+'…'); }
   else if(m.type==='bye'){ showToast('Opponent left the game'); }
 }
 function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
@@ -1950,7 +2045,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v70';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v71';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2431,6 +2526,7 @@ $('hintfab').addEventListener('click',showHint);
 $('powerfab').addEventListener('click',activatePower);
 $('giftfab').addEventListener('click',giftJoeySkin);
 $('strikefab').addEventListener('click',activateStrike);
+$('godbar').addEventListener('click',function(e){ var b=e.target.closest('[data-god]'); if(b)selectGod(b.getAttribute('data-god')); });
 $('onlinebtn').addEventListener('click',openOnline);
 $('onlineclose').addEventListener('click',closeOnline);
 $('online').addEventListener('click',function(e){ if(e.target===$('online'))closeOnline(); });
