@@ -241,6 +241,16 @@
       radial-gradient(circle at 63% 43%, #f4e64e 0 8.5%, transparent 10%),
       radial-gradient(circle at 40% 31%, #d6f68c 0%, #88c942 42%, #4a8a26 100%);
     box-shadow:inset 0 0 0 2px rgba(40,80,20,.5), inset 0 -3px 6px rgba(18,48,8,.4), 0 2px 6px rgba(0,0,0,.5);}
+  [data-skin="youxito"] .piece.l::before{content:"🐵";}
+  [data-skin="youxito"] .piece.d::before{content:"🦍";}
+  [data-skin="youxito"] .piece::before{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(var(--cell)*.5);box-shadow:none;background:none;border-radius:0;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
+  [data-skin="youxito"] .king::after{z-index:3;}
+  .fxmonkey{position:absolute;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.55));z-index:9;line-height:1;}
+  .sq.monkeytarget{box-shadow:inset 0 0 0 3px rgba(255,206,74,.9);cursor:pointer;animation:hintpulse 1s ease-in-out infinite;}
+  .monkeyfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:56px;height:56px;border-radius:16px;border:1px solid #ffce4a;background:linear-gradient(160deg,var(--panel),rgba(200,150,60,.2));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
+  .monkeyfab.show{display:flex;} .monkeyfab:active{transform:translateY(1px);}
+  .monkeyfab .hicon{font-size:22px;line-height:1;} .monkeyfab .hlbl{font-size:8px;letter-spacing:.4px;color:#e8c884;text-transform:uppercase;}
   [data-skin="serpent"] .piece.d{
     background:
       radial-gradient(ellipse 8% 13% at 37% 43%, #06080c 0 42%, transparent 44%),
@@ -485,6 +495,9 @@
 <div id="godbar" class="godbar"></div>
 <button id="slitherfab" class="slitherfab" title="Slither — retreat a man one square backward (5 per game)">
   <span class="hicon">🐍</span><span class="hlbl">Slither</span>
+</button>
+<button id="monkeyfab" class="monkeyfab" title="Monkey Mayhem — once a game, monkeys attack 4 enemy pawns">
+  <span class="hicon">🐒</span><span class="hlbl">Monkeys</span>
 </button>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="fsdock" class="fsdock">
@@ -1013,6 +1026,8 @@ const SKINS=[
    vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}},
  {id:'theasskicker',name:'The Ass Kicker',emoji:'💀',cost:0,special:true,earn:'Beat The Ass Kicker online to earn',earnByBeating:'theasskicker',rarity:'legendary',perk:{bonusWP:7,repeat:'purge'},swatch:['#e8564a','#4a4a4e','#0c0a0a'],
    vars:{'--bg':'#0c0707','--panel':'#160c0c','--frameA':'#7a1f1f','--frameB':'#3a1212','--frameLine':'#160808','--sqLight':'#7a1f1f','--sqDark':'#0c0a0a','--gold':'#ff5a4a','--sel':'#ff3a2a','--accent':'#e8564a','--ink':'#f6e6e4','--muted':'#c09a98','--lp1':'#ff9a8a','--lp2':'#e8564a','--lp3':'#b0342a','--dp1':'#5a5a5e','--dp2':'#3a3a3e','--dp3':'#222226'}},
+ {id:'youxito',name:'Monkey Mayhem',emoji:'🐵',cost:0,special:true,earn:'Beat youxito online to earn',earnByBeating:'youxito',rarity:'legendary',perk:{bonusWP:4,monkeys:true},swatch:['#c8963c','#4a7a2a','#3a2410'],
+   vars:{'--bg':'#0f1108','--panel':'#191d10','--frameA':'#5a4326','--frameB':'#33240f','--frameLine':'#1e1408','--sqLight':'#a9c46a','--sqDark':'#4a3420','--gold':'#ffce4a','--sel':'#ffb02a','--accent':'#c8a24a','--ink':'#f4eed6','--muted':'#bcae86','--lp1':'#e9c184','--lp2':'#bd873e','--lp3':'#875c26','--dp1':'#6e4a28','--dp2':'#452c14','--dp3':'#281808'}},
  {id:'sovereign',name:'Sovereign',emoji:'👑',cost:0,special:true,ownerOnly:true,earn:'Owner exclusive',rarity:'mythic',perk:{bonusWP:20,god:true},swatch:['#ffe9a8','#c8952e','#2a1e08'],
    vars:{'--bg':'#0f0b04','--panel':'#1c1408','--frameA':'#b8862a','--frameB':'#6e4d12','--frameLine':'#2e1f08','--sqLight':'#f3dc8e','--sqDark':'#3a2a10','--gold':'#ffdf6a','--sel':'#ffca3a','--accent':'#f0c862','--ink':'#fdf3d6','--muted':'#cbb282','--lp1':'#fff6d6','--lp2':'#f2cf72','--lp3':'#b78a2e','--dp1':'#6e5320','--dp2':'#3c2c10','--dp3':'#1a1206'}}
 ];
@@ -1021,7 +1036,8 @@ function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); 
 function grantSpecial(id){ if(!STATS.owned)STATS.owned=[]; if(STATS.owned.indexOf(id)<0){ STATS.owned.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; } return false; }
 function seedSpecialSkins(){ var n=(myName||'').toLowerCase();
   if(isAdmin()||n==='joey') grantSpecial('joey');
-  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker'); }
+  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker');
+  if(isAdmin()||n==='youxito') grantSpecial('youxito'); }
   // Sovereign is NOT seeded to a local list — ownsSkin() gates it on isAdmin(), so it lives only on the signed-in owner account
 let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
@@ -1047,7 +1063,7 @@ function applySkin(id){ const s=skinById(id); const root=document.documentElemen
 }
 function pieceFinish(s){ if(!s)return ''; if(['royalgold','crimson','marble','coronation','sunset'].indexOf(s.id)>=0)return 'metal'; if(['obsidian','celestial','ocean','candy','winter'].indexOf(s.id)>=0)return 'glass'; if(['galaxy','phoenix','aurora','ramadan'].indexOf(s.id)>=0)return 'neon'; return ''; }
 function skinFX(s){ if(!s)return ''; if(['galaxy','celestial','aurora','joey'].indexOf(s.id)>=0)return 'stars'; if(['phoenix','crimson','theasskicker'].indexOf(s.id)>=0)return 'embers'; if(s.rarity==='legendary'||s.rarity==='epic')return 'shimmer'; return ''; }
-function skinFXKind(){ var id=STATS.equipped||'wood'; if(id==='joey')return 'galaxy'; if(id==='theasskicker')return 'fire'; if(id==='sovereign')return 'royal'; return 'default'; }
+function skinFXKind(){ var id=STATS.equipped||'wood'; if(id==='joey')return 'galaxy'; if(id==='theasskicker')return 'fire'; if(id==='sovereign')return 'royal'; if(id==='youxito')return 'jungle'; return 'default'; }
 function applyBoardFX(s){ var fx=document.getElementById('boardfx'); if(!fx)return; fx.className='boardfx'; fx.innerHTML='';
   var t=skinFX(s); if(!t)return; fx.classList.add('fx-'+t);
   if(t==='stars'||t==='embers'){ var n=t==='stars'?16:12; for(var i=0;i<n;i++){ var d=document.createElement('div'); d.className=(t==='stars'?'starp':'emberp');
@@ -1089,6 +1105,13 @@ function boardBurst(r,c){ var f=ensureFXLayer(); if(!f)return; var p=fxPos(r,c),
     var rc=['#fff6d6','#ffdf6a','#f2cf72','#ffca3a','#ffffff'];
     for(var m=0;m<22;m++){ var am=(Math.PI*2*m)/22+Math.random()*.5, dm=p.cell*(0.5+Math.random()*1.05);
       fxParticle(f,p.x,p.y,rc[m%rc.length],3+Math.random()*6,Math.cos(am)*dm,Math.sin(am)*dm-p.cell*.1,640+Math.random()*420,'cubic-bezier(.15,.7,.3,1)',200); }
+    return; }
+  if(kind==='jungle'){                                            // Monkey Mayhem — leafy burst: banana-yellow flash, green ring, brown/green/yellow bits
+    fxFlash(f,p.x,p.y,p.cell*1.05,'rgba(255,220,110,.9)');
+    fxRing(f,p.x,p.y,p.cell*.85,'#8fce4a','#5a9a2a',460,.25,1.8,.95);
+    var jc=['#8fce4a','#c8963c','#ffce4a','#5a7a2a','#a9763e'];
+    for(var jm=0;jm<16;jm++){ var aj=(Math.PI*2*jm)/16+Math.random()*.5, dj=p.cell*(0.45+Math.random()*0.8);
+      fxParticle(f,p.x,p.y,jc[jm%jc.length],4+Math.random()*5,Math.cos(aj)*dj,Math.sin(aj)*dj-p.cell*.1,460+Math.random()*220,null,120); }
     return; }
   if(kind==='fire'){                                              // The Ass Kicker — explosion: red flash, shock ring, rising embers + sparks
     fxFlash(f,p.x,p.y,p.cell*1.15,'rgba(255,140,80,.95)');
@@ -1175,6 +1198,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
       if(s.perk.retreat)bits.push('🐍 Slither — retreat a man one square backward, 5× per game (men normally can’t go back)');
+      if(s.perk.monkeys)bits.push('🐒 Monkey Mayhem — once per game, unleash monkeys to attack up to 4 enemy pawns');
       perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
@@ -1241,6 +1265,8 @@ function sSnake(){ if(!(soundOn&&audioCtx))return; var t=audioCtx.currentTime, d
   var g=audioCtx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.17,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   n.connect(bp).connect(g).connect(sfxGain||audioCtx.destination); n.start(t); n.stop(t+dur+0.02);
   tone(1900,0.05,'triangle',0.05,t+dur*0.5); }                    // little tongue flick
+function sMonkey(){ if(!(soundOn&&audioCtx))return; var t=audioCtx.currentTime;   // chattery monkey screech
+  tone(820,0.07,'sawtooth',0.12,t); tone(1500,0.06,'sawtooth',0.11,t+0.05); tone(1050,0.07,'square',0.09,t+0.11); tone(1650,0.05,'sawtooth',0.08,t+0.17); noise(0.05,0.07); }
 function sPromote(){ if(!(soundOn&&audioCtx))return; const t=audioCtx.currentTime;
   if(soundPack==='arcade'){ [440,660,880,1320].forEach((f,i)=>tone(f,0.14,'square',0.12,t+i*0.07)); }
   else if(soundPack==='wood'){ [262,330,392].forEach((f,i)=>tone(f,0.22,'triangle',0.16,t+i*0.1)); }
@@ -1309,6 +1335,7 @@ let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress sh
 let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;   // The Ass Kicker: delete an enemy man every 10 of your moves
 let godPower=null, godTeleFrom=null;                             // Sovereign (owner): infinite god powers
 let slitherLeft=0, slitherMode=false, slitherSel=null;          // Serpent: move a man backward, 5x per game
+let monkeyUsed=false, monkeyMode=false, monkeyPicks=0, monkeyPickSet=null;   // Monkey Mayhem: once/game, monkeys attack up to 4 enemy pawns
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1341,7 +1368,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1426,6 +1453,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
       if(gv)sq.classList.add('godtarget'); }
     if(slitherMode){ if(!slitherSel){ if(slitherTargets(mr,mc).length)sq.classList.add('slithersrc'); }
       else { if(slitherSel[0]===mr&&slitherSel[1]===mc)sq.classList.add('sel'); if(slitherTargets(slitherSel[0],slitherSel[1]).some(function(q){return q[0]===mr&&q[1]===mc;}))sq.classList.add('slitherdest'); } }
+    if(monkeyMode&&cell&&cell.player!==turn&&!cell.king&&!(monkeyPickSet&&monkeyPickSet.has(mr+','+mc)))sq.classList.add('monkeytarget');
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -1443,6 +1471,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   updateStrikeUI();
   updateGodUI();
   updateSlitherUI();
+  updateMonkeyUI();
 }
 function canGiftJoey(){ return onlineActive && !winner && ownsSpecial('joey') && (isAdmin() || ((myName||'').toLowerCase()==='joey')); }
 function updateGiftUI(){ var b=$('giftfab'); if(b) b.classList.toggle('show', canGiftJoey()); }
@@ -1479,6 +1508,7 @@ function handleCell(r,c){ initAudio();
   if(strikeSelectMode){ doStrike(r,c); return; }
   if(godPower){ applyGod(r,c); return; }
   if(slitherMode){ handleSlither(r,c); return; }
+  if(monkeyMode){ monkeyPick(r,c); return; }
   if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
@@ -1714,6 +1744,34 @@ function handleSlither(r,c){ var p=board[r][c];
   if(!ok){ if(slitherTargets(r,c).length){ slitherSel=[r,c]; render(); return; } showToast('Tap the highlighted square behind your man.'); return; }
   var from=slitherSel; slitherSel=null; slitherMode=false; slitherLeft--; try{sSnake();}catch(e){}
   apply({from:from,to:[r,c],captured:null,path:null}); }
+// ---- Monkey Mayhem: once per game, monkeys leap onto up to 4 enemy pawns ----
+function monkeyUsable(){ return equippedPerk('monkeys')===true && !monkeyUsed && !winner && !thinking && !animating && (mode==='pvp'||turn===humanSide); }
+function updateMonkeyUI(){ var b=$('monkeyfab'); if(!b)return; b.classList.toggle('show', monkeyUsable()||monkeyMode);
+  if(monkeyMode){ var l=b.querySelector('.hlbl'); if(l)l.textContent=(4-monkeyPicks)+' left'; } else { var l2=b.querySelector('.hlbl'); if(l2)l2.textContent='Monkeys'; } }
+function activateMonkeys(){ if(!monkeyUsable())return; initAudio(); monkeyMode=true; monkeyPicks=0; monkeyPickSet=new Set(); render(); updateMonkeyUI(); showToast('🐒 Tap up to 4 enemy pawns — the monkeys will get them!'); }
+function monkeyAttackFX(r,c,onDone){ var f=ensureFXLayer(); if(!f){ if(onDone)onDone(); return; } var p=fxPos(r,c);
+  var mk=document.createElement('div'); mk.className='fxmonkey'; mk.textContent='🐒'; mk.style.left=p.x+'px'; mk.style.top=p.y+'px'; mk.style.fontSize=(p.cell*0.72)+'px'; f.appendChild(mk);
+  try{sMonkey();}catch(e){} if(navigator.vibrate){try{navigator.vibrate(20);}catch(e){}}
+  var drop=mk.animate([
+    {transform:'translate(-50%,-330%) scale(.3) rotate(-40deg)',opacity:0},
+    {transform:'translate(-50%,-70%) scale(1.4) rotate(14deg)',opacity:1,offset:.5},
+    {transform:'translate(-50%,-50%) scale(1.12) rotate(-6deg)',offset:.72},
+    {transform:'translate(-50%,-50%) scale(1) rotate(0)'}
+  ],{duration:360,easing:'cubic-bezier(.3,1.45,.5,1)'});
+  drop.onfinish=function(){ boardBurst(r,c); if(onDone)onDone();
+    mk.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(-50%,-190%) scale(.5) rotate(35deg)',opacity:0}],{duration:280,easing:'ease-in'}).onfinish=function(){mk.remove();}; };
+  drop.oncancel=function(){ if(onDone)onDone(); mk.remove(); }; }
+function monkeyPick(r,c){ var pc=board[r][c];
+  if(!pc||pc.player===turn){ showToast('Tap an ENEMY pawn.'); return; }
+  if(pc.king){ showToast('Monkeys grab pawns, not damas.'); return; }
+  var key=r+','+c; if(monkeyPickSet.has(key))return; monkeyPickSet.add(key); monkeyPicks++;
+  if(onlineActive&&!applyingRemote) sendMsg({type:'monkey', r:r, c:c});
+  monkeyAttackFX(r,c,function(){ if(board[r]&&board[r][c])board[r][c]=null; legal=computeLegal(board,turn); render();
+    var opp2=turn===1?2:1; if(countPieces(board,opp2)===0)finishGame(turn); });
+  var opp=turn===1?2:1, remaining=0; for(var rr=0;rr<8;rr++)for(var cc=0;cc<8;cc++){ var q=board[rr][cc]; if(q&&q.player===opp&&!q.king&&!monkeyPickSet.has(rr+','+cc))remaining++; }
+  if(monkeyPicks>=4 || remaining<=0){ monkeyMode=false; monkeyUsed=true; showToast('🐒 The monkeys had their fun!'); }
+  render(); updateMonkeyUI(); }
+function applyRemoteMonkey(r,c){ monkeyAttackFX(r,c,function(){ if(board[r]&&board[r][c])board[r][c]=null; legal=computeLegal(board,turn); render(); }); }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -2099,7 +2157,7 @@ function serializeBoard(){ return board.map(function(row){ return row.map(functi
 function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(function(c){ return c?{player:c.p,king:!!c.k}:null; }); });
   mode='online'; humanSide=onlineSide; flip=(humanSide===2);        // guest: lock in MY side + orient the board so my pieces sit at the bottom
   turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
-  purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;
+  purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;monkeyMode=false;monkeyPickSet=null;
   legal=computeLegal(board,turn); overlay.classList.remove('show'); buildLabels(); render(); updateSideBtn(); if(coachMode)coachAuto(); }
 function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn, nm:myName, eq:STATS.equipped}); }
 function cleanupMqtt(){ if(joinTimer){clearInterval(joinTimer);joinTimer=null;} try{ if(mqc)mqc.end(true); }catch(e){} mqc=null; roomTopic=''; keepAwake(false); }
@@ -2134,6 +2192,7 @@ function onNet(m){
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
   else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
   else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
+  else if(m.type==='monkey'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteMonkey(m.r,m.c); }catch(e){} applyingRemote=false; }
   else if(m.type==='god'&&m.bd){ applyingRemote=true;
     try{
       if(m.pw==='strike'||m.pw==='smite'){ godRemoteFX(m); loadOnlineState(m.bd,m.t); }   // bolt flies as the board updates
@@ -2150,7 +2209,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v78';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v79';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2633,6 +2692,7 @@ $('giftfab').addEventListener('click',giftJoeySkin);
 $('strikefab').addEventListener('click',activateStrike);
 $('godbar').addEventListener('click',function(e){ var b=e.target.closest('[data-god]'); if(b)selectGod(b.getAttribute('data-god')); });
 $('slitherfab').addEventListener('click',activateSlither);
+$('monkeyfab').addEventListener('click',activateMonkeys);
 $('onlinebtn').addEventListener('click',openOnline);
 $('onlineclose').addEventListener('click',closeOnline);
 $('online').addEventListener('click',function(e){ if(e.target===$('online'))closeOnline(); });
