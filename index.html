@@ -335,6 +335,14 @@
   .sq.wrongflash::after{content:"";position:absolute;inset:8%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(224,60,50,.95);animation:hintpulse .5s ease-in-out 2;z-index:4;pointer-events:none;}
   .sq.strikable::after{content:"💀";position:absolute;top:2px;right:3px;font-size:calc(var(--cell)*.3);z-index:4;pointer-events:none;filter:drop-shadow(0 0 2px #000);animation:hintpulse 1s ease-in-out infinite;}
   .sq.strikable{box-shadow:inset 0 0 0 3px rgba(255,60,50,.85);cursor:crosshair;}
+  /* persistent board effects layer (survives the per-move re-render) */
+  .fxlayer{position:absolute;pointer-events:none;z-index:6;overflow:visible;}
+  .fxpt{position:absolute;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 7px currentColor,0 0 2px #fff;}
+  .fxring{position:absolute;border-radius:50%;border:3px solid var(--gold);box-shadow:0 0 14px var(--gold),inset 0 0 8px var(--gold);transform:translate(-50%,-50%);}
+  .fxland{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.7);box-shadow:0 0 8px rgba(255,255,255,.4);transform:translate(-50%,-50%);}
+  .piece.moving{z-index:7 !important;filter:drop-shadow(0 8px 8px rgba(0,0,0,.55));}
+  @keyframes selpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+  .sq.sel .piece{animation:selpulse 1.15s ease-in-out infinite;}
 </style>
 </head>
 <body>
@@ -392,6 +400,7 @@
       <div class="ranks" id="ranks"></div>
       <div class="frame"><div class="board" id="board"></div>
         <div class="boardfx" id="boardfx"></div>
+        <div class="fxlayer" id="fxlayer"></div>
         <svg class="pathsvg" id="pathsvg"></svg>
         <div class="overlay" id="overlay"><div class="card"><h2 id="winTitle"></h2><p id="winSub"></p>
           <button class="btn primary" id="playAgain"></button></div></div>
@@ -961,6 +970,26 @@ function captureFX(sqEl){ if(!sqEl)return; var cols=fxColors(), n=9; for(var i=0
     p.style.setProperty('--dx',(Math.cos(ang)*dist)+'px'); p.style.setProperty('--dy',(Math.sin(ang)*dist)+'px');
     sqEl.appendChild(p); (function(pp){ setTimeout(function(){ if(pp.parentNode)pp.parentNode.removeChild(pp); },520); })(p); } }
 function updateHintVisibility(){ const f=$('hintfab'); if(f) f.classList.toggle('off',!hintUnlocked()); }
+// ---- persistent board effects (rendered in #fxlayer so the per-move re-render doesn't cut them off) ----
+function ensureFXLayer(){ var f=$('fxlayer'); if(!f||!boardEl.clientWidth)return null;
+  f.style.left=(boardEl.offsetLeft+boardEl.clientLeft)+'px'; f.style.top=(boardEl.offsetTop+boardEl.clientTop)+'px';
+  f.style.width=boardEl.clientWidth+'px'; f.style.height=boardEl.clientHeight+'px'; return f; }
+function fxPos(r,c){ var d=disp(r,c), cell=boardEl.clientWidth/8; return {x:(d.c+0.5)*cell, y:(d.r+0.5)*cell, cell:cell}; }
+function boardBurst(r,c){ var f=ensureFXLayer(); if(!f)return; var p=fxPos(r,c), cols=fxColors();
+  var ring=document.createElement('div'); ring.className='fxring';
+  ring.style.left=p.x+'px'; ring.style.top=p.y+'px'; ring.style.width=(p.cell*.85)+'px'; ring.style.height=(p.cell*.85)+'px';
+  f.appendChild(ring);
+  ring.animate([{transform:'translate(-50%,-50%) scale(.25)',opacity:.95},{transform:'translate(-50%,-50%) scale(1.7)',opacity:0}],{duration:440,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=function(){ring.remove();};
+  var n=14; for(var i=0;i<n;i++){ (function(i){ var pt=document.createElement('div'); pt.className='fxpt';
+    pt.style.color=cols[i%cols.length]; pt.style.background=cols[i%cols.length]; pt.style.left=p.x+'px'; pt.style.top=p.y+'px';
+    var sz=5+Math.random()*6; pt.style.width=sz+'px'; pt.style.height=sz+'px'; f.appendChild(pt);
+    var ang=(Math.PI*2*i)/n+Math.random()*0.5, dist=p.cell*(0.45+Math.random()*0.8), dx=Math.cos(ang)*dist, dy=Math.sin(ang)*dist-p.cell*0.15;
+    pt.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(calc(-50% + '+dx.toFixed(1)+'px), calc(-50% + '+dy.toFixed(1)+'px)) scale(.15)',opacity:0}],{duration:460+Math.random()*220,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=function(){pt.remove();}; })(i); } }
+function landPulse(r,c){ var f=ensureFXLayer(); if(!f)return; var p=fxPos(r,c);
+  var ring=document.createElement('div'); ring.className='fxland';
+  ring.style.left=p.x+'px'; ring.style.top=p.y+'px'; ring.style.width=(p.cell*.62)+'px'; ring.style.height=(p.cell*.62)+'px';
+  f.appendChild(ring);
+  ring.animate([{transform:'translate(-50%,-50%) scale(.4)',opacity:.65},{transform:'translate(-50%,-50%) scale(1.25)',opacity:0}],{duration:300,easing:'ease-out'}).onfinish=function(){ring.remove();}; }
 function diffName(d){ return ({easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very Hard'})[d]||d; }
 function mostUsedDiff(){ var order=['easy','med','hard','vhard'], best=diff, bc=-1;
   order.forEach(function(k){ var v=diffUsage[k]||0; if(v>=bc){ bc=v; best=k; } });   // ties favour the harder difficulty
@@ -1431,7 +1460,7 @@ function strikeFX(r,c,onImpact){ animating=true;
   setTimeout(function(){                                             // impact
     try{ sCapture(); }catch(e){} if(navigator.vibrate){try{navigator.vibrate([15,30,60]);}catch(e){}}
     flash.animate([{opacity:0},{opacity:1,offset:.15},{opacity:0}],{duration:360,easing:'ease-out'});
-    try{ captureFX(sq); }catch(e){}
+    try{ boardBurst(r,c); }catch(e){}
     [glow,mid,core].forEach(function(pth){ pth.animate([{opacity:pth.getAttribute('opacity')},{opacity:0}],{duration:220,fill:'forwards'}); });
     animating=false;                                                // re-enable input BEFORE the impact render so the board is clickable and the jumps aren't cut off
     if(onImpact)onImpact();                                         // removes the pawn, renders once, then starts the shockwave jumps
@@ -1488,18 +1517,22 @@ function animateMove(mv,prevBoard,promoted,done){
   const ghosts=[];
   if(mv.captured)mv.captured.forEach((cap,i)=>{const sq=boardEl.children[dIndex(cap.r,cap.c)];const victim=prevBoard[cap.r][cap.c];
     if(sq&&victim){const g=document.createElement('div');g.className='piece '+(victim.player===1?'l':'d')+(victim.king?' king':'');
-      g.style.transition='opacity .22s ease, transform .22s ease';sq.appendChild(g);ghosts.push({el:g,idx:i});}});
+      sq.appendChild(g);ghosts.push({el:g,idx:i,r:cap.r,c:cap.c});}});
 
-  const finish=()=>{ghosts.forEach(({el})=>el.remove());if(destSq)destSq.classList.remove('moving');
-    if(promoted&&piece){sPromote();piece.classList.add('promoting');setTimeout(()=>{piece.classList.remove('promoting');if(done)done();},640);}
+  const finish=()=>{ghosts.forEach(({el})=>{if(el.parentNode)el.remove();});if(destSq)destSq.classList.remove('moving');
+    landPulse(mv.to[0],mv.to[1]);
+    if(promoted&&piece){sPromote();piece.classList.add('promoting');boardBurst(mv.to[0],mv.to[1]);setTimeout(()=>{piece.classList.remove('promoting');if(done)done();},640);}
     else if(done)done();};
 
   if(!mv.captured)sMove();
-  ghosts.forEach(({el,idx})=>setTimeout(()=>{el.style.opacity='0';el.style.transform='scale(.35)';sCapture();captureFX(el.parentNode);},Math.max(0,Math.round((idx+1)/segs*total)-60)));
+  ghosts.forEach(({el,idx,r,c})=>setTimeout(()=>{ sCapture(); boardBurst(r,c);      // burst lives in the overlay, so it survives the re-render
+    if(el.animate){ el.animate([{transform:'scale(1) rotate(0)',opacity:1},{transform:'scale(1.18) rotate(-10deg)',opacity:1,offset:.18},{transform:'scale(.1) rotate(80deg)',opacity:0}],{duration:300,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'}); }
+    else { el.style.opacity='0'; }
+  },Math.max(0,Math.round((idx+1)/segs*total)-50)));
 
   if(piece&&piece.animate){destSq.classList.add('moving');
     const kf=positions.map(p=>{const dp=disp(p.r,p.c);return{transform:'translate('+((dp.c-dTo.c)*cell)+'px,'+((dp.r-dTo.r)*cell)+'px)'};});
-    const anim=piece.animate(kf,{duration:total,easing:segs>1?'ease-in-out':'cubic-bezier(.22,.61,.36,1)'});
+    const anim=piece.animate(kf,{duration:total,easing:segs>1?'ease-in-out':'cubic-bezier(.34,1.28,.55,1)'});   // single hop gets a springy settle
     anim.onfinish=finish;anim.oncancel=finish;
   } else { setTimeout(finish,total+40); }
 }
@@ -1872,7 +1905,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v68';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v69';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
