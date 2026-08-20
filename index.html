@@ -128,6 +128,10 @@
   .powerfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
     width:56px;height:56px;border-radius:16px;border:1px solid var(--gold);background:linear-gradient(160deg,var(--panel),rgba(255,216,90,.14));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
   .powerfab.show{display:flex;}
+  .giftfab{position:fixed;right:14px;bottom:216px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:56px;height:56px;border-radius:16px;border:1px solid #c060ff;background:linear-gradient(160deg,var(--panel),rgba(185,140,255,.18));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
+  .giftfab.show{display:flex;} .giftfab:active{transform:translateY(1px);}
+  .giftfab .hicon{font-size:22px;line-height:1;} .giftfab .hlbl{font-size:8px;letter-spacing:.4px;color:#c9a6ff;text-transform:uppercase;}
   .powerfab:active{transform:translateY(1px);}
   .powerfab .hicon{font-size:23px;line-height:1;color:var(--gold);}
   .powerfab .hlbl{font-size:9px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;}
@@ -171,6 +175,24 @@
   [data-finish="metal"] .piece{box-shadow:inset 0 3px 5px rgba(255,255,255,.45),inset 0 -3px 6px rgba(0,0,0,.42),0 2px 5px rgba(0,0,0,.45);}
   [data-finish="glass"] .piece{box-shadow:inset 0 2px 9px rgba(255,255,255,.55),inset 0 -2px 7px rgba(0,0,0,.28),0 2px 5px rgba(0,0,0,.35);}
   [data-finish="neon"] .piece{box-shadow:0 0 11px var(--gold),inset 0 0 7px rgba(255,255,255,.4),0 2px 5px rgba(0,0,0,.4);}
+  /* Joey's Galaxy — light pawns = bright starry galaxy, dark pawns = deep galaxy with a violet glow, both readable on the black/purple board */
+  [data-skin="joey"] .piece.l{
+    background:
+      radial-gradient(1.6px 1.6px at 28% 26%, #ffffff, transparent 60%),
+      radial-gradient(1.5px 1.5px at 68% 40%, #dfeaff, transparent 60%),
+      radial-gradient(1.1px 1.1px at 50% 68%, #ffffff, transparent 60%),
+      radial-gradient(1.1px 1.1px at 79% 73%, #ecd8ff, transparent 60%),
+      radial-gradient(1.2px 1.2px at 38% 55%, #cfe0ff, transparent 60%),
+      radial-gradient(circle at 40% 34%, #ece0ff 0%, #b79cf2 40%, #6a4aa8 78%, #38285f 100%);
+    box-shadow:inset 0 0 0 1.6px rgba(255,255,255,.6), inset 0 -3px 6px rgba(40,10,80,.5), 0 2px 5px rgba(0,0,0,.55);}
+  [data-skin="joey"] .piece.d{
+    background:
+      radial-gradient(1.6px 1.6px at 32% 30%, #d3c2ff, transparent 60%),
+      radial-gradient(1.2px 1.2px at 66% 52%, #b096ff, transparent 60%),
+      radial-gradient(1.1px 1.1px at 52% 24%, #e0d2ff, transparent 60%),
+      radial-gradient(1.2px 1.2px at 74% 70%, #9070dc, transparent 60%),
+      radial-gradient(circle at 42% 38%, #2c1c57 0%, #180f36 55%, #090517 100%);
+    box-shadow:inset 0 0 0 2px rgba(170,132,255,.9), inset 0 -3px 6px rgba(0,0,0,.5), 0 0 10px rgba(150,100,255,.5), 0 2px 5px rgba(0,0,0,.6);}
   .friendlist{display:flex;flex-direction:column;gap:8px;margin:8px 0;max-height:52vh;overflow:auto;}
   .frow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:10px;padding:9px 11px;flex-wrap:wrap;}
   .fdot{width:9px;height:9px;border-radius:50%;background:#5a5a5a;flex:0 0 auto;}
@@ -370,6 +392,9 @@
   <span class="hicon">♛</span><span class="hlbl">Crown</span>
 </button>
 <div id="powerbadge" class="powerbadge"></div>
+<button id="giftfab" class="giftfab" title="Give Joey's Galaxy skin to your online opponent">
+  <span class="hicon">🎁</span><span class="hlbl">Gift skin</span>
+</button>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="fsdock" class="fsdock">
   <button id="fsnew" title="New game">🔄<span class="l">New</span></button>
@@ -818,7 +843,7 @@ function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STAT
 // ---- progression: win points, skins, perks ----
 const THEMEVARS=['--bg','--panel','--frameA','--frameB','--frameLine','--sqLight','--sqDark','--wood','--gold','--sel','--accent','--ink','--muted','--lp1','--lp2','--lp3','--dp1','--dp2','--dp3'];
 const HINT_COST=10; const HINT_TIERS=[10,40,80,150];
-function hintLevel(){ var wp=STATS.wp||0, lv=0; for(var i=0;i<HINT_TIERS.length;i++){ if(wp>=HINT_TIERS[i])lv=i+1; } return lv; }
+function hintLevel(){ var wp=STATS.wp||0, lv=0; for(var i=0;i<HINT_TIERS.length;i++){ if(wp>=HINT_TIERS[i])lv=i+1; } if(equippedPerk('strongHint'))lv=Math.min(HINT_TIERS.length, lv+1); return lv; }
 const SKINS=[
  {id:'wood',name:'Classic Wood',emoji:'🌰',cost:0,rarity:'common',swatch:['#e6d2a8','#c69f6a','#d9a441'],vars:{}},
  {id:'midnight',name:'Midnight',emoji:'🌙',cost:20,rarity:'common',swatch:['#c3cfe0','#6f86a8','#6db0ff'],
@@ -870,19 +895,25 @@ const SKINS=[
  {id:'leapfrog',name:'Leapfrog',emoji:'🐸',cost:440,rarity:'epic',perk:{powerup:'doublejump'},swatch:['#e0f5d0','#7aae4a','#e0c85a'],
    vars:{'--bg':'#0d140a','--panel':'#151e10','--frameA':'#4a7a2a','--frameB':'#2c4a18','--frameLine':'#12240c','--sqLight':'#e0f5d0','--sqDark':'#7aae4a','--gold':'#e0c85a','--sel':'#5ac03a','--accent':'#9ace6a','--ink':'#eef8e6','--muted':'#a8c090','--lp1':'#f2fbe8','--lp2':'#cfe6b0','--lp3':'#8fc270','--dp1':'#4a7a2a','--dp2':'#2c4a18','--dp3':'#12240c'}},
  {id:'oracle',name:'Oracle',emoji:'👁️',cost:460,rarity:'legendary',perk:{bonusWP:1,powerup:'foresight'},swatch:['#e6dcff','#8a6ad0','#ffd85a'],
-   vars:{'--bg':'#0d0a18','--panel':'#160f26','--frameA':'#4a2e8a','--frameB':'#2a1a5a','--frameLine':'#140f2a','--sqLight':'#e6dcff','--sqDark':'#8a6ad0','--gold':'#ffd85a','--sel':'#b06aff','--accent':'#b89aff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#f6f2ff','--lp2':'#d8c8f5','--lp3':'#a888dc','--dp1':'#3a2a6a','--dp2':'#221648','--dp3':'#100a24'}}
+   vars:{'--bg':'#0d0a18','--panel':'#160f26','--frameA':'#4a2e8a','--frameB':'#2a1a5a','--frameLine':'#140f2a','--sqLight':'#e6dcff','--sqDark':'#8a6ad0','--gold':'#ffd85a','--sel':'#b06aff','--accent':'#b89aff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#f6f2ff','--lp2':'#d8c8f5','--lp3':'#a888dc','--dp1':'#3a2a6a','--dp2':'#221648','--dp3':'#100a24'}},
+ {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
+   vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}}
 ];
-const MAXSKIN=Math.max.apply(null,SKINS.map(function(s){return s.cost;}));
+const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
+function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); }
+function grantSpecial(id){ if(!STATS.owned)STATS.owned=[]; if(STATS.owned.indexOf(id)<0){ STATS.owned.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; } return false; }
+function seedSpecialSkins(){ if(isAdmin()||((myName||'').toLowerCase()==='joey')) grantSpecial('joey'); }
 let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
 function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
-function ownsSkin(s){ return (STATS.wp||0)>=s.cost; }
+function ownsSkin(s){ if(s.special) return ownsSpecial(s.id); return (STATS.wp||0)>=s.cost; }
 function hintUnlocked(){ return hintLevel()>=1; }
 function applySkin(id){ const s=skinById(id); const root=document.documentElement;
   THEMEVARS.forEach(function(v){root.style.removeProperty(v);});
   if(s.vars) for(const k in s.vars) root.style.setProperty(k,s.vars[k]);
   root.setAttribute('data-finish', pieceFinish(s));
+  root.setAttribute('data-skin', s.id);
   applyBoardFX(s);
 }
 function pieceFinish(s){ if(!s)return ''; if(['royalgold','crimson','marble','coronation','sunset'].indexOf(s.id)>=0)return 'metal'; if(['obsidian','celestial','ocean','candy','winter'].indexOf(s.id)>=0)return 'glass'; if(['galaxy','phoenix','aurora','ramadan'].indexOf(s.id)>=0)return 'neon'; return ''; }
@@ -933,9 +964,9 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   var _next=_lv<HINT_TIERS.length?HINT_TIERS[_lv]:null;
   var _foot=(_next!==null)?('<span class="stag">Next: Lv '+(_lv+1)+' @ '+_next+' WP</span>'):'<span class="stag ok">Max level</span>';
   html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
-  SKINS.slice().sort(function(a,b){return a.cost-b.cost;}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
+  SKINS.slice().sort(function(a,b){return (a.special?1e9:a.cost)-(b.special?1e9:b.cost);}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
-    let foot; if(!owned) foot='<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
+    let foot; if(!owned) foot= s.special ? '<span class="stag">🌌 Beat Joey to earn</span>' : '<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
       const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
@@ -1182,7 +1213,11 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   drawPaths(capMoves,hintCap,normMoves);
   updatePowerUI();
   updateFSDock();
+  updateGiftUI();
 }
+function canGiftJoey(){ return onlineActive && !winner && ownsSpecial('joey') && (isAdmin() || ((myName||'').toLowerCase()==='joey')); }
+function updateGiftUI(){ var b=$('giftfab'); if(b) b.classList.toggle('show', canGiftJoey()); }
+function giftJoeySkin(){ if(!canGiftJoey())return; sendMsg({type:'grantskin', skin:'joey', fromName:myName}); showToast("🎁 Sent Joey's Galaxy to your opponent!"); }
 function updateFSDock(){ var u=$('fsundo'), h=$('fshint');
   if(u)u.disabled=(onlineActive||puzzleActive||!history.length||thinking||animating);
   if(h){ h.disabled=(puzzleActive?(!puzzle||puzzle.solved):(!hintUnlocked()||!canAssist())); h.style.display=(puzzleActive||hintUnlocked())?'flex':'none'; } }
@@ -1663,7 +1698,7 @@ function hideCoachPanel(){ /* side panel is persistent; refreshed by coachAuto e
 // messages on a topic keyed by the room code. Outbound connections always cross NAT / cellular, so this
 // works from anywhere with no relay credentials and no accounts.
 let onlineActive=false, onlineSide=1, applyingRemote=false, myCode='';
-let mqc=null, roomTopic='', myId='', oppSeen=false, joinTimer=null;
+let mqc=null, roomTopic='', myId='', oppSeen=false, joinTimer=null, oppName='';
 const MQTT_URL='wss://broker.emqx.io:8084/mqtt';
 const TOPIC_PREFIX='damalb/';
 function loadMqtt(cb){ if(window.mqtt){cb(true);return;}
@@ -1688,7 +1723,7 @@ function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(funct
   mode='online'; humanSide=onlineSide; flip=(humanSide===2);        // guest: lock in MY side + orient the board so my pieces sit at the bottom
   turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
   legal=computeLegal(board,turn); overlay.classList.remove('show'); buildLabels(); render(); updateSideBtn(); if(coachMode)coachAuto(); }
-function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn}); }
+function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn, nm:myName}); }
 function cleanupMqtt(){ if(joinTimer){clearInterval(joinTimer);joinTimer=null;} try{ if(mqc)mqc.end(true); }catch(e){} mqc=null; roomTopic=''; keepAwake(false); }
 function connectBroker(onReady){ loadMqtt(function(ok){ if(!ok){ olStatus('Couldn’t load online — check your connection.'); return; }
   myId=rid(); mqc=window.mqtt.connect(MQTT_URL,{connectTimeout:9000, clean:true, reconnectPeriod:2500, keepalive:30});
@@ -1703,20 +1738,23 @@ function joinGame(){ var code=(($('oljoin')&&$('oljoin').value)||'').toUpperCase
   if(code.length<5){ olStatus('Enter the 5-character code.'); return; }
   myCode=code; olStatus('Connecting…'); cleanupMqtt(); roomTopic=TOPIC_PREFIX+code; oppSeen=false;
   connectBroker(function(){ keepAwake(true); var tries=0;
-    var announce=function(){ tries++; sendMsg({type:'join'}); if(!onlineActive)olStatus('Looking for the game… ('+tries+')');
+    var announce=function(){ tries++; sendMsg({type:'join', nm:myName}); if(!onlineActive)olStatus('Looking for the game… ('+tries+')');
       if(tries>=12&&!onlineActive){ clearInterval(joinTimer); joinTimer=null; olStatus('No one is hosting that code yet — check the code and that your friend tapped Create game.'); } };
     announce(); joinTimer=setInterval(function(){ if(onlineActive){ clearInterval(joinTimer); joinTimer=null; return; } announce(); },2000);
   }); }
 function onNet(m){
   if(m.type==='join'){                                            // host: a guest is knocking → welcome them with the board
+    if(m.nm)oppName=m.nm;
     if(!onlineActive){ onlineActive=true; onlineSide=1; disableLocalSelectors(true); keepAwake(true); newGame(); }
-    sendSync(); markConnected();
+    sendSync(); markConnected(); render();
   } else if(m.type==='sync'){                                     // guest: host sent the current board
+    if(m.nm)oppName=m.nm;
     if(!onlineActive){ onlineActive=true; onlineSide=2; disableLocalSelectors(true); keepAwake(true); }
     if(joinTimer){clearInterval(joinTimer);joinTimer=null;}
     loadOnlineState(m.bd,m.t); markConnected();
   } else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv); }catch(e){} applyingRemote=false; }
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
+  else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
   else if(m.type==='bye'){ showToast('Opponent left the game'); }
 }
 function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
@@ -1727,7 +1765,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v61';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v62';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1869,6 +1907,9 @@ function startSurvival(){ closeAllModals(); onlineActive=false; puzzleActive=fal
 function startTimeAttack(secs,dfc){ closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; campaignLevel=null; survival=null;
   forcedGame={mode:'ai', side:1, diff:dfc, blitz:secs}; sideChoice=1; newGame(); }
 function postGameModes(w){
+  if(onlineActive && w===humanSide && (oppName||'').toLowerCase()==='joey'){   // beat Joey online → unlock his galaxy skin
+    if(grantSpecial('joey')) pendingUnlock.push("🌌 Joey's Galaxy unlocked — you beat Joey!");
+  }
   if(campaignLevel!=null){ var i=campaignLevel, op=LADDER[i];
     if(w===humanSide && campaignProgress()===i-1){ STATS.ladder=i; STATS.wp=(STATS.wp||0)+op.wp;
       pendingUnlock.push('🏰 Beat '+op.name+' (+'+op.wp+' WP)');
@@ -1961,7 +2002,9 @@ function onSignedIn(silent){ myName=emailToUser((sbUser&&sbUser.email)||''); acc
   try{ localStorage.setItem('dama-acct','1'); }catch(e){}
   pushProfile();                                                  // register username + WP/avatar/title in the public directory
   if($('acctsync'))$('acctsync').textContent='Syncing your progress…';
-  cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced'); });
+  cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; if(!silent)showToast('👤 Signed in — progress synced');
+    seedSpecialSkins();                                          // Joey's account (and the owner) always own the special skin
+  });
   inboxConnect(); startCloudPoll(); }
 function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; myName=''; inboxDisconnect(); stopCloudPoll(); try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
 
@@ -2196,6 +2239,7 @@ $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
 $('powerfab').addEventListener('click',activatePower);
+$('giftfab').addEventListener('click',giftJoeySkin);
 $('onlinebtn').addEventListener('click',openOnline);
 $('onlineclose').addEventListener('click',closeOnline);
 $('online').addEventListener('click',function(e){ if(e.target===$('online'))closeOnline(); });
