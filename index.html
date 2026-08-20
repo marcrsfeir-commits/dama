@@ -1117,6 +1117,10 @@ function recordResult(w){ pendingUnlock=[];
       if(consol>0){ STATS.wp=(STATS.wp||0)+consol; setTimeout(function(){ showToast('💪 +'+consol+' WP for battling on '+diffName(wonDiff)); },900); }
       saveStats(); updateStats(); updateHintVisibility(); return; }
   } else if(mode==='pvp'){ base=1; }                 // 2-player: the winner earns 1 WP
+  else if(mode==='online'){                          // online: a win pays 2 WP (+ any skin bonus)
+    if(w===humanSide){ base=2; }
+    else { STATS.losses++; STATS.streak=0; STATS.games++; saveStats(); updateStats(); updateHintVisibility(); return; }
+  }
   else { updateStats(); updateHintVisibility(); return; }   // computer-vs-computer: no WP
   const bonus=equippedPerk('bonusWP')||0; const before=wpEarned();
   STATS.wp=(STATS.wp||0)+base+bonus; STATS.wins++; STATS.streak++; if(STATS.streak>STATS.best)STATS.best=STATS.streak; STATS.games++;
@@ -2111,7 +2115,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v73';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v74';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
