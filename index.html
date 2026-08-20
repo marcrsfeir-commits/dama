@@ -389,6 +389,7 @@
   <div class="setrow"><label for="animspeed">⚡ Animation speed</label><input type="range" id="animspeed" min="50" max="250"></div>
   <div class="setrow"><label for="blitz">⏱️ Blitz timer</label><select id="blitz"><option value="0">Off</option><option value="300">5 min each</option><option value="180">3 min each</option><option value="60">1 min each</option></select></div>
   <div class="setrow"><label for="soundpack">🎚️ Sound pack</label><select id="soundpack"><option value="classic">Classic</option><option value="arcade">Arcade</option><option value="wood">Wooden</option></select></div>
+  <div class="setrow"><label for="autohint">💡 Auto-show best move</label><select id="autohint"><option value="0">Off — tap Hint</option><option value="1">On — every turn</option></select></div>
   <div class="setbtns"><button class="btn" id="statsopen">📊 My stats</button></div>
   <div class="setbtns"><button class="btn" id="backup">⬇︎ Backup save</button><button class="btn" id="restore">⬆︎ Restore</button><button class="btn" id="resetprog">Reset progress</button></div>
   <input type="file" id="restorefile" accept="application/json" style="display:none">
@@ -928,7 +929,7 @@ function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
 function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+wp+' WP';
   let html='';
   var _lv=hintLevel(); var _ln=['Locked','Best move','Deep Assist','Coach+','Auto-Pilot'];
-  var _ld=['Unlocks at '+HINT_TIERS[0]+' WP — suggests the best move.','Shows the best move and its exact route.','Adds ⚠ danger warnings + deeper search.','Adds a live position evaluation & threat count.','Best move shown automatically every turn.'];
+  var _ld=['Unlocks at '+HINT_TIERS[0]+' WP — suggests the best move.','Shows the best move and its exact route.','Adds ⚠ danger warnings + deeper search.','Adds a live position evaluation & threat count.','Unlocks auto-show best move — turn it on in Settings.'];
   var _next=_lv<HINT_TIERS.length?HINT_TIERS[_lv]:null;
   var _foot=(_next!==null)?('<span class="stag">Next: Lv '+(_lv+1)+' @ '+_next+' WP</span>'):'<span class="stag ok">Max level</span>';
   html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
@@ -1057,6 +1058,7 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
 let animSpeed=1;                                                  // move-animation speed multiplier (Settings)
+let autoHint=false;                                              // when on, the best move is shown automatically each turn (off by default — hints only on tap)
 let forcedGame=null, campaignLevel=null, survival=null, userBlitz=0;   // Campaign / Time Attack / Survival mode state
 let diffUsage={};                                                // how many AI turns were played at each difficulty this game (for WP)
 let puzzleActive=false, puzzle=null;                             // Puzzle mode state
@@ -1321,7 +1323,7 @@ function showHint(){ if(!hintUnlocked()||!canAssist())return; initAudio();
     if(mv){ hint=mv; computeDanger(); render(); assistReadout(); }
     if(fab)fab.classList.remove('busy'); },'vhard');
 }
-function autoAssist(){ if(hintLevel()<4)return; if(!canAssist())return; if(hint)return; showHint(); }
+function autoAssist(){ if(!autoHint||!hintUnlocked())return; if(!canAssist())return; if(hint)return; showHint(); }
 function updateFSLabel(){ const on=document.body.classList.contains('boardfs'); const f=$('fs'); if(f)f.textContent=on?T[lang].fsExit:T[lang].fs; }
 function toggleBoardFS(){
   const willOn=!document.body.classList.contains('boardfs');
@@ -1439,8 +1441,8 @@ function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)ret
   if(typeof p.sound==='boolean')soundOn=p.sound; if(typeof p.music==='boolean')musicOn=p.music; if(typeof p.coach==='boolean')coachOn=p.coach;
   if(typeof p.coachMode==='boolean')coachMode=p.coachMode;
   if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus;
-  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; userBlitz=blitzSecs; if(typeof p.spack==='string')soundPack=p.spack; }catch(e){} }
-function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:userBlitz,spack:soundPack})); }catch(e){} }
+  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; userBlitz=blitzSecs; if(typeof p.spack==='string')soundPack=p.spack; if(typeof p.autohint==='boolean')autoHint=p.autohint; }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:userBlitz,spack:soundPack,autohint:autoHint})); }catch(e){} }
 function confettiBurst(){ try{ const cols=fxColors().concat(['#ffd85a','#8fae6b','#6db0ff']); const N=42;
   for(let i=0;i<N;i++){ const s=document.createElement('div'); s.className='confetti';
     s.style.left=(Math.random()*100)+'vw'; s.style.background=cols[i%cols.length]; s.style.width=s.style.height=(6+Math.random()*6)+'px';
@@ -1453,7 +1455,7 @@ function showToast(msg,onClick){ const el=$('toast'); if(!el)return; el.textCont
   if(toastTimer)clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},9000); }
 function renderAchv(){ const g=$('achvgrid'); if(!g)return; let html=''; ACHV.forEach(function(a){ const got=STATS.achv&&STATS.achv[a.id];
   html+='<div class="scard '+(got?'owned':'locked')+'"><div class="sname">'+a.emoji+' '+a.name+'</div><div class="sdesc">'+a.t+'</div><div class="sfoot"><span class="stag '+(got?'ok':'')+'">'+(got?'Earned':'Locked')+'</span></div></div>'; }); g.innerHTML=html; }
-function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(userBlitz||0); if($('soundpack'))$('soundpack').value=soundPack||'classic'; renderAchv(); $('setmodal').classList.add('show'); }
+function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(userBlitz||0); if($('soundpack'))$('soundpack').value=soundPack||'classic'; if($('autohint'))$('autohint').value=autoHint?'1':'0'; renderAchv(); $('setmodal').classList.add('show'); }
 // ---- ranks / tiers (used by stats + progression) ----
 const RANKS=[[0,'Bronze','🥉'],[40,'Silver','🥈'],[90,'Gold','🥇'],[160,'Platinum','💠'],[260,'Diamond','🔷'],[400,'Master','👑']];
 function rankInfo(wp){ var r=RANKS[0]; for(var i=0;i<RANKS.length;i++){ if((wp||0)>=RANKS[i][0])r=RANKS[i]; } return r; }
@@ -1725,7 +1727,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v60';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v61';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2130,6 +2132,7 @@ $('volsfx').addEventListener('input',function(){ sfxVol=(+this.value)/100; if(sf
 $('animspeed').addEventListener('input',function(){ animSpeed=(+this.value)/100; savePrefs(); });
 $('blitz').addEventListener('change',function(){ blitzSecs=+this.value||0; userBlitz=blitzSecs; savePrefs(); initBlitz(); });
 $('soundpack').addEventListener('change',function(){ soundPack=this.value; savePrefs(); initAudio(); sMove(); });
+$('autohint').addEventListener('change',function(){ autoHint=(this.value==='1'); savePrefs(); if(autoHint){ autoAssist(); } else { hint=null; if(typeof render==='function')render(); showToast('💡 Auto-hint off — tap Hint when you want a suggestion.'); } });
 $('statsopen').addEventListener('click',openStats);
 $('questbtn').addEventListener('click',openQuests);
 $('questclose').addEventListener('click',closeQuests);
