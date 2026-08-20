@@ -1635,7 +1635,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v57';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v58';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1713,7 +1713,7 @@ function onSignedIn(silent){ myName=emailToUser((sbUser&&sbUser.email)||''); acc
 function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; myName=''; inboxDisconnect(); stopCloudPoll(); try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
 
 // ---- sync: first login on a device merges best-of; afterwards last-write-wins by timestamp (so owner edits & other devices win) ----
-function progressBlob(){ return { STATS:STATS, LEARN:LEARN, name:myName }; }
+function progressBlob(){ return { STATS:STATS, LEARN:LEARN, name:myName, ver:APP_VERSION }; }
 function ctsKey(){ return 'dama-cts-'+((sbUser&&sbUser.id)||'x'); }
 function getCts(){ try{ return localStorage.getItem(ctsKey())||''; }catch(e){ return ''; } }
 function setCts(ts){ try{ if(ts)localStorage.setItem(ctsKey(),ts); }catch(e){} }
@@ -1833,18 +1833,24 @@ function declineChallenge(){ if(pendingChallenge)inboxSend(pendingChallenge.from
 function openOwner(){ if(!isAdmin())return; $('owner').classList.add('show'); ownerLoad(); }
 function closeOwner(){ $('owner').classList.remove('show'); }
 function ownerLoad(){ if(!sb||!isAdmin())return; $('ownerlist').innerHTML='<div class="olnote">Loading players…</div>';
-  Promise.all([ sb.from('profiles').select('user_id,username'), sb.from('progress').select('user_id,data') ]).then(function(res){
+  Promise.all([ sb.from('profiles').select('user_id,username'), sb.from('progress').select('user_id,data,updated_at') ]).then(function(res){
     var profs=(res[0]&&res[0].data)||[], progs=(res[1]&&res[1].data)||[], byId={};
     profs.forEach(function(p){ byId[p.user_id]={uid:p.user_id,name:p.username,data:null}; });
-    progs.forEach(function(p){ if(!byId[p.user_id])byId[p.user_id]={uid:p.user_id,name:(p.data&&p.data.name)||'(unnamed)'}; byId[p.user_id].data=p.data; if(!byId[p.user_id].name)byId[p.user_id].name=(p.data&&p.data.name)||'(unnamed)'; });
+    progs.forEach(function(p){ if(!byId[p.user_id])byId[p.user_id]={uid:p.user_id,name:(p.data&&p.data.name)||'(unnamed)'}; byId[p.user_id].data=p.data; byId[p.user_id].ts=p.updated_at; if(!byId[p.user_id].name)byId[p.user_id].name=(p.data&&p.data.name)||'(unnamed)'; });
     ownerRows=Object.keys(byId).map(function(k){return byId[k];}).sort(function(a,b){return ((b.data&&b.data.STATS&&b.data.STATS.wp)||0)-((a.data&&a.data.STATS&&a.data.STATS.wp)||0);});
     if($('ownercount'))$('ownercount').textContent=ownerRows.length+' players';
     renderOwner();
   }, function(){ $('ownerlist').innerHTML='<div class="olnote">Couldn’t load (owner access only).</div>'; }); }
+function agoLabel(ts){ if(!ts)return 'never'; var d=(Date.now()-new Date(ts).getTime())/1000; if(d<0)d=0;
+  if(d<60)return Math.round(d)+'s ago'; if(d<3600)return Math.round(d/60)+'m ago'; if(d<86400)return Math.round(d/3600)+'h ago'; return Math.round(d/86400)+'d ago'; }
 function renderOwner(){ var el=$('ownerlist'); if(!el)return;
   el.innerHTML=ownerRows.map(function(u,i){ var s=(u.data&&u.data.STATS)||{};
+    var ver=(u.data&&u.data.ver)||null, behind=(u.uid!==ADMIN_UID)&&(ver!==APP_VERSION);
+    var vtxt=ver?('on '+ver):'old version';
+    var verBadge='<span class="fmeta" style="'+(behind?'color:#e8a13a':'opacity:.6')+'">'+vtxt+(behind?' ⚠ update needed':'')+' · synced '+agoLabel(u.ts)+'</span>';
     return '<div class="frow"><span class="fname">'+(u.name||'?')+(u.uid===ADMIN_UID?' 👑':'')+'</span>'+
       '<span class="fmeta">'+(s.wp||0)+' WP · '+(s.wins||0)+' wins · best streak '+(s.best||0)+'</span>'+
+      verBadge+
       '<input type="number" min="0" value="'+(s.wp||0)+'" data-wp="'+i+'">'+
       '<button class="btn" data-setwp="'+i+'">Set WP</button>'+
       '<button class="btn" data-unlock="'+i+'">Unlock all</button>'+
