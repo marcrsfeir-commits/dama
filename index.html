@@ -1828,7 +1828,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v66';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v67';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2209,9 +2209,12 @@ function renderOwner(){ var el=$('ownerlist'); if(!el)return;
     var ver=(u.data&&u.data.ver)||null, behind=(u.uid!==ADMIN_UID)&&(ver!==APP_VERSION);
     var vtxt=ver?('on '+ver):'old version';
     var verBadge='<span class="fmeta" style="'+(behind?'color:#e8a13a':'opacity:.6')+'">'+vtxt+(behind?' ⚠ update needed':'')+' · synced '+agoLabel(u.ts)+'</span>';
+    var eqSkin=skinById(s.equipped||'wood');
+    var specials=(s.owned||[]).filter(function(id){var sk=skinById(id);return sk&&sk.special;}).map(function(id){var sk=skinById(id);return sk.emoji+sk.name;});
+    var skinBadge='<span class="fmeta" style="opacity:.75">🎨 wearing '+eqSkin.emoji+' '+eqSkin.name+(specials.length?(' · owns '+specials.join(', ')):'')+'</span>';
     return '<div class="frow"><span class="fname">'+(u.name||'?')+(u.uid===ADMIN_UID?' 👑':'')+'</span>'+
       '<span class="fmeta">'+(s.wp||0)+' WP · '+(s.wins||0)+' wins · best streak '+(s.best||0)+'</span>'+
-      verBadge+
+      verBadge+skinBadge+
       '<input type="number" min="0" value="'+(s.wp||0)+'" data-wp="'+i+'">'+
       '<button class="btn" data-setwp="'+i+'">Set WP</button>'+
       '<button class="btn" data-unlock="'+i+'">Unlock all</button>'+
