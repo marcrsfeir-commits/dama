@@ -1198,7 +1198,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
       if(s.perk.retreat)bits.push('🐍 Slither — retreat a man one square backward, 5× per game (men normally can’t go back)');
-      if(s.perk.monkeys)bits.push('🐒 Monkey Mayhem — once per game, unleash monkeys to attack up to 4 enemy pawns');
+      if(s.perk.monkeys)bits.push('🐒 Monkey Mayhem — once per game, monkeys banish up to 4 enemy pawns for 2 turns (they return after)');
       perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
@@ -1335,7 +1335,7 @@ let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress sh
 let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;   // The Ass Kicker: delete an enemy man every 10 of your moves
 let godPower=null, godTeleFrom=null;                             // Sovereign (owner): infinite god powers
 let slitherLeft=0, slitherMode=false, slitherSel=null;          // Serpent: move a man backward, 5x per game
-let monkeyUsed=false, monkeyMode=false, monkeyPicks=0, monkeyPickSet=null;   // Monkey Mayhem: once/game, monkeys attack up to 4 enemy pawns
+let monkeyUsed=false, monkeyMode=false, monkeyPicks=0, monkeyPickSet=null, monkeyBanish=null;   // Monkey Mayhem: once/game, monkeys banish up to 4 enemy pawns for 2 turns
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1368,7 +1368,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;monkeyBanish=null;savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1525,6 +1525,7 @@ function apply(mv){
   recordMove(prev,mover,mv);                                   // remember move for learning
   board=makeMove(board,mv);lastMove={from:mv.from,to:mv.to};selected=null;hint=null;dangerSet=null;coachThinking();
   purgeTrack(mover);                                             // The Ass Kicker: tally moves, grant a Strike every 10
+  monkeyTrack(mover);                                            // Monkey Mayhem: count down the 2-turn banish, then bring pawns back
   powerTrack(mover,mv);                                          // update / expire the Coronation crowns before scoring the position
   shieldTrack(mover,mv);                                          // Fortress shield follows its piece
   if(onlineActive&&!applyingRemote) sendMsg({type:'move',mv:mv});// mirror my move to my online opponent
@@ -1533,7 +1534,7 @@ function apply(mv){
   const next=turn===1?2:1;turn=next;
   if(SHIELD.size && next===shieldOwner){ SHIELD=new Set(); }      // shield expires once its owner's turn comes around again
   legal=computeLegal(board,turn);
-  const over=countPieces(board,next)===0||Object.keys(legal.moves).length===0;
+  const over=(countPieces(board,next)===0||Object.keys(legal.moves).length===0) && !(monkeyBanish&&monkeyBanish.cells.length);   // don't end the game while pawns are only temporarily banished
   if(mv.captured||wasMan){ noProg=0; posCounts={}; } else { noProg++; }
   const pk=posKey(board,turn); posCounts[pk]=(posCounts[pk]||0)+1;
   const draw=!over && (posCounts[pk]>=3 || noProg>=60);
@@ -1766,13 +1767,23 @@ function monkeyPick(r,c){ var pc=board[r][c];
   if(!pc||pc.player===turn){ showToast('Tap an ENEMY pawn.'); return; }
   if(pc.king){ showToast('Monkeys grab pawns, not damas.'); return; }
   var key=r+','+c; if(monkeyPickSet.has(key))return; monkeyPickSet.add(key); monkeyPicks++;
+  if(!monkeyBanish) monkeyBanish={owner:turn, remaining:2, cells:[]};
+  monkeyBanish.cells.push({r:r, c:c, player:pc.player, king:pc.king});      // remember it so it can scurry back
   if(onlineActive&&!applyingRemote) sendMsg({type:'monkey', r:r, c:c});
-  monkeyAttackFX(r,c,function(){ if(board[r]&&board[r][c])board[r][c]=null; legal=computeLegal(board,turn); render();
-    var opp2=turn===1?2:1; if(countPieces(board,opp2)===0)finishGame(turn); });
+  monkeyAttackFX(r,c,function(){ if(board[r]&&board[r][c])board[r][c]=null; legal=computeLegal(board,turn); render(); });
   var opp=turn===1?2:1, remaining=0; for(var rr=0;rr<8;rr++)for(var cc=0;cc<8;cc++){ var q=board[rr][cc]; if(q&&q.player===opp&&!q.king&&!monkeyPickSet.has(rr+','+cc))remaining++; }
-  if(monkeyPicks>=4 || remaining<=0){ monkeyMode=false; monkeyUsed=true; showToast('🐒 The monkeys had their fun!'); }
+  if(monkeyPicks>=4 || remaining<=0){ monkeyMode=false; monkeyUsed=true; showToast('🐒 '+monkeyPicks+' pawn'+(monkeyPicks>1?'s':'')+' banished for 2 turns!'); }
   render(); updateMonkeyUI(); }
 function applyRemoteMonkey(r,c){ monkeyAttackFX(r,c,function(){ if(board[r]&&board[r][c])board[r][c]=null; legal=computeLegal(board,turn); render(); }); }
+function nearestEmpty(r,c){ if(!board[r]||!board[r][c])return [r,c]; for(var rad=1;rad<8;rad++){ for(var dr=-rad;dr<=rad;dr++)for(var dc=-rad;dc<=rad;dc++){ if(Math.abs(dr)!==rad&&Math.abs(dc)!==rad)continue; var nr=r+dr,nc=c+dc; if(nr>=0&&nr<8&&nc>=0&&nc<8&&!board[nr][nc])return [nr,nc]; } } return null; }
+function monkeyTrack(mover){ if(!monkeyBanish)return; if(mover!==monkeyBanish.owner)return;
+  monkeyBanish.remaining--; if(monkeyBanish.remaining<=0) monkeyRestore(); }
+function monkeyRestore(){ if(!monkeyBanish)return; var cells=monkeyBanish.cells; monkeyBanish=null; var placed=[];
+  cells.forEach(function(c){ var pos=nearestEmpty(c.r,c.c); if(!pos)return; board[pos[0]][pos[1]]={player:c.player,king:c.king}; placed.push(pos); });
+  legal=computeLegal(board,turn); render();
+  placed.forEach(function(pos){ try{boardBurst(pos[0],pos[1]);}catch(e){} var sq=boardEl.children[dIndex(pos[0],pos[1])],pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'scale(0) rotate(-60deg)',opacity:0},{transform:'scale(1.18)',opacity:1,offset:.7},{transform:'scale(1)'}],{duration:420,easing:'cubic-bezier(.3,1.5,.5,1)'}); } });
+  try{sMonkey();}catch(e){} if(placed.length)showToast('🐒 The banished pawns scurried back!');
+  if(onlineActive&&!applyingRemote) sendMsg({type:'monkeyback', bd:serializeBoard(), t:turn}); }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -2158,7 +2169,7 @@ function serializeBoard(){ return board.map(function(row){ return row.map(functi
 function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(function(c){ return c?{player:c.p,king:!!c.k}:null; }); });
   mode='online'; humanSide=onlineSide; flip=(humanSide===2);        // guest: lock in MY side + orient the board so my pieces sit at the bottom
   turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
-  purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;monkeyMode=false;monkeyPickSet=null;
+  purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;monkeyMode=false;monkeyPickSet=null;monkeyBanish=null;
   legal=computeLegal(board,turn); overlay.classList.remove('show'); buildLabels(); render(); updateSideBtn(); if(coachMode)coachAuto(); }
 function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn, nm:myName, eq:STATS.equipped}); }
 function cleanupMqtt(){ if(joinTimer){clearInterval(joinTimer);joinTimer=null;} try{ if(mqc)mqc.end(true); }catch(e){} mqc=null; roomTopic=''; keepAwake(false); }
@@ -2194,6 +2205,7 @@ function onNet(m){
   else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
   else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
   else if(m.type==='monkey'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteMonkey(m.r,m.c); }catch(e){} applyingRemote=false; }
+  else if(m.type==='monkeyback'&&m.bd){ applyingRemote=true; try{ loadOnlineState(m.bd,m.t); showToast('🐒 The banished pawns scurried back!'); }catch(e){} applyingRemote=false; }
   else if(m.type==='god'&&m.bd){ applyingRemote=true;
     try{
       if(m.pw==='strike'||m.pw==='smite'){ godRemoteFX(m); loadOnlineState(m.bd,m.t); }   // bolt flies as the board updates
@@ -2210,7 +2222,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v80';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v81';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
