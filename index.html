@@ -1754,8 +1754,9 @@ function handleSlither(r,c){ var p=board[r][c];
 // ---- Monkey Mayhem: once per game, monkeys leap onto up to 4 enemy pawns ----
 function monkeyUsable(){ return equippedPerk('monkeys')===true && !monkeyUsed && !winner && !thinking && !animating && (mode==='pvp'||turn===humanSide); }
 function updateMonkeyUI(){ var b=$('monkeyfab'); if(!b)return; b.classList.toggle('show', monkeyUsable()||monkeyMode);
-  if(monkeyMode){ var l=b.querySelector('.hlbl'); if(l)l.textContent=(4-monkeyPicks)+' left'; } else { var l2=b.querySelector('.hlbl'); if(l2)l2.textContent='Monkeys'; } }
-function activateMonkeys(){ if(!monkeyUsable())return; initAudio(); monkeyMode=true; monkeyPicks=0; monkeyPickSet=new Set(); render(); updateMonkeyUI(); showToast('🐒 Tap up to 4 enemy pawns — the monkeys will get them!'); }
+  var l=b.querySelector('.hlbl'); if(l)l.textContent=monkeyMode?('Done ('+(4-monkeyPicks)+')'):'Monkeys'; }
+function monkeyFabClick(){ if(monkeyMode){ monkeyMode=false; render(); updateMonkeyUI(); showToast('🐒 Monkeys done.'); } else { activateMonkeys(); } }
+function activateMonkeys(){ if(!monkeyUsable())return; initAudio(); monkeyUsed=true; monkeyMode=true; monkeyPicks=0; monkeyPickSet=new Set(); render(); updateMonkeyUI(); showToast('🐒 Tap up to 4 enemy pawns — tap the button again when done.'); }
 function monkeyAttackFX(r,c,onDone){ var f=ensureFXLayer(); if(!f){ if(onDone)onDone(); return; } var p=fxPos(r,c);
   var mk=document.createElement('div'); mk.className='fxmonkey'; mk.textContent='🐒'; mk.style.left=p.x+'px'; mk.style.top=p.y+'px'; mk.style.fontSize=(p.cell*0.72)+'px'; f.appendChild(mk);
   try{sMonkey();}catch(e){} if(navigator.vibrate){try{navigator.vibrate(20);}catch(e){}}
@@ -2228,7 +2229,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v83';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v84';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2725,7 +2726,7 @@ $('giftfab').addEventListener('click',giftJoeySkin);
 $('strikefab').addEventListener('click',activateStrike);
 $('godbar').addEventListener('click',function(e){ var b=e.target.closest('[data-god]'); if(b)selectGod(b.getAttribute('data-god')); });
 $('slitherfab').addEventListener('click',activateSlither);
-$('monkeyfab').addEventListener('click',activateMonkeys);
+$('monkeyfab').addEventListener('click',monkeyFabClick);
 $('onlinebtn').addEventListener('click',openOnline);
 $('onlineclose').addEventListener('click',closeOnline);
 $('online').addEventListener('click',function(e){ if(e.target===$('online'))closeOnline(); });
