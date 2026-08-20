@@ -1394,15 +1394,59 @@ function activateStrike(){ if(!canStrike())return; initAudio(); strikeSelectMode
 function doStrike(r,c){ var p=board[r][c]; if(!p){ return; }
   if(p.player===turn){ showToast('Pick an ENEMY piece.'); return; }
   if(p.king){ showToast('Kings can’t be struck — pick a man.'); return; }
-  board[r][c]=null; purgeCharge[turn]=false; strikeSelectMode=false;
+  purgeCharge[turn]=false; strikeSelectMode=false; updateStrikeUI(); render();   // clear the skull targets; the doomed man stays until the bolt lands
   if(onlineActive&&!applyingRemote) sendMsg({type:'strike', r:r, c:c});
-  try{ sCapture(); }catch(e){} try{ captureFX(boardEl.children[dIndex(r,c)]); }catch(e){}
-  var opp=turn===1?2:1; legal=computeLegal(board,turn);
-  var over=countPieces(board,opp)===0 || Object.keys(computeLegal(board,opp).moves).length===0;
-  render(); updateStrikeUI();
-  showToast('💀 Struck! Now make your move.');
-  if(over && countPieces(board,opp)===0){ finishGame(turn); } }
-function applyRemoteStrike(r,c){ if(board[r]&&board[r][c]){ board[r][c]=null; try{sCapture();}catch(e){} try{captureFX(boardEl.children[dIndex(r,c)]);}catch(e){} legal=computeLegal(board,turn); render(); } }
+  strikeFX(r,c,function(){
+    board[r][c]=null; legal=computeLegal(board,turn); render(); jumpPieces(r,c);
+    var opp=turn===1?2:1;
+    showToast('💀 Struck! Now make your move.');
+    if(countPieces(board,opp)===0) finishGame(turn);
+  }); }
+function applyRemoteStrike(r,c){ if(!(board[r]&&board[r][c]))return;
+  strikeFX(r,c,function(){ board[r][c]=null; legal=computeLegal(board,turn); render(); jumpPieces(r,c); }); }
+// ---- lightning strike visual: a zig-zag bolt races across the screen, hits the pawn, then a shockwave makes every other pawn jump ----
+function jaggedPath(x1,y1,x2,y2,seg,jit){ var dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,out=['M'+x1+' '+y1];
+  for(var i=1;i<seg;i++){ var t=i/seg,bx=x1+dx*t,by=y1+dy*t,off=(Math.random()*2-1)*jit*(1-Math.abs(t-0.5)); out.push('L'+(bx+nx*off).toFixed(1)+' '+(by+ny*off).toFixed(1)); }
+  out.push('L'+x2+' '+y2); return out.join(' '); }
+function strikeFX(r,c,onImpact){ animating=true;
+  var NS='http://www.w3.org/2000/svg';
+  var sq=boardEl.children[dIndex(r,c)], rect=sq?sq.getBoundingClientRect():null;
+  var ex=rect?rect.left+rect.width/2:innerWidth/2, ey=rect?rect.top+rect.height/2:innerHeight/2;
+  var sx=(ex<innerWidth/2)?innerWidth*0.97:innerWidth*0.03, sy=-24;
+  var svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('style','position:fixed;inset:0;width:100vw;height:100vh;z-index:200;pointer-events:none;overflow:visible;');
+  var d=jaggedPath(sx,sy,ex,ey,16,30);
+  function bolt(w,col,op){ var pth=document.createElementNS(NS,'path'); pth.setAttribute('d',d);
+    pth.setAttribute('fill','none'); pth.setAttribute('stroke',col); pth.setAttribute('stroke-width',w);
+    pth.setAttribute('stroke-linecap','round'); pth.setAttribute('stroke-linejoin','round'); pth.setAttribute('opacity',op);
+    pth.setAttribute('style','filter:drop-shadow(0 0 8px '+col+');'); svg.appendChild(pth); return pth; }
+  var glow=bolt(10,'#ff5a4a',0.9), mid=bolt(5,'#ff9a6a',0.95), core=bolt(2,'#ffffff',1);
+  document.body.appendChild(svg);
+  [glow,mid,core].forEach(function(pth){ var L=pth.getTotalLength(); pth.style.strokeDasharray=L; pth.style.strokeDashoffset=L;
+    pth.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:170,easing:'linear',fill:'forwards'}); });
+  var flash=document.createElement('div');
+  flash.setAttribute('style','position:fixed;inset:0;z-index:199;pointer-events:none;background:radial-gradient(circle at '+ex+'px '+ey+'px, rgba(255,180,150,.85), rgba(255,60,50,.35) 30%, transparent 60%);opacity:0;');
+  document.body.appendChild(flash);
+  try{ sCapture(); }catch(e){}
+  setTimeout(function(){                                             // impact
+    try{ sCapture(); }catch(e){} if(navigator.vibrate){try{navigator.vibrate([15,30,60]);}catch(e){}}
+    flash.animate([{opacity:0},{opacity:1,offset:.15},{opacity:0}],{duration:360,easing:'ease-out'});
+    try{ captureFX(sq); }catch(e){}
+    [glow,mid,core].forEach(function(pth){ pth.animate([{opacity:pth.getAttribute('opacity')},{opacity:0}],{duration:220,fill:'forwards'}); });
+    animating=false;                                                // re-enable input BEFORE the impact render so the board is clickable and the jumps aren't cut off
+    if(onImpact)onImpact();                                         // removes the pawn, renders once, then starts the shockwave jumps
+  },185);
+  setTimeout(function(){ try{svg.remove();}catch(e){} try{flash.remove();}catch(e){} updateStrikeUI(); },900); }
+function jumpPieces(sr,sc){ var d0=disp(sr,sc);
+  for(var idx=0;idx<boardEl.children.length;idx++){ var sqel=boardEl.children[idx], pc=sqel.querySelector('.piece'); if(!pc||!pc.animate)continue;
+    var dr=Math.floor(idx/8), dc=idx%8, dist=Math.hypot(dr-d0.r,dc-d0.c), delay=Math.min(dist*45,430);
+    pc.animate([
+      {transform:'translateY(0) scale(1)'},
+      {transform:'translateY(-40%) scale(1.09)',offset:.42},
+      {transform:'translateY(0) scale(1)',offset:.82},
+      {transform:'translateY(-7%) scale(1.02)',offset:.91},
+      {transform:'translateY(0) scale(1)'}
+    ],{duration:540,delay:delay,easing:'cubic-bezier(.3,1.5,.5,1)'}); } }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -1828,7 +1872,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v67';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v68';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
