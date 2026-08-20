@@ -88,7 +88,8 @@
   .piece.king::before{box-shadow:inset 0 0 0 2px rgba(0,0,0,.5),inset 0 0 0 4px var(--gold),inset 0 0 0 5px rgba(0,0,0,.35);}
   .king::after{content:"♛";position:absolute;color:#fff;font-size:calc(var(--cell)*.5);line-height:1;
      text-shadow:0 0 2px #000,0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 0 5px rgba(0,0,0,.7),0 0 8px var(--gold);}
-  .dest{width:calc(var(--cell)*.26);height:calc(var(--cell)*.26);border-radius:50%;background:rgba(224,122,58,.5);box-shadow:0 0 0 2px rgba(224,122,58,.25);}
+  .dest{width:calc(var(--cell)*.28);height:calc(var(--cell)*.28);border-radius:50%;background:rgba(255,150,70,.92);box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 0 4px rgba(255,255,255,.55);}
+  .sq.godest::before{content:"";position:absolute;inset:13%;border-radius:9px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.6),inset 0 0 0 4px rgba(0,0,0,.4);pointer-events:none;z-index:1;}
   .destcap{position:absolute;inset:calc(var(--cell)*.07);border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,122,58,.9);}
   .pickdot{position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:rgba(143,174,107,.9);}
   @keyframes promote{0%{transform:scale(1) rotate(0)}35%{transform:scale(1.28) rotate(180deg)}70%{transform:scale(1.08) rotate(360deg)}100%{transform:scale(1) rotate(360deg)}}
@@ -218,12 +219,18 @@
   body.boardfs .wrap{max-width:none;padding:0;min-height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;}
   body.boardfs .play{--sz:min(96vw,92dvh,1000px);}
   body.boardfs .fsx{display:flex;}
+  .fsdock{display:none;position:fixed;right:16px;top:50%;transform:translateY(-50%);z-index:60;flex-direction:column;gap:10px;}
+  body.boardfs .fsdock{display:flex;}
+  .fsdock button{width:54px;height:54px;border-radius:15px;font-size:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;background:var(--panel);color:var(--ink);border:1px solid var(--accent);box-shadow:0 5px 16px rgba(0,0,0,.45);cursor:pointer;}
+  .fsdock button:disabled{opacity:.4;cursor:default;}
+  .fsdock button .l{font-size:8.5px;letter-spacing:.3px;opacity:.85;text-transform:uppercase;}
+  @media(max-width:520px){ .fsdock{right:6px;gap:7px;} .fsdock button{width:46px;height:46px;font-size:17px;} }
 
   /* multi-capture route preview */
   .pathsvg{position:absolute;pointer-events:none;z-index:5;overflow:visible;display:none;}
-  .capline{fill:none;stroke:rgba(224,122,58,.9);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 8;}
-  .capline.hint{stroke:rgba(143,174,107,.95);}
-  .moveline{fill:none;stroke:rgba(143,174,107,.6);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1 6;}
+  .capline{fill:none;stroke:rgba(255,150,70,.98);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 8;filter:drop-shadow(0 0 1.8px rgba(0,0,0,.9));}
+  .capline.hint{stroke:rgba(170,235,110,1);}
+  .moveline{fill:none;stroke:rgba(180,235,120,.98);stroke-width:3.2;stroke-linecap:round;stroke-dasharray:1 6;filter:drop-shadow(0 0 1.8px rgba(0,0,0,.9));}
 
   /* skins shop */
   .shop{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(8,6,4,.72);padding:16px;}
@@ -260,6 +267,27 @@
   .sq.willeat::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
   .sq.willeathint::before{content:"";position:absolute;inset:16%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(143,174,107,.95);animation:hintpulse 1s ease-in-out infinite;z-index:3;}
   .sq.danger::after{content:"";position:absolute;inset:11%;border-radius:50%;box-shadow:inset 0 0 0 3px rgba(224,86,58,.9);animation:hintpulse 1.1s ease-in-out infinite;pointer-events:none;z-index:2;}
+  .puzzlebar{max-width:560px;margin:6px auto 2px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:9px 13px;}
+  .pzprompt{font-size:13.5px;flex:1;min-width:180px;} .pzprompt b{color:var(--accent);}
+  .pzbtns{display:flex;gap:6px;flex-wrap:wrap;}
+  .pzbtns .btn{padding:6px 10px;font-size:12.5px;}
+  .puztabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .puztab{padding:6px 12px;border-radius:999px;border:1px solid var(--line,rgba(255,255,255,.14));background:transparent;color:var(--ink);cursor:pointer;font-size:12.5px;}
+  .puztab.sel{background:var(--accent);color:#1a1206;border-color:var(--accent);font-weight:600;}
+  .hubgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .hubcard{display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line,rgba(255,255,255,.14));background:rgba(255,255,255,.03);cursor:pointer;transition:transform .12s,border-color .12s;}
+  .hubcard:hover{transform:translateY(-2px);border-color:var(--accent);}
+  .hubcard .he{font-size:26px;} .hubcard .ht{font-weight:600;font-size:14.5px;} .hubcard .hs{font-size:11.5px;opacity:.7;}
+  .hubcard .hmeta{font-size:11px;color:var(--accent);margin-top:2px;}
+  @media(max-width:460px){.hubgrid{grid-template-columns:1fr;}}
+  .larow{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.07);}
+  .larow.locked{opacity:.45;} .larow .laem{font-size:24px;width:30px;text-align:center;}
+  .larow .lainfo{flex:1;} .larow .laname{font-weight:600;font-size:14px;} .larow .lasub{font-size:11px;opacity:.7;}
+  .larow .labtn{margin-left:auto;}
+  .tarow{display:flex;align-items:center;gap:10px;padding:8px 4px;}
+  .badge-diff{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;margin-left:6px;vertical-align:middle;}
+  .d-easy{color:#8fae6b;} .d-medium{color:#e0a13a;} .d-hard{color:#e0563a;}
+  .sq.wrongflash::after{content:"";position:absolute;inset:8%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(224,60,50,.95);animation:hintpulse .5s ease-in-out 2;z-index:4;pointer-events:none;}
 </style>
 </head>
 <body>
@@ -291,6 +319,7 @@
     <button class="btn" id="fs"></button>
     <button class="btn" id="skins"></button>
     <button class="btn" id="onlinebtn" title="Play a friend online">🌐 Online</button>
+    <button class="btn" id="playbtn" title="Puzzles, Campaign &amp; Time Attack">🧩 Play</button>
     <button class="btn" id="questbtn" title="Quests">🎯 Quests</button>
     <button class="btn" id="accountbtn" title="Save your progress to an account">👤 Account</button>
     <button class="btn" id="settings" aria-label="Settings">⚙️</button>
@@ -302,6 +331,14 @@
   <div id="coach" class="coach"></div>
   <div id="stats" class="stats"></div>
   <div id="clocks" class="clocks" style="display:none"><span id="clkL" class="clk"></span><span id="clkD" class="clk"></span></div>
+  <div id="puzzlebar" class="puzzlebar" style="display:none">
+    <span id="pzprompt" class="pzprompt"></span>
+    <span class="pzbtns">
+      <button class="btn" id="pzreveal">💡 Reveal</button>
+      <button class="btn primary" id="pznext">Next ▸</button>
+      <button class="btn" id="pzexit">Exit</button>
+    </span>
+  </div>
 
   <div class="playrow">
     <div class="play">
@@ -334,10 +371,16 @@
 </button>
 <div id="powerbadge" class="powerbadge"></div>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
+<div id="fsdock" class="fsdock">
+  <button id="fsnew" title="New game">🔄<span class="l">New</span></button>
+  <button id="fsundo" title="Undo">↩︎<span class="l">Undo</span></button>
+  <button id="fshint" title="Hint">💡<span class="l">Hint</span></button>
+  <button id="fsxbtn" title="Exit fullscreen">⤢<span class="l">Exit</span></button>
+</div>
 <div id="shop" class="shop"><div class="shopcard">
   <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
   <div id="shopgrid" class="shopgrid"></div>
-  <div class="shopnote">Earn Win Points by winning games — 2-player 1 · easy 1 · medium 2 · hard 3 · very hard 4. Unlocks are permanent.</div>
+  <div class="shopnote">Earn Win Points by winning — a win pays for the difficulty you played most (easy 1 · medium 2 · hard 3 · very hard 4). Even a loss on Hard/Very Hard pays 1–2 WP. Puzzles, quests &amp; the campaign give more. Unlocks are permanent.</div>
 </div></div>
 <div id="setmodal" class="shop"><div class="shopcard">
   <div class="shophead"><span>⚙️ Settings</span><button id="setclose" class="shopx" aria-label="Close">✕</button></div>
@@ -361,6 +404,27 @@
   <div class="shophead"><span>🎯 Quests</span><button id="questclose" class="shopx" aria-label="Close">✕</button></div>
   <div id="questlist" class="friendlist"></div>
   <div class="shopnote">Complete quests to earn bonus Win Points. They're one-time career goals — new ones may arrive in updates.</div>
+</div></div>
+<div id="play" class="shop"><div class="shopcard">
+  <div class="shophead"><span>🧩 Play</span><button id="playclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="playhub"></div>
+  <div class="shopnote">Train with puzzles, climb the campaign ladder, and race the clock. Solving puzzles and beating opponents earns Win Points.</div>
+</div></div>
+<div id="puzlist" class="shop"><div class="shopcard">
+  <div class="shophead"><span>🧩 Puzzle Pack</span><button id="puzlistclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="puztabs" class="puztabs"></div>
+  <div id="puzgrid" class="friendlist"></div>
+  <div class="shopnote">Each puzzle is a real position — find the single best move. First solve earns WP (easy 1 · medium 2 · hard 3).</div>
+</div></div>
+<div id="campaign" class="shop"><div class="shopcard">
+  <div class="shophead"><span>🏰 Campaign Ladder</span><button id="campaignclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="ladderlist" class="friendlist"></div>
+  <div class="shopnote">Beat each challenger to unlock the next. They get tougher as you climb — win the WP prize the first time you defeat each.</div>
+</div></div>
+<div id="timeattack" class="shop"><div class="shopcard">
+  <div class="shophead"><span>⏱️ Time Attack</span><button id="timeattackclose" class="shopx" aria-label="Close">✕</button></div>
+  <div id="talist"></div>
+  <div class="shopnote">Beat the clock, or survive a set number of moves against the strongest engine. Wins pay normal WP.</div>
 </div></div>
 <div id="statsmodal" class="shop"><div class="shopcard">
   <div class="shophead"><span>📊 Your stats</span><button id="statsclose" class="shopx" aria-label="Close">✕</button></div>
@@ -833,12 +897,20 @@ function captureFX(sqEl){ if(!sqEl)return; var cols=fxColors(), n=9; for(var i=0
     p.style.setProperty('--dx',(Math.cos(ang)*dist)+'px'); p.style.setProperty('--dy',(Math.sin(ang)*dist)+'px');
     sqEl.appendChild(p); (function(pp){ setTimeout(function(){ if(pp.parentNode)pp.parentNode.removeChild(pp); },520); })(p); } }
 function updateHintVisibility(){ const f=$('hintfab'); if(f) f.classList.toggle('off',!hintUnlocked()); }
+function diffName(d){ return ({easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very Hard'})[d]||d; }
+function mostUsedDiff(){ var order=['easy','med','hard','vhard'], best=diff, bc=-1;
+  order.forEach(function(k){ var v=diffUsage[k]||0; if(v>=bc){ bc=v; best=k; } });   // ties favour the harder difficulty
+  return bc<=0?diff:best; }
 function recordResult(w){ pendingUnlock=[];
   if(w==='draw'){ STATS.streak=0; STATS.games++; saveStats(); updateStats(); updateHintVisibility(); return; }
-  let base=0;
+  let base=0; let wonDiff=diff;
   if(mode==='ai'){
-    if(w===humanSide){ base=({easy:1,med:2,hard:3,vhard:4})[diff]||1; }
-    else { STATS.losses++; STATS.streak=0; STATS.games++; saveStats(); updateStats(); updateHintVisibility(); return; }
+    wonDiff=mostUsedDiff();
+    if(w===humanSide){ base=({easy:1,med:2,hard:3,vhard:4})[wonDiff]||1; }
+    else { STATS.losses++; STATS.streak=0; STATS.games++;
+      var consol=({hard:1,vhard:2})[wonDiff]||0;                  // even a loss on Hard/Very Hard is worth something
+      if(consol>0){ STATS.wp=(STATS.wp||0)+consol; setTimeout(function(){ showToast('💪 +'+consol+' WP for battling on '+diffName(wonDiff)); },900); }
+      saveStats(); updateStats(); updateHintVisibility(); return; }
   } else if(mode==='pvp'){ base=1; }                 // 2-player: the winner earns 1 WP
   else { updateStats(); updateHintVisibility(); return; }   // computer-vs-computer: no WP
   const bonus=equippedPerk('bonusWP')||0; const before=STATS.wp||0;
@@ -847,8 +919,8 @@ function recordResult(w){ pendingUnlock=[];
   if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
   SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
   const flawless = mode==='ai' && countPieces(board,humanSide)===16;
-  var qctx={win:true, mode:mode, diff:diff, quad:gQuad, flawless:flawless};
-  checkAchv(qctx); checkQuests(qctx);
+  var qctx={win:true, mode:mode, diff:wonDiff, quad:gQuad, flawless:flawless};
+  checkAchv(qctx); checkQuests(qctx); try{ checkDailyQuests(qctx); }catch(e){}
   saveStats(); updateStats(); updateHintVisibility();
 }
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
@@ -985,6 +1057,9 @@ function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
 let animSpeed=1;                                                  // move-animation speed multiplier (Settings)
+let forcedGame=null, campaignLevel=null, survival=null, userBlitz=0;   // Campaign / Time Attack / Survival mode state
+let diffUsage={};                                                // how many AI turns were played at each difficulty this game (for WP)
+let puzzleActive=false, puzzle=null;                             // Puzzle mode state
 let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress shield + power-up piece-select mode
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
@@ -1011,12 +1086,14 @@ function buildLabels(){const ranks=$('ranks'),files=$('files');ranks.innerHTML='
 
 function newGame(doBounce){
   gameId++;
-  if(onlineActive){ mode='online'; humanSide=onlineSide; diff='vhard'; style=$('style').value; }
-  else { mode=$('mode').value;humanSide=sideChoice;diff=$('diff').value;style=$('style').value; }
+  puzzleActive=false; puzzle=null; hidePuzzleBar();
+  if(forcedGame){ mode=forcedGame.mode; humanSide=forcedGame.side; diff=forcedGame.diff; style=$('style').value; blitzSecs=(typeof forcedGame.blitz==='number')?forcedGame.blitz:0; }
+  else if(onlineActive){ mode='online'; humanSide=onlineSide; diff='vhard'; style=$('style').value; blitzSecs=userBlitz; }
+  else { mode=$('mode').value;humanSide=sideChoice;diff=$('diff').value;style=$('style').value; blitzSecs=userBlitz; }
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1070,7 +1147,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   const dests=selKey&&legal.moves[selKey]?legal.moves[selKey]:[];
   const destSet=new Set(dests.map(d=>d.r+','+d.c));
   const pickable=new Set(Object.keys(legal.moves));
-  const canInput=!winner&&!thinking&&!animating&&(mode==='pvp'||((mode==='ai'||mode==='online')&&turn===humanSide));
+  const canInput=!winner&&!thinking&&!animating&&(mode==='pvp'||(mode==='puzzle'&&!puzzle.solved&&turn===humanSide)||((mode==='ai'||mode==='online')&&turn===humanSide));
 
   const selArr=selected;
   const selMoves=(selKey&&legal.moves[selKey])?legal.moves[selKey]:[];
@@ -1102,7 +1179,11 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   }
   drawPaths(capMoves,hintCap,normMoves);
   updatePowerUI();
+  updateFSDock();
 }
+function updateFSDock(){ var u=$('fsundo'), h=$('fshint');
+  if(u)u.disabled=(onlineActive||puzzleActive||!history.length||thinking||animating);
+  if(h){ h.disabled=(puzzleActive?(!puzzle||puzzle.solved):(!hintUnlocked()||!canAssist())); h.style.display=(puzzleActive||hintUnlocked())?'flex':'none'; } }
 function drawPaths(capMoves,hintMv,normMoves){ const svg=$('pathsvg'); if(!svg)return;
   while(svg.firstChild)svg.removeChild(svg.firstChild);
   const bw=boardEl.clientWidth, bh=boardEl.clientHeight, cell=bw/8;
@@ -1138,6 +1219,7 @@ function handleCell(r,c){ initAudio();
 }
 
 function apply(mv){
+  if(puzzleActive){ return puzzleAttempt(mv); }
   const prev=clone(board);
   const mover=turn;
   history.push({board:prev,turn,lastMove});
@@ -1156,15 +1238,18 @@ function apply(mv){
   const pk=posKey(board,turn); posCounts[pk]=(posCounts[pk]||0)+1;
   const draw=!over && (posCounts[pk]>=3 || noProg>=60);
   if(mv.captured){ if(mover===humanSide && mv.captured.length>=4) gQuad=true;
+    if(mover===humanSide && mv.captured.length>=3){ try{ checkDailyQuests({bigcap:mv.captured.length}); }catch(e){} }
     if(mover===humanSide && mv.captured.length>(STATS.bigCap||0)){ STATS.bigCap=mv.captured.length; saveStats(); }   // track biggest single-move capture
     if(navigator.vibrate){try{navigator.vibrate(25);}catch(e){}} }
   animating=true;render();
   const moverHuman = mode==='pvp' || (mode==='ai'&&mover===humanSide);
   if(moverHuman && coachOn) setTimeout(function(){ coachOnMove(prev,mover,mv); },260); // rate move AFTER it registers (non-blocking)
   animateMove(mv,prev,promoted,()=>{animating=false;
-    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');} else {render();maybeAI();autoAssist();coachAuto();saveGameSnapshot();}});
+    if(over){finishGame(next===1?2:1);} else if(draw){finishGame('draw');}
+    else if(survival&&mover===humanSide&&(++survival.count>=survival.target)){ showToast('🛡️ Survived all '+survival.target+' — you win!'); finishGame(humanSide); }
+    else {render();maybeAI();autoAssist();coachAuto();saveGameSnapshot(); if(survival&&mover===humanSide)updateSurvivalHUD();}});
 }
-function finishGame(w){ winner=w; stopClock(); renderClocks(); clearGameSnapshot(); learnFromGame(w==='draw'?0:w); recordResult(w); render(); showWin(); }
+function finishGame(w){ winner=w; stopClock(); renderClocks(); clearGameSnapshot(); learnFromGame(w==='draw'?0:w); recordResult(w); postGameModes(w); render(); showWin(); }
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if((mode==='ai'||mode==='online')&&turn!==humanSide)return false; return true; }
 
 // ---- Coronation power-up (from the Coronation skin): crown your men as kings for 2 of your turns ----
@@ -1293,6 +1378,7 @@ function aiThink(bd,player,cb,diffOverride){ var dd=diffOverride||diff;
 function maybeAI(){ if(winner)return;
   const aiTurn=(mode==='ai'&&turn!==humanSide)||mode==='cvc';
   if(!aiTurn)return;
+  if(mode==='ai') diffUsage[diff]=(diffUsage[diff]||0)+1;    // tally which difficulty this game was mostly played at
   thinking=true;render();
   const pace=(mode==='cvc')?600:120, g=gameId;
   setTimeout(function(){ if(g!==gameId||winner){thinking=false;return;}
@@ -1310,7 +1396,10 @@ function showWin(){const t=T[lang];
   if(youWon || mode==='pvp'){ confettiBurst(); if(navigator.vibrate){try{navigator.vibrate([40,40,90]);}catch(e){}} }
 }
 
-function undo(){ if(thinking||animating||!history.length)return;
+function undo(){ if(thinking||animating)return;
+  if(onlineActive){ showToast('↩️ Undo isn’t available in online games.'); return; }   // undo across two devices would desync the boards
+  if(puzzleActive){ return; }
+  if(!history.length)return;
   let prev=history.pop();
   if(mode==='ai'&&prev.turn!==humanSide&&history.length)prev=history.pop();
   board=prev.board;turn=prev.turn;lastMove=prev.lastMove;selected=null;winner=null;powerUp=null;
@@ -1350,8 +1439,8 @@ function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)ret
   if(typeof p.sound==='boolean')soundOn=p.sound; if(typeof p.music==='boolean')musicOn=p.music; if(typeof p.coach==='boolean')coachOn=p.coach;
   if(typeof p.coachMode==='boolean')coachMode=p.coachMode;
   if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus;
-  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; if(typeof p.spack==='string')soundPack=p.spack; }catch(e){} }
-function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:blitzSecs,spack:soundPack})); }catch(e){} }
+  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; userBlitz=blitzSecs; if(typeof p.spack==='string')soundPack=p.spack; }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:userBlitz,spack:soundPack})); }catch(e){} }
 function confettiBurst(){ try{ const cols=fxColors().concat(['#ffd85a','#8fae6b','#6db0ff']); const N=42;
   for(let i=0;i<N;i++){ const s=document.createElement('div'); s.className='confetti';
     s.style.left=(Math.random()*100)+'vw'; s.style.background=cols[i%cols.length]; s.style.width=s.style.height=(6+Math.random()*6)+'px';
@@ -1364,7 +1453,7 @@ function showToast(msg,onClick){ const el=$('toast'); if(!el)return; el.textCont
   if(toastTimer)clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},9000); }
 function renderAchv(){ const g=$('achvgrid'); if(!g)return; let html=''; ACHV.forEach(function(a){ const got=STATS.achv&&STATS.achv[a.id];
   html+='<div class="scard '+(got?'owned':'locked')+'"><div class="sname">'+a.emoji+' '+a.name+'</div><div class="sdesc">'+a.t+'</div><div class="sfoot"><span class="stag '+(got?'ok':'')+'">'+(got?'Earned':'Locked')+'</span></div></div>'; }); g.innerHTML=html; }
-function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(blitzSecs||0); if($('soundpack'))$('soundpack').value=soundPack||'classic'; renderAchv(); $('setmodal').classList.add('show'); }
+function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(userBlitz||0); if($('soundpack'))$('soundpack').value=soundPack||'classic'; renderAchv(); $('setmodal').classList.add('show'); }
 // ---- ranks / tiers (used by stats + progression) ----
 const RANKS=[[0,'Bronze','🥉'],[40,'Silver','🥈'],[90,'Gold','🥇'],[160,'Platinum','💠'],[260,'Diamond','🔷'],[400,'Master','👑']];
 function rankInfo(wp){ var r=RANKS[0]; for(var i=0;i<RANKS.length;i++){ if((wp||0)>=RANKS[i][0])r=RANKS[i]; } return r; }
@@ -1631,11 +1720,12 @@ function onNet(m){
 function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
 function leaveOnline(){ sendMsg({type:'bye'}); cleanupMqtt(); onlineActive=false; oppSeen=false; disableLocalSelectors(false); showToast('Left the online game'); newGame(); closeOnline(); }
 function onlineNewGameShared(){ initAudio();
+  if(puzzleActive){ exitPuzzle(); return; }
   if(onlineActive){ if(onlineSide===1){ newGame(); sendSync(); } else { sendMsg({type:'reqnew'}); } }
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v58';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v59';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1679,10 +1769,171 @@ const QUESTS=[
 ];
 function checkQuests(ctx){ if(!STATS.quests)STATS.quests={};
   QUESTS.forEach(function(q){ if(STATS.quests[q.id])return; try{ if(q.check(ctx||{},STATS)){ STATS.quests[q.id]=1; STATS.wp=(STATS.wp||0)+q.wp; pendingUnlock.push('🎯 '+q.name+' (+'+q.wp+' WP)'); } }catch(e){} }); }
-function renderQuestList(){ var q=$('questlist'); if(!q)return; q.innerHTML=QUESTS.map(function(qq){ var done=STATS.quests&&STATS.quests[qq.id];
-  return '<div class="frow"><span class="fname" style="opacity:'+(done?1:.7)+'">'+(done?'✅ ':'⬜ ')+qq.name+'</span><span class="fwp">+'+qq.wp+' WP</span></div>'; }).join(''); }
+function renderQuestList(){ var q=$('questlist'); if(!q)return;
+  var daily='<div class="achv-title" style="margin:2px 0 6px">📅 Daily — resets each day</div>'+renderDailyQuests()+
+            '<div class="achv-title" style="margin:14px 0 6px">🎯 Career goals</div>';
+  var career=QUESTS.map(function(qq){ var done=STATS.quests&&STATS.quests[qq.id];
+  return '<div class="frow"><span class="fname" style="opacity:'+(done?1:.7)+'">'+(done?'✅ ':'⬜ ')+qq.name+'</span><span class="fwp">+'+qq.wp+' WP</span></div>'; }).join('');
+  q.innerHTML=daily+career; }
 function openQuests(){ renderQuestList(); $('questmodal').classList.add('show'); }
 function closeQuests(){ $('questmodal').classList.remove('show'); }
+
+// ==================== PUZZLES · CAMPAIGN · TIME ATTACK · DAILY QUESTS ====================
+const PUZZLE_DATA=[{"fen":"........d..ddddl.....dd......................l.....l.lllD.......","side":1,"acc":["1,7,0,7"],"theme":"Promotion","diff":"easy","swing":113},{"fen":".........dd.ddd.dd.ddd.d....d.l.l..........llllld.ll...l........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":114},{"fen":"........dddddddd....d.d..ddd....d.......l.lll...llllllld........","side":2,"acc":["6,7,7,7"],"theme":"Promotion","diff":"easy","swing":114},{"fen":"L........ddldddd..dddd.d................lll.l.lll.lll.ll.....D..","side":1,"acc":["1,3,0,3"],"theme":"Promotion","diff":"easy","swing":115},{"fen":"........ddddddld..d...d..d........l......l.l.l.lll.lllll........","side":1,"acc":["1,6,0,6"],"theme":"Promotion","diff":"easy","swing":117},{"fen":".........dd.dddddd.ddd.....d....l.....l....ll.lld.ll.l.l........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":120},{"fen":"........dddddddd...d..........d.....l...d.d...l......lld..D.....","side":2,"acc":["6,7,7,7"],"theme":"Promotion","diff":"easy","swing":121},{"fen":".........dd.ddd.dd.ddd.d...d..l.l..........ll.lld.ll.l.l........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":123},{"fen":".........dddddddd.dd.d.d.d..dd....l..l.l.l.llll.dlll.lll........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":124},{"fen":".........dd..........d....l.l...........l..l.....dlll.ll........","side":2,"acc":["6,1,7,1"],"theme":"Promotion","diff":"easy","swing":126},{"fen":"........dddddddl.d..dd.......d..dlll...d.lll......l....l........","side":1,"acc":["1,7,0,7"],"theme":"Promotion","diff":"easy","swing":128},{"fen":"........lddddddd..dd.d.d.........d......l......l.lll...l........","side":1,"acc":["1,0,0,0"],"theme":"Promotion","diff":"easy","swing":128},{"fen":"........lddddd.d.d..dddd..........l.l..........l.ll....l........","side":1,"acc":["1,0,0,0"],"theme":"Promotion","diff":"easy","swing":129},{"fen":".........d.l.ddd..d..d.dd....d...l........ll..ll.lll.l.l........","side":1,"acc":["1,3,0,3"],"theme":"Promotion","diff":"easy","swing":130},{"fen":"...........dddd.....dd.....d.d...l.......l.llllldlllllll........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":145},{"fen":"........l.d.dddddd.dd..........ll..........ll.l.lllll.ll........","side":1,"acc":["1,0,0,0"],"theme":"Promotion","diff":"easy","swing":145},{"fen":".........ddddddddd..dd.d...d..l.l..........ll..ld.llllll........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":210},{"fen":"...L.....dd.dddd.......d..d..........d.....l.....d....ll........","side":2,"acc":["6,1,7,1"],"theme":"Promotion","diff":"easy","swing":218},{"fen":"L.........d.d.dd...............d.....d.....l.....d....ll........","side":2,"acc":["6,1,7,1"],"theme":"Promotion","diff":"easy","swing":223},{"fen":".........ddddddddd..dd.....d....l.....l....ll..ld.ll.lll........","side":2,"acc":["6,0,7,0"],"theme":"Promotion","diff":"easy","swing":235},{"fen":"........ldd.dddd.......d..d..........dd....l......l.llll........","side":1,"acc":["1,0,0,0"],"theme":"Promotion","diff":"easy","swing":246},{"fen":"........dddd.ddd.d.d...ddd............llllll..l.llldll.l........","side":2,"acc":["6,3,7,3"],"theme":"Promotion","diff":"medium","swing":337},{"fen":".....L..ddddd.ddd.dd...d......d....l.........l.l.llll.dl........","side":2,"acc":["6,6,7,6"],"theme":"Promotion","diff":"medium","swing":356},{"fen":"........lddddddd.ddd.d.d...l..d........l.l..lll.llllllll........","side":1,"acc":["4,7,4,6"],"theme":"Squeeze","diff":"medium","swing":368},{"fen":".L......d.ddddddd.dddd.d.....d...........lDlllll...lllll........","side":1,"acc":["0,1,0,6"],"theme":"Squeeze","diff":"medium","swing":371},{"fen":"........ddl.dddd...d.ddd....D..........l....l.l...l.llll........","side":1,"acc":["1,2,0,2"],"theme":"Promotion","diff":"medium","swing":374},{"fen":"........ddddddddd.d.dddd.d..D...l.l..ll..l.l..l.lll...ll........","side":2,"acc":["3,1,4,1"],"theme":"Squeeze","diff":"medium","swing":422},{"fen":"........d.dddddddd.ddd......d.....ll.l.d....ll.D.l.l.ll.........","side":2,"acc":["3,4,4,4"],"theme":"Squeeze","diff":"medium","swing":453},{"fen":".........dddddddd.dd...d......d.ll.....l......lll...l....D......","side":1,"acc":["4,7,4,6"],"theme":"Squeeze","diff":"medium","swing":470},{"fen":"....L...d.dd..d.d..ddd..d.ddd...ll.l....l.ll...ll.l.llll........","side":2,"acc":["3,2,4,2"],"theme":"Squeeze","diff":"medium","swing":471},{"fen":"............d.ddD..d...d.l..d......l.......lll.ll...lll.........","side":1,"acc":["4,3,4,4"],"theme":"Squeeze","diff":"medium","swing":471},{"fen":"........dddddddd.dd..d..d.l...dd.....l..l...l.llll.lllll........","side":1,"acc":["4,5,4,6"],"theme":"Squeeze","diff":"medium","swing":472},{"fen":".....L.....dddd.............D.dd...d....ll...lll.l...lll........","side":2,"acc":["3,4,4,4"],"theme":"Squeeze","diff":"medium","swing":494},{"fen":"........ddd.dddd..d..dddd.d....L.....l.llllll.l.l.llllll........","side":2,"acc":["2,2,2,1"],"theme":"Squeeze","diff":"hard","swing":550},{"fen":"........dd.ddddd...d..ddl..Dd....dLl.......l..lll.l..lll........","side":2,"acc":["1,1,2,1"],"theme":"Squeeze","diff":"hard","swing":584},{"fen":"...........d.ddl.d...d..d...............ll.l....l..lllll.......D","side":1,"acc":["1,7,0,7"],"theme":"Promotion","diff":"hard","swing":602},{"fen":".........dd.d.d..dd.ddddL...d..d...L.l.l.lll...lllllllll........","side":2,"acc":["3,4,3,5"],"theme":"Squeeze","diff":"hard","swing":647},{"fen":"L.........d..d.........d............L....l.lllllllllllll........","side":1,"acc":["0,0,1,0"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":"........ddd.dddd..dd..dddd...dd..............ll....D............","side":1,"acc":["5,5,5,4"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":".........dd.d....ddddd.d...d......d.l..........D.....l..........","side":2,"acc":["5,7,5,5"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":"........dd.dd.dd.dd.d..dd...d..........l.D..l.........l.........","side":1,"acc":["5,4,4,4"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":".......................d..........L.....lllll.lll.llllll........","side":2,"acc":["2,7,2,6"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"...........l....d..L............d...l....l.l..l.llllllll........","side":2,"acc":["2,0,3,0"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"........ddd.dddd...d.d.d...d.........D.l....l...................","side":1,"acc":["5,4,5,3"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"........dddldddd.....dd........l.....D..........................","side":2,"acc":["1,1,2,1"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":".........ddddddd...dd.Dddl.............................l........","side":1,"acc":["3,1,3,2"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"........dddd.ddd.d..d.d.............dd..............ll...D......","side":2,"acc":["7,1,6,1"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":"........dd.ddddd.....d.d...d.........d.....l....................","side":2,"acc":["3,3,4,3"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":"........dd.ddddd.....d.d...d...............l.d..................","side":1,"acc":["5,3,5,2"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"L..........l.........d...d......l..........llll..ll.llll........","side":1,"acc":["0,0,3,0"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":"....L......l.........d............l........llll..ll.llll........","side":2,"acc":["2,5,2,6"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"........d.dd.dd.dddd.ddd......d...................l..l.D........","side":1,"acc":["6,5,5,5"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":".........d.dddddd.........d.dd.......Dd........l..l.............","side":2,"acc":["4,6,5,6"],"theme":"Winning shot","diff":"hard","swing":9999},{"fen":"..L......L..dd..................L.......ll.l.l.lllllllll........","side":2,"acc":["1,4,2,4"],"theme":"Squeeze","diff":"hard","swing":9999},{"fen":"....L.......d..............d.........lL......ll.lllll.ll........","side":2,"acc":["1,4,1,3"],"theme":"Squeeze","diff":"hard","swing":9999}];                                             // generated offline by the engine — injected below
+let PUZZLES=PUZZLE_DATA;
+function fenToBoard(f){ var b=[]; for(var r=0;r<8;r++){ var row=[]; for(var c=0;c<8;c++){ var ch=f[r*8+c];
+  row.push(ch==='.'?null:{player:(ch==='l'||ch==='L')?1:2, king:(ch==='L'||ch==='D')}); } b.push(row); } return b; }
+function hashStr(s){ var h=2166136261; for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
+function closeAllModals(){ ['play','puzlist','campaign','timeattack','questmodal','shop','setmodal','statsmodal','online','account','friends','owner','admin'].forEach(function(id){ var e=$(id); if(e)e.classList.remove('show'); }); }
+function diffBadge(d){ return '<span class="badge-diff d-'+d+'">'+d+'</span>'; }
+
+// ---------- Puzzle mode ----------
+function updateSurvivalHUD(){ if(!survival)return; if(survival.count%5===0&&survival.count>0)showToast('🛡️ '+survival.count+'/'+survival.target+' survived'); }
+function showPuzzleBar(){ var el=$('puzzlebar'); if(!el||!puzzle)return; var who=(puzzle.side===1?'Light':'Dark');
+  var p=$('pzprompt'); if(p)p.innerHTML= puzzle.solved?'✅ Solved!':('🧩 '+(puzzle.daily?'Daily · ':'')+puzzle.theme+' — <b>'+who+' to move</b>. Find the best move.');
+  el.style.display='flex'; var n=$('pznext'); if(n)n.style.display=puzzle.daily?'none':'inline-block'; }
+function hidePuzzleBar(){ var el=$('puzzlebar'); if(el)el.style.display='none'; }
+function startPuzzle(idx,daily){ var pz=PUZZLES[idx]; if(!pz){ showToast('No puzzle available.'); return; }
+  closeAllModals(); onlineActive=false; forcedGame=null; campaignLevel=null; survival=null;
+  puzzleActive=true; puzzle={idx:idx, acc:pz.acc.slice(), side:pz.side, theme:pz.theme, diff:pz.diff, daily:!!daily, tries:0, solved:false};
+  gameId++; mode='puzzle'; humanSide=pz.side; diff='vhard'; style=($('style')&&$('style').value)||'classic';
+  flip=(pz.side===2); boardEl.classList.toggle('mono',style==='trad');
+  board=fenToBoard(pz.fen); turn=pz.side; selected=null; winner=null; lastMove=null; history=[];
+  thinking=false; animating=false; hint=null; powerUp=null; powerUsed=false; SHIELD=new Set(); shieldOwner=0; powerSelectMode=null;
+  noProg=0; posCounts={}; dangerSet=null; blitzSecs=0; stopClock(); renderClocks();
+  clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
+  overlay.classList.remove('show'); hideCoachPanel&&hideCoachPanel(); buildLabels(); refresh(); updateSideBtn();
+  showPuzzleBar(); bouncePieces(); updatePowerUI&&updatePowerUI(); }
+function flashWrongCell(to){ try{ var sq=boardEl.children[dIndex(to[0],to[1])]; if(sq){ sq.classList.add('wrongflash'); setTimeout(function(){ sq.classList.remove('wrongflash'); },1000); } }catch(e){} }
+function puzzleAttempt(mv){ if(!puzzle||puzzle.solved)return;
+  var key=mv.from[0]+','+mv.from[1]+','+mv.to[0]+','+mv.to[1];
+  if(puzzle.acc.indexOf(key)>=0){ puzzlePlay(mv,true); return; }
+  puzzle.tries++; try{ sCapture(); }catch(e){} if(navigator.vibrate){try{navigator.vibrate([30,50,30]);}catch(e){}}
+  flashWrongCell(mv.to); selected=null; render();
+  var el=$('pzprompt'); if(el)el.innerHTML='❌ Not the best move — try again.'+(puzzle.tries>=2?' <a href="#" id="pzrevlink" style="color:var(--accent)">show me</a>':'');
+  var rl=$('pzrevlink'); if(rl)rl.onclick=function(e){ e.preventDefault(); puzzleReveal(); }; }
+function puzzlePlay(mv,scored){ var prev=clone(board);
+  var wasMan=!prev[mv.from[0]][mv.from[1]].king; var after=makeMove(board,mv); var promoted=wasMan&&after[mv.to[0]][mv.to[1]].king;
+  board=after; lastMove={from:mv.from,to:mv.to}; selected=null; animating=true; render();
+  animateMove(mv,prev,promoted,function(){ animating=false; puzzle.solved=true; render();
+    if(scored) puzzleReward(); else puzzleShownDone(); }); }
+function puzzleReward(){ if(!STATS.puzzles)STATS.puzzles={};
+  var first=!STATS.puzzles[puzzle.idx]; var table={easy:1,medium:2,hard:3}; var reward=0;
+  if(first){ STATS.puzzles[puzzle.idx]=1; reward=table[puzzle.diff]||1; STATS.wp=(STATS.wp||0)+reward; }
+  var dmsg=''; if(puzzle.daily) dmsg=puzzleDailyComplete();
+  try{ checkDailyQuests({puzzle:true}); }catch(e){}
+  saveStats(); updateStats(); updateHintVisibility();
+  try{ sPromote(); }catch(e){} try{ confettiBurst(); }catch(e){}
+  var el=$('pzprompt'); if(el)el.innerHTML='✅ Solved!'+(reward?(' <b>+'+reward+' WP</b>'):' (already solved)')+dmsg;
+  var n=$('pznext'); if(n)n.style.display=puzzle.daily?'none':'inline-block';
+  showToast('✅ Solved!'+(reward?(' +'+reward+' WP'):'')+dmsg); }
+function puzzleShownDone(){ var el=$('pzprompt'); if(el)el.innerHTML='💡 Solution shown.'+(puzzle.daily?'':' Tap Next for another.');
+  var n=$('pznext'); if(n)n.style.display=puzzle.daily?'none':'inline-block'; }
+function puzzleDailyComplete(){ var t=dayKey(0); if(!STATS.dp)STATS.dp={done:'',streak:0};
+  if(STATS.dp.done===t) return ' · daily already done';
+  if(STATS.dp.done===dayKey(1)) STATS.dp.streak=(STATS.dp.streak||0)+1; else STATS.dp.streak=1;
+  STATS.dp.done=t; var b=5+Math.min(STATS.dp.streak,7); STATS.wp=(STATS.wp||0)+b;
+  return ' · 📅 daily streak '+STATS.dp.streak+' (+'+b+' WP)'; }
+function dailyPuzzleIndex(){ if(!PUZZLES.length)return -1; return hashStr('dp'+dayKey(0))%PUZZLES.length; }
+function dailyDoneToday(){ return STATS.dp&&STATS.dp.done===dayKey(0); }
+function puzzleReveal(){ if(!puzzle||puzzle.solved)return; var k=puzzle.acc[0].split(',').map(Number);
+  var fromK=k[0]+','+k[1]; var list=(legal.moves&&legal.moves[fromK])||[]; var m=null;
+  for(var i=0;i<list.length;i++){ if(list[i].r===k[2]&&list[i].c===k[3]){ m=list[i]; break; } }
+  if(!m){ showToast('—'); return; } puzzle.revealed=true;
+  puzzlePlay({from:[k[0],k[1]],to:[k[2],k[3]],captured:m.captured,path:m.path},false); }
+function puzzleNext(){ var pool=[]; for(var i=0;i<PUZZLES.length;i++){ if(!(STATS.puzzles&&STATS.puzzles[i]))pool.push(i); }
+  var idx = pool.length ? pool[hashStr('n'+puzzle.idx+Date.now())%pool.length] : ((puzzle.idx+1)%PUZZLES.length);
+  startPuzzle(idx,false); }
+function exitPuzzle(){ puzzleActive=false; puzzle=null; hidePuzzleBar(); forcedGame=null; newGame(); }
+
+// ---------- Campaign ladder ----------
+const LADDER=[
+  {name:'Karim the Beginner', emoji:'🧒', diff:'easy',  wp:3,  sub:'Just picked up the game.'},
+  {name:'Rana the Regular',   emoji:'🧑', diff:'easy',  wp:4,  sub:'Plays a solid, simple game.'},
+  {name:'Sami the Sharp',     emoji:'🎩', diff:'med',   wp:6,  sub:'Spots most captures.'},
+  {name:'Layla the Tactician',emoji:'🧠', diff:'med',   wp:8,  sub:'Sets little traps.'},
+  {name:'Omar the Veteran',   emoji:'🎖️', diff:'hard',  wp:12, sub:'Years of experience.'},
+  {name:'Nadia the Master',   emoji:'♟️', diff:'hard',  wp:16, sub:'Calculates deeply.'},
+  {name:'The Grandmaster',    emoji:'🏆', diff:'vhard', wp:25, sub:'The final wall. Full strength.'}
+];
+function campaignProgress(){ return (typeof STATS.ladder==='number')?STATS.ladder:-1; }
+function startCampaign(i){ if(i>campaignProgress()+1){ showToast('🔒 Beat the earlier challengers first.'); return; }
+  var op=LADDER[i]; closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; survival=null;
+  forcedGame={mode:'ai', side:1, diff:op.diff, blitz:0}; campaignLevel=i; sideChoice=1;
+  newGame(); showToast(op.emoji+' '+op.name+' — good luck!'); }
+function startSurvival(){ closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; campaignLevel=null;
+  forcedGame={mode:'ai', side:1, diff:'vhard', blitz:0}; survival={target:25, count:0}; sideChoice=1;
+  newGame(); showToast('🛡️ Survival — outlast 25 of your own moves vs the Grandmaster.'); }
+function startTimeAttack(secs,dfc){ closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; campaignLevel=null; survival=null;
+  forcedGame={mode:'ai', side:1, diff:dfc, blitz:secs}; sideChoice=1; newGame(); }
+function postGameModes(w){
+  if(campaignLevel!=null){ var i=campaignLevel, op=LADDER[i];
+    if(w===humanSide && campaignProgress()===i-1){ STATS.ladder=i; STATS.wp=(STATS.wp||0)+op.wp;
+      pendingUnlock.push('🏰 Beat '+op.name+' (+'+op.wp+' WP)');
+      if(i+1<LADDER.length) pendingUnlock.push('🔓 '+LADDER[i+1].name+' unlocked'); else pendingUnlock.push('👑 Campaign complete!');
+      saveStats(); updateStats(); } }
+}
+
+// ---------- Daily quests ----------
+const DAILY_QUESTS=[
+  {id:'d_win',    t:'Win any game today',            wp:4, chk:function(c,p){return c.win;}},
+  {id:'d_winai',  t:'Beat the computer today',       wp:5, chk:function(c,p){return c.win&&c.mode==='ai';}},
+  {id:'d_cap3',   t:'Capture 3+ pieces in one move', wp:5, chk:function(c,p){return (c.bigcap||0)>=3;}},
+  {id:'d_hard',   t:'Win on Hard or Very Hard',      wp:7, chk:function(c,p){return c.win&&c.mode==='ai'&&(c.diff==='hard'||c.diff==='vhard');}},
+  {id:'d_puzz',   t:'Solve a puzzle today',          wp:4, chk:function(c,p){return !!c.puzzle;}},
+  {id:'d_two',    t:'Win 2 games today',             wp:6, chk:function(c,p){return (p._dwins||0)>=2;}},
+  {id:'d_flaw',   t:'Win without losing a piece',    wp:8, chk:function(c,p){return c.flawless;}},
+  {id:'d_streak', t:'Reach a 2-win streak',          wp:5, chk:function(c,p){return (p.streak||0)>=2;}}
+];
+function dqToday(){ var d=dayKey(0), h=hashStr('dq'+d), pool=DAILY_QUESTS.slice(), out=[];
+  for(var i=0;i<3&&pool.length;i++){ var j=(h+i*97)%pool.length; out.push(pool[j]); pool.splice(j,1); } return out; }
+function dqState(){ var t=dayKey(0); if(!STATS.dq||STATS.dq.date!==t){ STATS.dq={date:t,done:{},dwins:0}; } return STATS.dq; }
+function checkDailyQuests(ctx){ ctx=ctx||{}; var st=dqState(); if(ctx.win){ st.dwins=(st.dwins||0)+1; } STATS._dwins=st.dwins;
+  dqToday().forEach(function(q){ if(st.done[q.id])return; try{ if(q.chk(ctx,STATS)){ st.done[q.id]=1; STATS.wp=(STATS.wp||0)+q.wp;
+    showToast('📅 Daily done: '+q.t+' +'+q.wp+' WP'); } }catch(e){} });
+  saveStats(); updateStats(); }
+function renderDailyQuests(){ var st=dqState(); return dqToday().map(function(q){ var done=st.done[q.id];
+  return '<div class="frow"><span class="fname" style="opacity:'+(done?1:.75)+'">'+(done?'✅ ':'⬜ ')+q.t+'</span><span class="fwp">+'+q.wp+' WP</span></div>'; }).join(''); }
+
+// ---------- Play hub + list rendering ----------
+function openPlay(){ renderPlayHub(); $('play').classList.add('show'); }
+function renderPlayHub(){ var el=$('playhub'); if(!el)return;
+  var di=dailyPuzzleIndex(); var dDone=dailyDoneToday(); var dStreak=(STATS.dp&&STATS.dp.streak)||0;
+  var solved=0; for(var i=0;i<PUZZLES.length;i++){ if(STATS.puzzles&&STATS.puzzles[i])solved++; }
+  var prog=campaignProgress(); var next=LADDER[Math.min(prog+1,LADDER.length-1)];
+  var campMeta = prog+1>=LADDER.length ? '👑 Completed' : ('Next: '+next.emoji+' '+next.name);
+  el.innerHTML='<div class="hubgrid">'+
+    '<div class="hubcard" id="hubdaily"><span class="he">🗓️</span><span class="ht">Daily Puzzle</span><span class="hs">A fresh position every day.</span><span class="hmeta">'+(dDone?('✅ done · 🔥 '+dStreak+'-day streak'):'Not solved yet today')+'</span></div>'+
+    '<div class="hubcard" id="hubpuz"><span class="he">🧩</span><span class="ht">Puzzle Pack</span><span class="hs">Tactics to sharpen your eye.</span><span class="hmeta">'+solved+' / '+PUZZLES.length+' solved</span></div>'+
+    '<div class="hubcard" id="hubcamp"><span class="he">🏰</span><span class="ht">Campaign</span><span class="hs">Climb the ladder of rivals.</span><span class="hmeta">'+campMeta+'</span></div>'+
+    '<div class="hubcard" id="hubtime"><span class="he">⏱️</span><span class="ht">Time Attack</span><span class="hs">Blitz clocks &amp; survival.</span><span class="hmeta">Beat the clock</span></div>'+
+    '</div>';
+  $('hubdaily').onclick=function(){ if(di<0){showToast('Puzzles loading…');return;} startPuzzle(di,true); };
+  $('hubpuz').onclick=openPuzList; $('hubcamp').onclick=openCampaign; $('hubtime').onclick=openTimeAttack; }
+let puzFilter='all';
+function openPuzList(){ closeAllModals(); puzFilter='all'; renderPuzTabs(); renderPuzList(); $('puzlist').classList.add('show'); }
+function renderPuzTabs(){ var el=$('puztabs'); if(!el)return; var tabs=[['all','All'],['easy','Easy'],['medium','Medium'],['hard','Hard']];
+  el.innerHTML=tabs.map(function(t){ return '<button class="puztab'+(puzFilter===t[0]?' sel':'')+'" data-f="'+t[0]+'">'+t[1]+'</button>'; }).join(''); }
+function renderPuzList(){ var el=$('puzgrid'); if(!el)return; var rows='';
+  PUZZLES.forEach(function(pz,i){ if(puzFilter!=='all'&&pz.diff!==puzFilter)return; var done=STATS.puzzles&&STATS.puzzles[i];
+    rows+='<div class="frow" data-puz="'+i+'" style="cursor:pointer"><span class="fname">'+(done?'✅ ':'▫️ ')+'Puzzle '+(i+1)+' — '+pz.theme+diffBadge(pz.diff)+'</span><span class="fwp">'+(done?'solved':'play ▸')+'</span></div>'; });
+  el.innerHTML=rows||'<div class="olnote">No puzzles in this filter.</div>'; }
+function openCampaign(){ closeAllModals(); renderLadder(); $('campaign').classList.add('show'); }
+function renderLadder(){ var el=$('ladderlist'); if(!el)return; var prog=campaignProgress();
+  el.innerHTML=LADDER.map(function(op,i){ var cleared=i<=prog, unlocked=i<=prog+1, dl={easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very hard'}[op.diff];
+    var btn = cleared ? '<button class="btn labtn" data-camp="'+i+'">Replay</button>'
+            : unlocked ? '<button class="btn primary labtn" data-camp="'+i+'">Play ▸</button>'
+            : '<span class="fwp">🔒</span>';
+    return '<div class="larow'+(unlocked?'':' locked')+'"><span class="laem">'+op.emoji+'</span><span class="lainfo"><div class="laname">'+(cleared?'✅ ':'')+op.name+'</div><div class="lasub">'+dl+' · '+op.sub+' · reward '+op.wp+' WP</div></span>'+btn+'</div>'; }).join(''); }
+function openTimeAttack(){ closeAllModals(); renderTA(); $('timeattack').classList.add('show'); }
+function renderTA(){ var el=$('talist'); if(!el)return;
+  el.innerHTML=
+    '<div class="ollabel">Blitz vs Computer (each side gets a clock)</div>'+
+    '<div class="setbtns"><button class="btn" data-ta="60|med">⚡ Bullet 1:00</button><button class="btn" data-ta="180|hard">🔥 Blitz 3:00</button><button class="btn" data-ta="300|hard">⏱️ Rapid 5:00</button></div>'+
+    '<div class="ollabel" style="margin-top:12px">Survival</div>'+
+    '<div class="setbtns"><button class="btn primary" id="tasurv">🛡️ Survive 25 moves vs Grandmaster</button></div>'+
+    '<div class="olnote" style="margin-top:8px">In Blitz, running out of time loses the game. Survival: last 25 of your moves without being beaten.</div>';
+  $('tasurv').onclick=startSurvival; }
 function openAccount(){ if($('account'))$('account').classList.add('show'); acctRefresh();
   if(!sbUser){ sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); } }
 function closeAccount(){ if($('account'))$('account').classList.remove('show'); }
@@ -1877,12 +2128,41 @@ $('setmodal').addEventListener('click',function(e){ if(e.target===$('setmodal'))
 $('volmus').addEventListener('input',function(){ musicVol=(+this.value)/100; if(musicGain)musicGain.gain.value=musicVol; if(bgm)bgm.volume=musicVol; savePrefs(); });
 $('volsfx').addEventListener('input',function(){ sfxVol=(+this.value)/100; if(sfxGain)sfxGain.gain.value=sfxVol; savePrefs(); });
 $('animspeed').addEventListener('input',function(){ animSpeed=(+this.value)/100; savePrefs(); });
-$('blitz').addEventListener('change',function(){ blitzSecs=+this.value||0; savePrefs(); initBlitz(); });
+$('blitz').addEventListener('change',function(){ blitzSecs=+this.value||0; userBlitz=blitzSecs; savePrefs(); initBlitz(); });
 $('soundpack').addEventListener('change',function(){ soundPack=this.value; savePrefs(); initAudio(); sMove(); });
 $('statsopen').addEventListener('click',openStats);
 $('questbtn').addEventListener('click',openQuests);
 $('questclose').addEventListener('click',closeQuests);
 $('questmodal').addEventListener('click',function(e){ if(e.target===$('questmodal'))closeQuests(); });
+// ---- Play hub / puzzles / campaign / time attack wiring ----
+$('playbtn').addEventListener('click',openPlay);
+$('playclose').addEventListener('click',function(){ $('play').classList.remove('show'); });
+$('play').addEventListener('click',function(e){ if(e.target===$('play'))$('play').classList.remove('show'); });
+$('puzlistclose').addEventListener('click',function(){ $('puzlist').classList.remove('show'); });
+$('puzlist').addEventListener('click',function(e){ if(e.target===$('puzlist'))$('puzlist').classList.remove('show'); });
+$('puztabs').addEventListener('click',function(e){ var b=e.target.closest('[data-f]'); if(!b)return; puzFilter=b.getAttribute('data-f'); renderPuzTabs(); renderPuzList(); });
+$('puzgrid').addEventListener('click',function(e){ var b=e.target.closest('[data-puz]'); if(!b)return; startPuzzle(+b.getAttribute('data-puz'),false); });
+$('campaignclose').addEventListener('click',function(){ $('campaign').classList.remove('show'); });
+$('campaign').addEventListener('click',function(e){ if(e.target===$('campaign'))$('campaign').classList.remove('show'); });
+$('ladderlist').addEventListener('click',function(e){ var b=e.target.closest('[data-camp]'); if(!b)return; startCampaign(+b.getAttribute('data-camp')); });
+$('timeattackclose').addEventListener('click',function(){ $('timeattack').classList.remove('show'); });
+$('timeattack').addEventListener('click',function(e){ if(e.target===$('timeattack'))$('timeattack').classList.remove('show'); });
+$('talist').addEventListener('click',function(e){ var b=e.target.closest('[data-ta]'); if(!b)return; var p=b.getAttribute('data-ta').split('|'); startTimeAttack(+p[0],p[1]); });
+$('pzreveal').addEventListener('click',puzzleReveal);
+$('pznext').addEventListener('click',puzzleNext);
+$('pzexit').addEventListener('click',exitPuzzle);
+$('mode').addEventListener('change',function(){ forcedGame=null; campaignLevel=null; survival=null; if(puzzleActive){ puzzleActive=false; puzzle=null; hidePuzzleBar(); } });
+// ---- fullscreen side dock ----
+$('fsnew').addEventListener('click',function(){ initAudio(); onlineNewGameShared(); });
+$('fsundo').addEventListener('click',function(){ initAudio(); undo(); });
+$('fshint').addEventListener('click',function(){ initAudio(); if(puzzleActive){ puzzleReveal(); } else { showHint(); } });
+$('fsxbtn').addEventListener('click',toggleBoardFS);
+// ---- live difficulty switching mid-game (vs Computer only) ----
+$('diff').addEventListener('change',function(){
+  if(mode==='ai' && !winner && !forcedGame && campaignLevel==null && survival==null && !puzzleActive){
+    diff=this.value; savePrefs(); showToast('⚙️ Difficulty → '+diffName(diff)+' — WP counts the one you play most.');
+  }
+});
 $('statsclose').addEventListener('click',closeStats);
 $('statsmodal').addEventListener('click',function(e){ if(e.target===$('statsmodal'))closeStats(); });
 $('resumebtn').addEventListener('click',function(){ initAudio(); doResume(); });
