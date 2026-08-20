@@ -1054,7 +1054,11 @@ function fmtWP(n){ n=n||0; return Number.isInteger(n)?String(n):String(Math.roun
 function migrateBought(){ if(!Array.isArray(STATS.bought)){ STATS.bought=[]; SKINS.forEach(function(s){ if(!s.special && (s.id==='wood' || s.cost<=(STATS.wp||0))) STATS.bought.push(s.id); }); }
   if(STATS.bought.indexOf('wood')<0)STATS.bought.push('wood'); if(typeof STATS.spent!=='number')STATS.spent=0; }
 function ownsSkin(s){ if(s.ownerOnly) return isAdmin(); if(isAdmin())return true; if(s.special) return ownsSpecial(s.id); return s.id==='wood' || !!(STATS.bought && STATS.bought.indexOf(s.id)>=0); }
-function buySkin(id){ var s=skinById(id); if(!s||s.special)return; if(ownsSkin(s)){ STATS.equipped=id; applySkin(id); saveStats(); renderShop(); return; }
+function gameInProgress(){ return history.length>0 && !winner && (mode==='pvp'||mode==='ai'||mode==='online'); }
+function canSwitchSkin(id){ if(isAdmin())return true; if((STATS.equipped||'wood')===id)return true; return !gameInProgress(); }  // no swapping skins mid-game to stack once-per-game powers
+function buySkin(id){ var s=skinById(id); if(!s||s.special)return;
+  if(!canSwitchSkin(id)){ showToast('Finish the game before switching skins.'); return; }
+  if(ownsSkin(s)){ STATS.equipped=id; applySkin(id); saveStats(); renderShop(); return; }
   if((STATS.wp||0) < s.cost){ showToast('Need '+fmtWP(s.cost-(STATS.wp||0))+' more WP.'); return; }
   STATS.wp=(STATS.wp||0)-s.cost; STATS.spent=(STATS.spent||0)+s.cost; if(!STATS.bought)STATS.bought=[]; STATS.bought.push(id);
   STATS.equipped=id; applySkin(id); try{sPromote();}catch(e){} try{confettiBurst();}catch(e){}
@@ -2229,7 +2233,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v84';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v85';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2772,7 +2776,7 @@ $('challengedecline').addEventListener('click',declineChallenge);
 $('skins').addEventListener('click',openShop);
 $('shopclose').addEventListener('click',closeShop);
 $('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
-$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ STATS.equipped=b.getAttribute('data-id'); saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); return; }
+$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ var eid=b.getAttribute('data-id'); if(!canSwitchSkin(eid)){ showToast('Finish the game before switching skins.'); return; } STATS.equipped=eid; saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); return; }
   var buy=e.target.closest('.buy'); if(buy){ buySkin(buy.getAttribute('data-buy')); } });
 function onFSChange(){ if(!document.fullscreenElement) document.body.classList.remove('boardfs'); updateFSLabel(); render(); }
 document.addEventListener('fullscreenchange',onFSChange);
