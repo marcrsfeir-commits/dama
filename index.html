@@ -232,6 +232,29 @@
     background:conic-gradient(from 0deg, transparent 0deg, rgba(255,246,205,.55) 42deg, transparent 96deg, transparent 210deg, rgba(255,222,120,.42) 256deg, transparent 312deg);
     mix-blend-mode:screen;animation:galaxyswirl 5s linear infinite;pointer-events:none;z-index:1;}
   [data-skin="sovereign"] .king::after{ z-index:3; }
+  /* Serpent — scaly green pawns with slit-pupil snake eyes */
+  [data-skin="serpent"] .piece.l{
+    background:
+      radial-gradient(ellipse 8% 13% at 37% 43%, #14180a 0 42%, transparent 44%),
+      radial-gradient(ellipse 8% 13% at 63% 43%, #14180a 0 42%, transparent 44%),
+      radial-gradient(circle at 37% 43%, #f4e64e 0 8.5%, transparent 10%),
+      radial-gradient(circle at 63% 43%, #f4e64e 0 8.5%, transparent 10%),
+      radial-gradient(circle at 40% 31%, #d6f68c 0%, #88c942 42%, #4a8a26 100%);
+    box-shadow:inset 0 0 0 2px rgba(40,80,20,.5), inset 0 -3px 6px rgba(18,48,8,.4), 0 2px 6px rgba(0,0,0,.5);}
+  [data-skin="serpent"] .piece.d{
+    background:
+      radial-gradient(ellipse 8% 13% at 37% 43%, #06080c 0 42%, transparent 44%),
+      radial-gradient(ellipse 8% 13% at 63% 43%, #06080c 0 42%, transparent 44%),
+      radial-gradient(circle at 37% 43%, #dcc934 0 8.5%, transparent 10%),
+      radial-gradient(circle at 63% 43%, #dcc934 0 8.5%, transparent 10%),
+      radial-gradient(circle at 40% 31%, #4d7e2c 0%, #2c5218 45%, #14280a 100%);
+    box-shadow:inset 0 0 0 2px rgba(150,214,92,.5), inset 0 -3px 6px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.55);}
+  .sq.slithersrc{box-shadow:inset 0 0 0 3px rgba(150,240,74,.7);cursor:pointer;}
+  .sq.slitherdest{box-shadow:inset 0 0 0 3px rgba(150,240,74,.95);cursor:pointer;animation:hintpulse 1s ease-in-out infinite;}
+  .slitherfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:56px;height:56px;border-radius:16px;border:1px solid #8fe03a;background:linear-gradient(160deg,var(--panel),rgba(150,240,74,.18));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
+  .slitherfab.show{display:flex;} .slitherfab:active{transform:translateY(1px);}
+  .slitherfab .hicon{font-size:22px;line-height:1;} .slitherfab .hlbl{font-size:8px;letter-spacing:.4px;color:#b8f28a;text-transform:uppercase;}
   .friendlist{display:flex;flex-direction:column;gap:8px;margin:8px 0;max-height:52vh;overflow:auto;}
   .frow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--frameLine);border-radius:10px;padding:9px 11px;flex-wrap:wrap;}
   .fdot{width:9px;height:9px;border-radius:50%;background:#5a5a5a;flex:0 0 auto;}
@@ -460,6 +483,9 @@
   <span class="hicon">💀</span><span class="hlbl">Strike</span>
 </button>
 <div id="godbar" class="godbar"></div>
+<button id="slitherfab" class="slitherfab" title="Slither — retreat a man one square backward (5 per game)">
+  <span class="hicon">🐍</span><span class="hlbl">Slither</span>
+</button>
 <button id="fsx" class="fsx" title="Exit board fullscreen">✕</button>
 <div id="fsdock" class="fsdock">
   <button id="fsnew" title="New game">🔄<span class="l">New</span></button>
@@ -470,7 +496,7 @@
 <div id="shop" class="shop"><div class="shopcard">
   <div class="shophead"><span id="shopwp">🏆 0 WP</span><button id="shopclose" class="shopx">✕</button></div>
   <div id="shopgrid" class="shopgrid"></div>
-  <div class="shopnote">Earn Win Points by winning — a win pays for the difficulty you played most (easy 1 · medium 2 · hard 3 · very hard 4). Even a loss on Hard/Very Hard pays 1–2 WP. Puzzles, quests &amp; the campaign give more. Unlocks are permanent.</div>
+  <div class="shopnote">Win Points are your currency — <b>buying a skin spends them</b> (your balance drops), but your rank &amp; assist level are based on total WP earned, so you never lose progress by shopping. Earn WP from wins (by hardest difficulty played), puzzles, quests &amp; the campaign.</div>
 </div></div>
 <div id="setmodal" class="shop"><div class="shopcard">
   <div class="shophead"><span>⚙️ Settings</span><button id="setclose" class="shopx" aria-label="Close">✕</button></div>
@@ -902,13 +928,13 @@ function learnFromGame(winner){ try{
     LEARN.games++; saveLearn(); }catch(e){} moveTrail=[]; }
 
 let STATS={wins:0,losses:0,streak:0,best:0,games:0,wp:0,equipped:'wood'};
-function loadStats(){ try{const s=localStorage.getItem('dama-stats'); if(s){const o=JSON.parse(s); if(o)STATS=Object.assign(STATS,o);}}catch(e){} }
+function loadStats(){ try{const s=localStorage.getItem('dama-stats'); if(s){const o=JSON.parse(s); if(o)STATS=Object.assign(STATS,o);}}catch(e){} migrateBought(); }
 function saveStats(){ try{ localStorage.setItem('dama-stats',JSON.stringify(STATS)); }catch(e){} if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
 
 // ---- progression: win points, skins, perks ----
 const THEMEVARS=['--bg','--panel','--frameA','--frameB','--frameLine','--sqLight','--sqDark','--wood','--gold','--sel','--accent','--ink','--muted','--lp1','--lp2','--lp3','--dp1','--dp2','--dp3'];
 const HINT_COST=10; const HINT_TIERS=[10,40,80,150];
-function hintLevel(){ var wp=STATS.wp||0, lv=0; for(var i=0;i<HINT_TIERS.length;i++){ if(wp>=HINT_TIERS[i])lv=i+1; } if(equippedPerk('strongHint'))lv=Math.min(HINT_TIERS.length, lv+1); return lv; }
+function hintLevel(){ var wp=wpEarned(), lv=0; for(var i=0;i<HINT_TIERS.length;i++){ if(wp>=HINT_TIERS[i])lv=i+1; } if(equippedPerk('strongHint'))lv=Math.min(HINT_TIERS.length, lv+1); return lv; }
 const SKINS=[
  {id:'wood',name:'Classic Wood',emoji:'🌰',cost:0,rarity:'common',swatch:['#e6d2a8','#c69f6a','#d9a441'],vars:{}},
  {id:'midnight',name:'Midnight',emoji:'🌙',cost:20,rarity:'common',swatch:['#c3cfe0','#6f86a8','#6db0ff'],
@@ -961,6 +987,8 @@ const SKINS=[
    vars:{'--bg':'#0d140a','--panel':'#151e10','--frameA':'#4a7a2a','--frameB':'#2c4a18','--frameLine':'#12240c','--sqLight':'#e0f5d0','--sqDark':'#7aae4a','--gold':'#e0c85a','--sel':'#5ac03a','--accent':'#9ace6a','--ink':'#eef8e6','--muted':'#a8c090','--lp1':'#f2fbe8','--lp2':'#cfe6b0','--lp3':'#8fc270','--dp1':'#4a7a2a','--dp2':'#2c4a18','--dp3':'#12240c'}},
  {id:'oracle',name:'Oracle',emoji:'👁️',cost:460,rarity:'legendary',perk:{bonusWP:1,powerup:'foresight'},swatch:['#e6dcff','#8a6ad0','#ffd85a'],
    vars:{'--bg':'#0d0a18','--panel':'#160f26','--frameA':'#4a2e8a','--frameB':'#2a1a5a','--frameLine':'#140f2a','--sqLight':'#e6dcff','--sqDark':'#8a6ad0','--gold':'#ffd85a','--sel':'#b06aff','--accent':'#b89aff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#f6f2ff','--lp2':'#d8c8f5','--lp3':'#a888dc','--dp1':'#3a2a6a','--dp2':'#221648','--dp3':'#100a24'}},
+ {id:'serpent',name:'Serpent',emoji:'🐍',cost:250,rarity:'epic',perk:{bonusWP:4,retreat:true},swatch:['#8fdc4a','#3a7a2a','#12240c'],
+   vars:{'--bg':'#0a1408','--panel':'#122010','--frameA':'#3a6a24','--frameB':'#20410f','--frameLine':'#0e2008','--sqLight':'#6fae4a','--sqDark':'#213f16','--gold':'#b8f24a','--sel':'#8fe03a','--accent':'#9ede5a','--ink':'#eef8e2','--muted':'#a8c090','--lp1':'#c6f088','--lp2':'#7ec23e','--lp3':'#4a8a26','--dp1':'#3a6a24','--dp2':'#245012','--dp3':'#12280a'}},
  {id:'joey',name:"Joey's Galaxy",emoji:'🌌',cost:0,special:true,earn:'Beat Joey online to earn',earnByBeating:'joey',rarity:'legendary',perk:{bonusWP:7,strongHint:true,powerup:'tempkings'},swatch:['#c9b6ff','#6a3fa8','#0a0710'],
    vars:{'--bg':'#070510','--panel':'#0f0a1e','--frameA':'#4a2e8a','--frameB':'#241542','--frameLine':'#0a0616','--sqLight':'#6a3fa8','--sqDark':'#0a0812','--gold':'#b98cff','--sel':'#c060ff','--accent':'#b090ff','--ink':'#efe9ff','--muted':'#a898c8','--lp1':'#d6c6ff','--lp2':'#9a80e0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1a1030','--dp3':'#0a0616'}},
  {id:'theasskicker',name:'The Ass Kicker',emoji:'💀',cost:0,special:true,earn:'Beat The Ass Kicker online to earn',earnByBeating:'theasskicker',rarity:'legendary',perk:{bonusWP:7,repeat:'purge'},swatch:['#e8564a','#4a4a4e','#0c0a0a'],
@@ -973,13 +1001,21 @@ function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); 
 function grantSpecial(id){ if(!STATS.owned)STATS.owned=[]; if(STATS.owned.indexOf(id)<0){ STATS.owned.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; } return false; }
 function seedSpecialSkins(){ var n=(myName||'').toLowerCase();
   if(isAdmin()||n==='joey') grantSpecial('joey');
-  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker');
-  if(isAdmin()) grantSpecial('sovereign'); }                      // owner-exclusive god skin
+  if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker'); }
+  // Sovereign is NOT seeded to a local list — ownsSkin() gates it on isAdmin(), so it lives only on the signed-in owner account
 let pendingUnlock=[];
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
 function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
-function ownsSkin(s){ if(isAdmin())return true; if(s.special) return ownsSpecial(s.id); return (STATS.wp||0)>=s.cost; }
+function wpEarned(){ return (STATS.wp||0)+(STATS.spent||0); }          // lifetime WP (balance + everything spent) — drives rank & assist so buying skins never demotes you
+function migrateBought(){ if(!Array.isArray(STATS.bought)){ STATS.bought=[]; SKINS.forEach(function(s){ if(!s.special && (s.id==='wood' || s.cost<=(STATS.wp||0))) STATS.bought.push(s.id); }); }
+  if(STATS.bought.indexOf('wood')<0)STATS.bought.push('wood'); if(typeof STATS.spent!=='number')STATS.spent=0; }
+function ownsSkin(s){ if(s.ownerOnly) return isAdmin(); if(isAdmin())return true; if(s.special) return ownsSpecial(s.id); return s.id==='wood' || !!(STATS.bought && STATS.bought.indexOf(s.id)>=0); }
+function buySkin(id){ var s=skinById(id); if(!s||s.special)return; if(ownsSkin(s)){ STATS.equipped=id; applySkin(id); saveStats(); renderShop(); return; }
+  if((STATS.wp||0) < s.cost){ showToast('Need '+(s.cost-(STATS.wp||0))+' more WP.'); return; }
+  STATS.wp=(STATS.wp||0)-s.cost; STATS.spent=(STATS.spent||0)+s.cost; if(!STATS.bought)STATS.bought=[]; STATS.bought.push(id);
+  STATS.equipped=id; applySkin(id); try{sPromote();}catch(e){} try{confettiBurst();}catch(e){}
+  saveStats(); updateStats(); renderShop(); updatePowerUI(); showToast('🛒 Bought '+s.emoji+' '+s.name+' for '+s.cost+' WP — equipped!'); }
 function hintUnlocked(){ return hintLevel()>=1; }
 function applySkin(id){ const s=skinById(id); const root=document.documentElement;
   THEMEVARS.forEach(function(v){root.style.removeProperty(v);});
@@ -1082,18 +1118,17 @@ function recordResult(w){ pendingUnlock=[];
       saveStats(); updateStats(); updateHintVisibility(); return; }
   } else if(mode==='pvp'){ base=1; }                 // 2-player: the winner earns 1 WP
   else { updateStats(); updateHintVisibility(); return; }   // computer-vs-computer: no WP
-  const bonus=equippedPerk('bonusWP')||0; const before=STATS.wp||0;
-  STATS.wp=before+base+bonus; STATS.wins++; STATS.streak++; if(STATS.streak>STATS.best)STATS.best=STATS.streak; STATS.games++;
-  const after=STATS.wp;
-  if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist');
-  SKINS.forEach(function(s){ if(s.cost>before && s.cost<=after) pendingUnlock.push(s.emoji+' '+s.name); });
+  const bonus=equippedPerk('bonusWP')||0; const before=wpEarned();
+  STATS.wp=(STATS.wp||0)+base+bonus; STATS.wins++; STATS.streak++; if(STATS.streak>STATS.best)STATS.best=STATS.streak; STATS.games++;
+  const after=wpEarned();
+  if(before<HINT_COST && after>=HINT_COST) pendingUnlock.push('💡 Assist unlocked');
   const flawless = mode==='ai' && countPieces(board,humanSide)===16;
   var qctx={win:true, mode:mode, diff:wonDiff, quad:gQuad, flawless:flawless};
   checkAchv(qctx); checkQuests(qctx); try{ checkDailyQuests(qctx); }catch(e){}
   saveStats(); updateStats(); updateHintVisibility();
 }
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
-  el.textContent=rankName(STATS.wp||0)+'  ·  🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
+  el.textContent=rankName(wpEarned())+'  ·  🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
 function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+wp+' WP';
   let html='';
   var _lv=hintLevel(); var _ln=['Locked','Best move','Deep Assist','Coach+','Auto-Pilot'];
@@ -1103,12 +1138,18 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
   html+='<div class="scard '+(_lv>=1?'owned':'locked')+'"><div class="sname">💡 Assist'+(_lv>=1?(' · Lv '+_lv+' — '+_ln[_lv]):'')+'</div><div class="sdesc">'+_ld[_lv]+'</div><div class="sfoot">'+_foot+'</div></div>';
   SKINS.slice().filter(function(s){ return !s.ownerOnly || isAdmin(); }).sort(function(a,b){return (a.special?1e9:a.cost)-(b.special?1e9:b.cost);}).forEach(function(s){ const owned=ownsSkin(s), eq=(STATS.equipped||'wood')===s.id;
     const sw=s.swatch.map(function(c){return '<span class="swd" style="background:'+c+'"></span>';}).join('');
-    let foot; if(!owned) foot= s.special ? '<span class="stag">🔒 '+(s.earn||'Special')+'</span>' : '<span class="stag">🔒 '+s.cost+' WP</span>'; else if(eq) foot='<span class="stag ok">Equipped</span>'; else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
+    let foot;
+    if(!owned){ if(s.special){ foot='<span class="stag">🔒 '+(s.earn||'Special')+'</span>'; }
+      else if((STATS.wp||0)>=s.cost){ foot='<button class="btn buy" data-buy="'+s.id+'">Buy · '+s.cost+' WP</button>'; }
+      else { foot='<span class="stag">🔒 '+s.cost+' WP</span>'; } }
+    else if(eq) foot='<span class="stag ok">Equipped</span>';
+    else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
       const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
+      if(s.perk.retreat)bits.push('🐍 Slither — retreat a man one square backward, 5× per game (men normally can’t go back)');
       perk='<div class="sperk">✦ '+bits.join(' · ')+'</div>'; }
     html+='<div class="scard r-'+s.rarity+' '+(owned?'owned':'locked')+(eq?' eq':'')+'"><div class="sname">'+s.emoji+' '+s.name+'</div><div class="swrow">'+sw+'</div>'+perk+'<div class="sfoot">'+foot+'</div></div>';
   });
@@ -1168,6 +1209,13 @@ function sCapture(){ if(!(soundOn&&audioCtx))return;
   if(soundPack==='arcade'){ tone(220,0.1,'square',0.2); tone(140,0.12,'sawtooth',0.14); }
   else if(soundPack==='wood'){ tone(110,0.14,'sine',0.3); noise(0.07,0.16); }
   else { tone(150,0.13,'sine',0.28); tone(95,0.16,'sine',0.2); noise(0.05,0.12); } }
+function sSnake(){ if(!(soundOn&&audioCtx))return; var t=audioCtx.currentTime, dur=0.42;
+  var n=audioCtx.createBufferSource(), b=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*dur),audioCtx.sampleRate), d=b.getChannelData(0);
+  for(var i=0;i<d.length;i++){ d[i]=(Math.random()*2-1); } n.buffer=b;
+  var bp=audioCtx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1.6; bp.frequency.setValueAtTime(2500,t); bp.frequency.linearRampToValueAtTime(5400,t+dur*0.7);
+  var g=audioCtx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.17,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  n.connect(bp).connect(g).connect(sfxGain||audioCtx.destination); n.start(t); n.stop(t+dur+0.02);
+  tone(1900,0.05,'triangle',0.05,t+dur*0.5); }                    // little tongue flick
 function sPromote(){ if(!(soundOn&&audioCtx))return; const t=audioCtx.currentTime;
   if(soundPack==='arcade'){ [440,660,880,1320].forEach((f,i)=>tone(f,0.14,'square',0.12,t+i*0.07)); }
   else if(soundPack==='wood'){ [262,330,392].forEach((f,i)=>tone(f,0.22,'triangle',0.16,t+i*0.1)); }
@@ -1235,6 +1283,7 @@ let puzzleActive=false, puzzle=null;                             // Puzzle mode 
 let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null;        // Fortress shield + power-up piece-select mode
 let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;   // The Ass Kicker: delete an enemy man every 10 of your moves
 let godPower=null, godTeleFrom=null;                             // Sovereign (owner): infinite god powers
+let slitherLeft=0, slitherMode=false, slitherSel=null;          // Serpent: move a man backward, 5x per game
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1267,7 +1316,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;savePrefs();hideCoachPanel();updateCoachUI();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1350,6 +1399,8 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
       else if(godPower==='summon')gv=!cell;
       else if(godPower==='teleport')gv=godTeleFrom?!cell:(cell&&cell.player===turn);
       if(gv)sq.classList.add('godtarget'); }
+    if(slitherMode){ if(!slitherSel){ if(slitherTargets(mr,mc).length)sq.classList.add('slithersrc'); }
+      else { if(slitherSel[0]===mr&&slitherSel[1]===mc)sq.classList.add('sel'); if(slitherTargets(slitherSel[0],slitherSel[1]).some(function(q){return q[0]===mr&&q[1]===mc;}))sq.classList.add('slitherdest'); } }
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
@@ -1366,6 +1417,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   updateGiftUI();
   updateStrikeUI();
   updateGodUI();
+  updateSlitherUI();
 }
 function canGiftJoey(){ return onlineActive && !winner && ownsSpecial('joey') && (isAdmin() || ((myName||'').toLowerCase()==='joey')); }
 function updateGiftUI(){ var b=$('giftfab'); if(b) b.classList.toggle('show', canGiftJoey()); }
@@ -1401,6 +1453,7 @@ function handleCell(r,c){ initAudio();
   if((mode==='ai'||mode==='online')&&turn!==humanSide)return;
   if(strikeSelectMode){ doStrike(r,c); return; }
   if(godPower){ applyGod(r,c); return; }
+  if(slitherMode){ handleSlither(r,c); return; }
   if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
@@ -1580,7 +1633,7 @@ const GOD_POWERS=[
   {id:'teleport',icon:'🌀',  label:'Teleport', hint:'Tap your piece, then an empty square to blink it there.'},
   {id:'enslave', icon:'⛓️',  label:'Enslave',  hint:'Tap an enemy man to turn it to your side.'}
 ];
-function isGod(){ return equippedPerk('god')===true; }
+function isGod(){ return equippedPerk('god')===true && isAdmin(); }   // god powers only while signed in as the owner account
 function godUsable(){ return isGod() && !winner && !thinking && !animating && (mode==='pvp'||turn===humanSide); }
 function updateGodUI(){ var b=$('godbar'); if(!b)return; var show=isGod() && !winner && (mode==='pvp'||turn===humanSide); b.classList.toggle('show',show); if(show)renderGodBar(); }
 function renderGodBar(){ var b=$('godbar'); if(!b)return;
@@ -1614,6 +1667,19 @@ function godTeleport(from,to){ var p=board[from[0]][from[1]]; if(!p)return; boar
   board[to[0]][to[1]]={player:p.player,king:p.king}; board[from[0]][from[1]]=null; godRefresh(); boardBurst(to[0],to[1]); jumpPieces(to[0],to[1]);
   var sq=boardEl.children[dIndex(to[0],to[1])], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'scale(0) rotate(200deg)',opacity:0},{transform:'scale(1) rotate(0)',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.5,.5,1)'}); }
   try{sMove();}catch(e){} godSync('teleport'); }
+// ---- Serpent: Slither — retreat a man one square backward (5 per game) ----
+function slitherTargets(r,c){ var p=board[r][c]; if(!p||p.player!==turn||p.king)return []; var back=(p.player===1)?1:-1; var nr=r+back;
+  if(nr<0||nr>7||board[nr]&&board[nr][c])return []; return [[nr,c]]; }
+function slitherUsable(){ return equippedPerk('retreat')===true && slitherLeft>0 && !winner && !thinking && !animating && (mode==='pvp'||turn===humanSide); }
+function updateSlitherUI(){ var b=$('slitherfab'); if(!b)return; var show=slitherUsable()||slitherMode; b.classList.toggle('show',show);
+  if(show){ var l=b.querySelector('.hlbl'); if(l)l.textContent='Slither '+slitherLeft; } }
+function activateSlither(){ if(!slitherUsable())return; initAudio(); slitherMode=true; slitherSel=null; render(); updateSlitherUI(); showToast('🐍 Tap a man, then the square behind it to retreat.'); }
+function handleSlither(r,c){ var p=board[r][c];
+  if(!slitherSel){ if(!slitherTargets(r,c).length){ showToast('Pick one of YOUR men with an empty square behind it.'); return; } slitherSel=[r,c]; render(); return; }
+  var tg=slitherTargets(slitherSel[0],slitherSel[1]); var ok=tg.some(function(q){return q[0]===r&&q[1]===c;});
+  if(!ok){ if(slitherTargets(r,c).length){ slitherSel=[r,c]; render(); return; } showToast('Tap the highlighted square behind your man.'); return; }
+  var from=slitherSel; slitherSel=null; slitherMode=false; slitherLeft--; try{sSnake();}catch(e){}
+  apply({from:from,to:[r,c],captured:null,path:null}); }
 function computeDanger(){ dangerSet=null; if(hintLevel()<2)return;
   try{ var opp=turn===1?2:1; var lg=computeLegal(board,opp);
     if(lg&&lg.mustCapture){ var s=new Set();
@@ -1742,7 +1808,7 @@ function checkAchv(ctx){ if(!STATS.achv)STATS.achv={};
   if(ctx&&ctx.quad)grantAchv('quad');
   if(ctx&&ctx.flawless)grantAchv('flawless');
   if((STATS.wp||0)>=100)grantAchv('wp100');
-  if((STATS.wp||0)>=MAXSKIN)grantAchv('collector');
+  if(SKINS.filter(function(s){return !s.special;}).every(function(s){return ownsSkin(s);}))grantAchv('collector');
   if(STATS.wins>=10)grantAchv('veteran');
   if(STATS.wins>=50)grantAchv('master');
   if(STATS.best>=10)grantAchv('streak10');
@@ -1870,7 +1936,7 @@ function adminWP(mode){ var n=parseInt($('adminwp').value,10); if(isNaN(n)||n<0)
   else if(mode==='sub') STATS.wp=Math.max(0,(STATS.wp||0)-n);
   else STATS.wp=n;
   afterWPChange('WP: '+STATS.wp); }
-function adminUnlockAll(){ STATS.wp=Math.max(STATS.wp||0,MAXSKIN); afterWPChange('All skins unlocked'); }
+function adminUnlockAll(){ if(!STATS.bought)STATS.bought=[]; SKINS.forEach(function(s){ if(!s.special && STATS.bought.indexOf(s.id)<0)STATS.bought.push(s.id); }); afterWPChange('All skins unlocked'); }
 function adminResetUnlocks(){ STATS.wp=0; STATS.equipped='wood'; afterWPChange('Unlocks reset — WP 0'); }
 
 // ================= in-game coach (admin-gated learning aid) =================
@@ -2045,7 +2111,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v72';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v73';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2304,7 +2370,7 @@ function mergeCloud(cloud){ if(!cloud)return; var cs=cloud.STATS||{};
   if(cs.friends&&(!STATS.friends||!STATS.friends.length))STATS.friends=cs.friends;
   if(cs.equipped && !ownsSkin(skinById(STATS.equipped)))STATS.equipped=cs.equipped;
   var cl=cloud.LEARN; if(cl&&cl.book&&(cl.games||0)>(LEARN.games||0)){ LEARN=cl; LEARN.book=LEARN.book||{}; } }
-function adoptCloud(cloud){ if(cloud){ if(cloud.STATS)STATS=Object.assign({wins:0,losses:0,streak:0,best:0,games:0,wp:0,equipped:'wood',achv:{},friends:[]}, cloud.STATS); if(cloud.LEARN&&cloud.LEARN.book)LEARN=cloud.LEARN; } persistLocal(); }
+function adoptCloud(cloud){ if(cloud){ if(cloud.STATS)STATS=Object.assign({wins:0,losses:0,streak:0,best:0,games:0,wp:0,equipped:'wood',achv:{},friends:[]}, cloud.STATS); if(cloud.LEARN&&cloud.LEARN.book)LEARN=cloud.LEARN; } migrateBought(); persistLocal(); }
 function cloudPull(done){ if(!sb||!sbUser){ done&&done(); return; }
   sb.from('progress').select('data,updated_at').eq('user_id',sbUser.id).maybeSingle().then(function(r){
     var row=r&&r.data;
@@ -2527,6 +2593,7 @@ $('powerfab').addEventListener('click',activatePower);
 $('giftfab').addEventListener('click',giftJoeySkin);
 $('strikefab').addEventListener('click',activateStrike);
 $('godbar').addEventListener('click',function(e){ var b=e.target.closest('[data-god]'); if(b)selectGod(b.getAttribute('data-god')); });
+$('slitherfab').addEventListener('click',activateSlither);
 $('onlinebtn').addEventListener('click',openOnline);
 $('onlineclose').addEventListener('click',closeOnline);
 $('online').addEventListener('click',function(e){ if(e.target===$('online'))closeOnline(); });
@@ -2555,14 +2622,15 @@ $('owner').addEventListener('click',function(e){ if(e.target===$('owner'))closeO
 $('ownerrefresh').addEventListener('click',ownerLoad);
 $('ownerlist').addEventListener('click',function(e){ var t=e.target;
   var sw=t.closest('[data-setwp]'); if(sw){ var i=+sw.getAttribute('data-setwp'); var inp=$('ownerlist').querySelector('[data-wp="'+i+'"]'); var n=Math.max(0,parseInt(inp&&inp.value,10)||0); ownerWrite(ownerRows[i],function(s){s.wp=n;},'Set WP '+n); return; }
-  var ul=t.closest('[data-unlock]'); if(ul){ var j=+ul.getAttribute('data-unlock'); ownerWrite(ownerRows[j],function(s){s.wp=Math.max(s.wp||0,MAXSKIN);},'Unlocked all'); return; }
+  var ul=t.closest('[data-unlock]'); if(ul){ var j=+ul.getAttribute('data-unlock'); ownerWrite(ownerRows[j],function(s){ if(!s.bought)s.bought=[]; SKINS.forEach(function(sk){ if(!sk.special && s.bought.indexOf(sk.id)<0)s.bought.push(sk.id); }); },'Unlocked all'); return; }
   var rs=t.closest('[data-reset]'); if(rs){ var k=+rs.getAttribute('data-reset'); ownerWrite(ownerRows[k],function(s){s.wp=0;s.equipped='wood';},'Reset'); } });
 $('challengeaccept').addEventListener('click',acceptChallenge);
 $('challengedecline').addEventListener('click',declineChallenge);
 $('skins').addEventListener('click',openShop);
 $('shopclose').addEventListener('click',closeShop);
 $('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
-$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ STATS.equipped=b.getAttribute('data-id'); saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); } });
+$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ STATS.equipped=b.getAttribute('data-id'); saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); return; }
+  var buy=e.target.closest('.buy'); if(buy){ buySkin(buy.getAttribute('data-buy')); } });
 function onFSChange(){ if(!document.fullscreenElement) document.body.classList.remove('boardfs'); updateFSLabel(); render(); }
 document.addEventListener('fullscreenchange',onFSChange);
 document.addEventListener('webkitfullscreenchange',onFSChange);
