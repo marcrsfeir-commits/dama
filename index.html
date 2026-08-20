@@ -1645,7 +1645,16 @@ function renderGodBar(){ var b=$('godbar'); if(!b)return;
 function selectGod(id){ if(!isGod())return; if(!godUsable()){ showToast('Wait for your turn.'); return; }
   godPower=(godPower===id)?null:id; godTeleFrom=null; selected=null; renderGodBar(); render();
   if(godPower){ var g=GOD_POWERS.find(function(x){return x.id===id;}); if(g)showToast(g.icon+' '+g.hint); } }
-function godSync(pw){ if(onlineActive&&!applyingRemote) sendMsg({type:'god', pw:pw, bd:serializeBoard(), t:turn}); }
+function godSync(pw,r,c,r2,c2){ if(onlineActive&&!applyingRemote) sendMsg({type:'god', pw:pw, r:r, c:c, r2:r2, c2:c2, bd:serializeBoard(), t:turn}); }
+function godRemoteFX(m){                                          // replay the power's animation on the opponent's screen
+  try{
+    if(m.pw==='strike'||m.pw==='smite'){ if(typeof m.r==='number') strikeFX(m.r,m.c,function(){ jumpPieces(m.r,m.c); }); }
+    else if(m.pw==='crown'){ if(typeof m.r==='number'){ boardBurst(m.r,m.c); var sq=boardEl.children[dIndex(m.r,m.c)],pc=sq&&sq.querySelector('.piece'); if(pc){pc.classList.add('promoting');setTimeout(function(){pc.classList.remove('promoting');},640);} try{sPromote();}catch(e){} } }
+    else if(m.pw==='summon'){ if(typeof m.r==='number'){ boardBurst(m.r,m.c); try{sPromote();}catch(e){} } }
+    else if(m.pw==='enslave'){ if(typeof m.r==='number'){ boardBurst(m.r,m.c); try{sCapture();}catch(e){} } }
+    else if(m.pw==='teleport'){ if(typeof m.r==='number')boardBurst(m.r,m.c); if(typeof m.r2==='number'){ boardBurst(m.r2,m.c2); jumpPieces(m.r2,m.c2); } try{sMove();}catch(e){} }
+  }catch(e){}
+}
 function godRefresh(){ legal=computeLegal(board,turn); render(); renderGodBar(); }
 function checkGodWin(){ var opp=turn===1?2:1; if(countPieces(board,opp)===0){ finishGame(turn); return true; } return false; }
 function applyGod(r,c){ var p=board[r][c];
@@ -1657,20 +1666,20 @@ function applyGod(r,c){ var p=board[r][c];
   else if(godPower==='teleport'){
     if(!godTeleFrom){ if(!p||p.player!==turn){showToast('Tap one of YOUR pieces first.');return;} godTeleFrom=[r,c]; selected=[r,c]; render(); showToast('🌀 Now tap an empty square.'); return; }
     if(p){showToast('Tap an EMPTY square.');return;} godTeleport(godTeleFrom,[r,c]); godTeleFrom=null; } }
-function godStrike(r,c){ strikeFX(r,c,function(){ board[r][c]=null; godRefresh(); jumpPieces(r,c); godSync('strike'); checkGodWin(); }); }
+function godStrike(r,c){ strikeFX(r,c,function(){ board[r][c]=null; godRefresh(); jumpPieces(r,c); godSync('strike',r,c); checkGodWin(); }); }
 function godCrown(r,c){ if(board[r][c])board[r][c].king=true; godRefresh(); boardBurst(r,c);
   var sq=boardEl.children[dIndex(r,c)], pc=sq&&sq.querySelector('.piece'); if(pc){ try{sPromote();}catch(e){} pc.classList.add('promoting'); setTimeout(function(){pc.classList.remove('promoting');},640); }
-  godSync('crown'); }
+  godSync('crown',r,c); }
 function godSummon(r,c){ board[r][c]={player:turn,king:false}; godRefresh(); boardBurst(r,c);
   var sq=boardEl.children[dIndex(r,c)], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'scale(0) rotate(-120deg)',opacity:0},{transform:'scale(1.18) rotate(10deg)',opacity:1,offset:.7},{transform:'scale(1) rotate(0)'}],{duration:440,easing:'cubic-bezier(.3,1.6,.5,1)'}); }
-  try{sPromote();}catch(e){} godSync('summon'); }
+  try{sPromote();}catch(e){} godSync('summon',r,c); }
 function godEnslave(r,c){ if(board[r][c])board[r][c].player=turn; godRefresh(); boardBurst(r,c);
   var sq=boardEl.children[dIndex(r,c)], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'rotateY(0) scale(1)'},{transform:'rotateY(180deg) scale(1.15)',offset:.5},{transform:'rotateY(360deg) scale(1)'}],{duration:520,easing:'ease-in-out'}); }
-  try{sCapture();}catch(e){} godSync('enslave'); checkGodWin(); }
+  try{sCapture();}catch(e){} godSync('enslave',r,c); checkGodWin(); }
 function godTeleport(from,to){ var p=board[from[0]][from[1]]; if(!p)return; boardBurst(from[0],from[1]);
   board[to[0]][to[1]]={player:p.player,king:p.king}; board[from[0]][from[1]]=null; godRefresh(); boardBurst(to[0],to[1]); jumpPieces(to[0],to[1]);
   var sq=boardEl.children[dIndex(to[0],to[1])], pc=sq&&sq.querySelector('.piece'); if(pc&&pc.animate){ pc.animate([{transform:'scale(0) rotate(200deg)',opacity:0},{transform:'scale(1) rotate(0)',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.5,.5,1)'}); }
-  try{sMove();}catch(e){} godSync('teleport'); }
+  try{sMove();}catch(e){} godSync('teleport',from[0],from[1],to[0],to[1]); }
 // ---- Serpent: Slither — retreat a man one square backward (5 per game) ----
 function slitherTargets(r,c){ var p=board[r][c]; if(!p||p.player!==turn||p.king)return []; var back=(p.player===1)?1:-1; var nr=r+back;
   if(nr<0||nr>7||board[nr]&&board[nr][c])return []; return [[nr,c]]; }
@@ -2104,7 +2113,12 @@ function onNet(m){
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
   else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
   else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
-  else if(m.type==='god'&&m.bd){ applyingRemote=true; try{ loadOnlineState(m.bd,m.t); }catch(e){} applyingRemote=false; showToast('👑 The Sovereign wields '+(m.pw||'a power')+'…'); }
+  else if(m.type==='god'&&m.bd){ applyingRemote=true;
+    try{
+      if(m.pw==='strike'||m.pw==='smite'){ godRemoteFX(m); loadOnlineState(m.bd,m.t); }   // bolt flies as the board updates
+      else { loadOnlineState(m.bd,m.t); godRemoteFX(m); }                                   // update board, then burst/anim on top
+    }catch(e){ try{loadOnlineState(m.bd,m.t);}catch(_){} }
+    applyingRemote=false; showToast('👑 The Sovereign wields '+(m.pw||'a power')+'…'); }
   else if(m.type==='bye'){ showToast('Opponent left the game'); }
 }
 function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
@@ -2115,7 +2129,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v74';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v75';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
