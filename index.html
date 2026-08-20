@@ -606,7 +606,13 @@
     <div class="avarow" id="avarow"></div>
     <div id="acctsync" class="olnote"></div>
     <div class="setbtns"><button class="btn" id="acctfriends">👥 Friends</button><button class="btn" id="acctowner" style="display:none">🛠️ Owner tools</button></div>
-    <div class="setbtns"><button class="btn" id="acctsyncbtn">Sync now</button><button class="btn" id="acctsignout">Log out</button></div>
+    <div class="setbtns"><button class="btn" id="acctsyncbtn">Sync now</button><button class="btn" id="acctchpw">🔑 Change password</button><button class="btn" id="acctsignout">Log out</button></div>
+    <div id="chpwbox" style="display:none;margin-top:6px">
+      <input id="chpw1" class="olinput" type="password" placeholder="new password" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px;margin:0 0 6px">
+      <input id="chpw2" class="olinput" type="password" placeholder="confirm new password" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px;margin:0 0 6px">
+      <div class="setbtns"><button class="btn primary" id="chpwsave">Save password</button><button class="btn" id="chpwcancel">Cancel</button></div>
+      <div id="chpwstatus" class="olnote"></div>
+    </div>
   </div>
   <div class="shopnote">Your progress is stored privately — only you can read or change your own data. Passwords are handled by Supabase; the game never sees them.</div>
   <div class="shopnote" id="verline" style="text-align:center;opacity:.75;font-weight:600">Version —</div>
@@ -2222,7 +2228,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v81';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v82';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2242,6 +2248,7 @@ function acctRefresh(){ var inl=!!sbUser;
   if($('acctout'))$('acctout').style.display=inl?'none':'block';
   if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+emailToUser((sbUser&&sbUser.email)||'you');
   if($('acctowner'))$('acctowner').style.display=isAdmin()?'inline-block':'none';
+  if($('chpwbox'))$('chpwbox').style.display='none';
   if(inl){ if($('acctavatar'))$('acctavatar').textContent=STATS.avatar||'🙂'; if($('accttitle'))$('accttitle').textContent=playerTitle(); renderAvatars(); } }
 const AVATARS=['🙂','😎','🦁','🐉','👑','🔥','🌙','⭐','🐺','🦅','🎯','🧠','⚡','🌊','🍀','💎'];
 function playerTitle(){ for(var i=ACHV.length-1;i>=0;i--){ if(STATS.achv&&STATS.achv[ACHV[i].id])return ACHV[i].emoji+' '+ACHV[i].name; } return rankName(STATS.wp||0); }
@@ -2466,6 +2473,18 @@ function onSignedIn(silent){ myName=emailToUser((sbUser&&sbUser.email)||''); acc
   });
   inboxConnect(); startCloudPoll(); }
 function acctSignout(){ if(sb)try{sb.auth.signOut();}catch(e){} sbUser=null; myName=''; inboxDisconnect(); stopCloudPoll(); try{localStorage.removeItem('dama-acct');}catch(e){} acctRefresh(); acctStatus('Logged out.'); showToast('Logged out'); }
+function chpwStatus(t){ var e=$('chpwstatus'); if(e)e.textContent=t||''; }
+function toggleChpw(show){ var b=$('chpwbox'); if(!b)return; b.style.display=show?'block':'none'; if(show){ if($('chpw1'))$('chpw1').value=''; if($('chpw2'))$('chpw2').value=''; chpwStatus(''); if($('chpw1'))$('chpw1').focus(); } }
+function doChangePassword(){ if(!sb||!sbUser){ chpwStatus('Sign in first.'); return; }
+  var p1=($('chpw1')&&$('chpw1').value)||'', p2=($('chpw2')&&$('chpw2').value)||'';
+  if(p1.length<4){ chpwStatus('Password must be at least 4 characters.'); return; }
+  if(p1!==p2){ chpwStatus('The two passwords don’t match.'); return; }
+  chpwStatus('Updating…');
+  try{ sb.auth.updateUser({password:p1}).then(function(r){
+    if(r&&r.error){ chpwStatus('Couldn’t update: '+r.error.message); return; }
+    chpwStatus('✓ Password changed.'); showToast('🔑 Password updated'); setTimeout(function(){ toggleChpw(false); },1200);
+  }, function(){ chpwStatus('Couldn’t update — check your connection.'); }); }
+  catch(e){ chpwStatus('Couldn’t update right now.'); } }
 
 // ---- sync: first login on a device merges best-of; afterwards last-write-wins by timestamp (so owner edits & other devices win) ----
 function progressBlob(){ return { STATS:STATS, LEARN:LEARN, name:myName, ver:APP_VERSION }; }
@@ -2718,6 +2737,9 @@ $('account').addEventListener('click',function(e){ if(e.target===$('account'))cl
 $('acctsignin').addEventListener('click',function(){ acctAuth('signin'); });
 $('acctsignup').addEventListener('click',function(){ acctAuth('signup'); });
 $('acctsignout').addEventListener('click',acctSignout);
+$('acctchpw').addEventListener('click',function(){ toggleChpw($('chpwbox').style.display==='none'); });
+$('chpwsave').addEventListener('click',doChangePassword);
+$('chpwcancel').addEventListener('click',function(){ toggleChpw(false); });
 $('acctsyncbtn').addEventListener('click',function(){ if($('acctsync'))$('acctsync').textContent='Syncing…'; cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; showToast('Progress synced'); }); });
 $('acctpass').addEventListener('keydown',function(e){ if(e.key==='Enter')acctAuth('signin'); });
 $('avarow').addEventListener('click',function(e){ var b=e.target.closest('[data-ava]'); if(b)setAvatar(b.getAttribute('data-ava')); });
