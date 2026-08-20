@@ -1828,7 +1828,7 @@ function grantAchv(id){ if(!STATS.achv)STATS.achv={}; if(STATS.achv[id])return f
 function checkAchv(ctx){ if(!STATS.achv)STATS.achv={};
   if(STATS.wins>=1)grantAchv('first');
   if(STATS.best>=5)grantAchv('streak5');
-  if(ctx&&ctx.win&&ctx.mode==='ai'&&ctx.diff==='vhard')grantAchv('vhard');
+  if(ctx&&ctx.win&&ctx.mode==='ai'&&['vhard','xhard','hell'].indexOf(ctx.diff)>=0)grantAchv('vhard');
   if(ctx&&ctx.quad)grantAchv('quad');
   if(ctx&&ctx.flawless)grantAchv('flawless');
   if((STATS.wp||0)>=100)grantAchv('wp100');
@@ -2140,7 +2140,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v76';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v77';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2175,7 +2175,7 @@ function checkDailyBonus(){ if(!STATS)return; var t=dayKey(0); if(STATS.lastPlay
   saveStats(); updateStats(); updateHintVisibility();
   setTimeout(function(){ showToast('📅 Daily bonus +'+bonus+' WP — day '+STATS.dailyStreak+' streak!'); },1400); }
 const QUESTS=[
-  {id:'q_hard',name:'Win a game on Hard or Very Hard',wp:12,check:function(c,s){return c.win&&c.mode==='ai'&&(c.diff==='hard'||c.diff==='vhard');}},
+  {id:'q_hard',name:'Win a game on Hard or Very Hard',wp:12,check:function(c,s){return c.win&&c.mode==='ai'&&['hard','vhard','xhard','hell'].indexOf(c.diff)>=0;}},
   {id:'q_quad',name:'Capture 4+ pieces in one move',wp:15,check:function(c,s){return c.quad;}},
   {id:'q_flawless',name:'Win without losing a piece',wp:20,check:function(c,s){return c.flawless;}},
   {id:'q_streak3',name:'Reach a 3-win streak',wp:8,check:function(c,s){return (s.best||0)>=3;}},
@@ -2299,7 +2299,7 @@ const DAILY_QUESTS=[
   {id:'d_win',    t:'Win any game today',            wp:4, chk:function(c,p){return c.win;}},
   {id:'d_winai',  t:'Beat the computer today',       wp:5, chk:function(c,p){return c.win&&c.mode==='ai';}},
   {id:'d_cap3',   t:'Capture 3+ pieces in one move', wp:5, chk:function(c,p){return (c.bigcap||0)>=3;}},
-  {id:'d_hard',   t:'Win on Hard or Very Hard',      wp:7, chk:function(c,p){return c.win&&c.mode==='ai'&&(c.diff==='hard'||c.diff==='vhard');}},
+  {id:'d_hard',   t:'Win on Hard or Very Hard',      wp:7, chk:function(c,p){return c.win&&c.mode==='ai'&&['hard','vhard','xhard','hell'].indexOf(c.diff)>=0;}},
   {id:'d_puzz',   t:'Solve a puzzle today',          wp:4, chk:function(c,p){return !!c.puzzle;}},
   {id:'d_two',    t:'Win 2 games today',             wp:6, chk:function(c,p){return (p._dwins||0)>=2;}},
   {id:'d_flaw',   t:'Win without losing a piece',    wp:8, chk:function(c,p){return c.flawless;}},
