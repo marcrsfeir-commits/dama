@@ -1635,7 +1635,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v56';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v57';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -1755,8 +1755,12 @@ function cloudPullOnly(){ if(!sb||!sbUser)return;
     var row=r&&r.data; if(!row)return; var marker=getCts();
     if((row.updated_at||'')>marker){ adoptCloud(row.data); setCts(row.updated_at); showToast('↻ Your progress was updated'); }  // owner edit / other device — apply live
   }, function(){}); }
-function startCloudPoll(){ if(pollTimer)clearInterval(pollTimer); pollTimer=setInterval(cloudPullOnly,25000); }
+function startCloudPoll(){ if(pollTimer)clearInterval(pollTimer); pollTimer=setInterval(cloudPullOnly,10000); }
 function stopCloudPoll(){ if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
+// When the app comes back to the foreground (or reconnects), pull immediately — background timers get throttled, so a returning device could otherwise show stale stats.
+document.addEventListener('visibilitychange',function(){ if(!document.hidden)cloudPullOnly(); });
+window.addEventListener('focus',function(){ cloudPullOnly(); });
+window.addEventListener('online',function(){ cloudPullOnly(); });
 function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag||!navigator.onLine)return;
   sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); }
 
@@ -1776,6 +1780,7 @@ function onInbox(m){ if(!m||!m.from||m.from===(sbUser&&sbUser.id))return;
   else if(m.type==='pong'){ presenceOn[m.from]=true; renderFriends(); }
   else if(m.type==='challenge'){ pendingChallenge={from:m.from,name:m.fromName||'A friend',room:m.room}; showChallenge(); }
   else if(m.type==='chaldecline'){ showToast((m.fromName||'They')+' declined the challenge'); try{leaveOnline();}catch(e){} }
+  else if(m.type==='synced'){ cloudPullOnly(); }   // owner just changed my stats → pull right now instead of waiting for the poll
 }
 let friendProfiles={};
 function loadFriendProfiles(cb){ if(!sb||!sbUser){cb&&cb();return;} var ids=[sbUser.id].concat(myFriends().map(function(f){return f.uid;}));
@@ -1849,6 +1854,7 @@ function ownerWrite(u,mutate,label){ if(!u)return; var data=u.data||{STATS:{}}; 
   sb.from('progress').upsert({user_id:u.uid,data:data,updated_at:newTs}).select('updated_at').then(function(r){ if(r&&r.error){ showToast('Save failed: '+r.error.message); return; }
     var ts=(r.data&&r.data[0]&&r.data[0].updated_at)||newTs;
     if(u.uid===(sbUser&&sbUser.id)){ adoptCloud(data); setCts(ts); }   // editing myself → reflect on this device now & mark synced so it isn't overwritten
+    else { inboxConnect(); inboxSend(u.uid,{type:'synced'}); }          // editing someone else → nudge their device to pull immediately
     showToast(label+' — '+(u.name||'')); renderOwner();
   }, function(){ showToast('Save failed'); }); }
 
