@@ -197,6 +197,14 @@
       radial-gradient(1.2px 1.2px at 74% 70%, #9070dc, transparent 60%),
       radial-gradient(circle at 42% 38%, #2c1c57 0%, #180f36 55%, #090517 100%);
     box-shadow:inset 0 0 0 2px rgba(170,132,255,.9), inset 0 -3px 6px rgba(0,0,0,.5), 0 0 10px rgba(150,100,255,.5), 0 2px 5px rgba(0,0,0,.6);}
+  /* swirling galaxy animation on Joey's pawns */
+  [data-skin="joey"] .piece::before{
+    content:"";position:absolute;inset:6%;border-radius:50%;box-shadow:none;overflow:hidden;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(220,200,255,.0) 20deg, rgba(230,215,255,.45) 70deg, rgba(255,255,255,.15) 120deg, transparent 170deg, rgba(170,130,255,.4) 230deg, rgba(255,255,255,.12) 290deg, transparent 340deg);
+    mix-blend-mode:screen;animation:galaxyswirl 7s linear infinite;pointer-events:none;z-index:1;}
+  [data-skin="joey"] .piece.d::before{ animation-duration:9s; background:conic-gradient(from 0deg, transparent 0deg, rgba(180,140,255,.5) 60deg, rgba(230,210,255,.2) 120deg, transparent 175deg, rgba(150,110,240,.45) 240deg, transparent 320deg); }
+  [data-skin="joey"] .king::after{ z-index:3; }
+  @keyframes galaxyswirl{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
   /* The Ass Kicker — light pawns = lighter red with a black centre dot; dark pawns = dark grey with a red streak */
   [data-skin="theasskicker"] .piece.l{
     background:
@@ -1820,7 +1828,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v63';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v64';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
