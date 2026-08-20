@@ -415,7 +415,7 @@
   <div class="controls">
     <select id="mode"><option value="pvp"></option><option value="ai"></option><option value="cvc"></option></select>
     <button class="btn" id="side" title="Tap to switch which colour you play"></button>
-    <select id="diff"><option value="easy"></option><option value="med" selected></option><option value="hard"></option><option value="vhard"></option></select>
+    <select id="diff"><option value="xeasy"></option><option value="veasy"></option><option value="easy"></option><option value="med" selected></option><option value="hard"></option><option value="vhard"></option><option value="xhard"></option><option value="hell"></option></select>
     <select id="style"><option value="classic"></option><option value="trad"></option></select>
     <button class="btn" id="undo"></button>
     <button class="btn" id="sound"></button>
@@ -746,11 +746,16 @@ function search(board,player,budgetMs,maxDepth){
 }
 function aiMove(board,player){
   const total=countPieces(board,1)+countPieces(board,2);
-  if(diff==='easy'){ const m=allMoves(board,player); if(!m.length)return null; orderMoves(m);
-    return Math.random()<0.4 ? m[Math.floor(Math.random()*m.length)] : search(board,player,90,3); }
+  function rnd(){ const m=allMoves(board,player); return m.length?m[Math.floor(Math.random()*m.length)]:null; }
+  if(diff==='xeasy') return Math.random()<0.78 ? rnd() : search(board,player,40,2);   // barely tries
+  if(diff==='veasy') return Math.random()<0.55 ? rnd() : search(board,player,70,2);
+  if(diff==='easy')  return Math.random()<0.40 ? rnd() : search(board,player,90,3);
   if(diff==='med')  return search(board,player,500,  total<=10?10:7);
   if(diff==='hard') return search(board,player,1400, total<=10?14:10);
-  return search(board,player,2400, total<=12?22:16); // very hard
+  if(diff==='vhard') return search(board,player,2400, total<=12?22:16);
+  if(diff==='xhard') return search(board,player,4800, total<=12?26:20);   // 2x very hard
+  if(diff==='hell')  return search(board,player,12000,total<=14?34:26);   // 5x very hard
+  return search(board,player,2400, total<=12?22:16);
 }
 self.onmessage=function(e){var d=e.data; diff=d.diff; SHIELD=new Set(d.shield||[]); var mv=aiMove(d.board,d.player); postMessage({id:d.id, mv:mv});};
 </script>
@@ -760,7 +765,7 @@ setTimeout(function(){var l=document.getElementById('loading');if(l){l.classList
 // ================= i18n =================
 const T={
  en:{title:"Dama",sub:"Lebanese draughts",new:"New game",pvp:"2 Players",ai:"vs Computer",cvc:"Computer vs Computer",
-   playLight:"Play Light",playDark:"Play Dark",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",
+   playLight:"Play Light",playDark:"Play Dark",xeasy:"Extremely Easy",veasy:"Very Easy",easy:"Easy",med:"Medium",hard:"Hard",vhard:"Very hard",xhard:"Extremely Hard",hell:"Hell 🔥",
    classic:"Classic board",trad:"Traditional board",undo:"Undo",soundOn:"Sound: On",soundOff:"Sound: Off",musicOn:"Music: On",musicOff:"Music: Off",coachOn:"Coach: On",coachOff:"Coach: Off",coach_best:"✓ Best move",coach_good:"Good move",coach_inacc:"Inaccuracy ?!",coach_mistake:"Mistake ?",coach_blunder:"Blunder ??",learned:"🧠 Learning from {n} games",fs:"Fullscreen",fsExit:"Exit full",hint:"Hint",wins:"Wins",losses:"Losses",streak:"Streak",best:"Best",draw:"Draw",drawSub:"A draw — well played.",
    light:"Light",dark:"Dark",toMove:"to move",must:"must capture",thinking:"thinking…",wins:"wins",
    youWon:"Well played — نخبك!",youLost:"Computer takes it. Rematch?",niceGame:"نخبك!",move:"Move",playAgain:"Play again",
@@ -772,7 +777,7 @@ const T={
      "Reach the far row to become a <b>dama (✦)</b> — it slides and jumps any distance along rows and columns, in any direction (but it can't reverse 180° between two jumps in a chain).",
      "Win by capturing all enemy pieces or leaving your opponent with no legal move."],langBtn:"ع"},
  ar:{title:"الداما",sub:"لعبة الداما اللبنانية",new:"لعبة جديدة",pvp:"لاعبان",ai:"ضد الكمبيوتر",cvc:"كمبيوتر ضد كمبيوتر",
-   playLight:"العب بالفاتح",playDark:"العب بالغامق",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",
+   playLight:"العب بالفاتح",playDark:"العب بالغامق",xeasy:"سهل جداً جداً",veasy:"سهل جداً",easy:"سهل",med:"متوسط",hard:"صعب",vhard:"صعب جداً",xhard:"صعب جداً جداً",hell:"جهنم 🔥",
    classic:"رقعة كلاسيكية",trad:"رقعة تقليدية",undo:"تراجع",soundOn:"الصوت: مشغّل",soundOff:"الصوت: مطفأ",musicOn:"الموسيقى: مشغّلة",musicOff:"الموسيقى: مطفأة",coachOn:"المدرب: مشغّل",coachOff:"المدرب: مطفأ",coach_best:"✓ أفضل نقلة",coach_good:"نقلة جيدة",coach_inacc:"غير دقيقة ?!",coach_mistake:"خطأ ?",coach_blunder:"خطأ فادح ??",learned:"🧠 يتعلّم من {n} مباراة",fs:"ملء الشاشة",fsExit:"إنهاء",hint:"مساعدة",wins:"فوز",losses:"خسارة",streak:"متتالية",best:"الأفضل",draw:"تعادل",drawSub:"تعادل — لعب موفّق.",
    light:"الفاتح",dark:"الغامق",toMove:"عليه الدور",must:"الأكل إجباري",thinking:"يفكّر…",wins:"فاز",
    youWon:"لعب موفّق — نخبك!",youLost:"الكمبيوتر فاز. تعيدها؟",niceGame:"نخبك!",move:"نقلة",playAgain:"العب مجدداً",
@@ -904,11 +909,16 @@ function search(board,player,budgetMs,maxDepth){
 }
 function aiMove(board,player){
   const total=countPieces(board,1)+countPieces(board,2);
-  if(diff==='easy'){ const m=allMoves(board,player); if(!m.length)return null; orderMoves(m);
-    return Math.random()<0.4 ? m[Math.floor(Math.random()*m.length)] : search(board,player,90,3); }
+  function rnd(){ const m=allMoves(board,player); return m.length?m[Math.floor(Math.random()*m.length)]:null; }
+  if(diff==='xeasy') return Math.random()<0.78 ? rnd() : search(board,player,40,2);   // barely tries
+  if(diff==='veasy') return Math.random()<0.55 ? rnd() : search(board,player,70,2);
+  if(diff==='easy')  return Math.random()<0.40 ? rnd() : search(board,player,90,3);
   if(diff==='med')  return search(board,player,500,  total<=10?10:7);
   if(diff==='hard') return search(board,player,1400, total<=10?14:10);
-  return search(board,player,2400, total<=12?22:16); // very hard
+  if(diff==='vhard') return search(board,player,2400, total<=12?22:16);
+  if(diff==='xhard') return search(board,player,4800, total<=12?26:20);   // 2x very hard
+  if(diff==='hell')  return search(board,player,12000,total<=14?34:26);   // 5x very hard
+  return search(board,player,2400, total<=12?22:16);
 }
 
 // ================= learning + coach =================
@@ -1008,11 +1018,12 @@ function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
 function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
 function wpEarned(){ return (STATS.wp||0)+(STATS.spent||0); }          // lifetime WP (balance + everything spent) — drives rank & assist so buying skins never demotes you
+function fmtWP(n){ n=n||0; return Number.isInteger(n)?String(n):String(Math.round(n*100)/100); }
 function migrateBought(){ if(!Array.isArray(STATS.bought)){ STATS.bought=[]; SKINS.forEach(function(s){ if(!s.special && (s.id==='wood' || s.cost<=(STATS.wp||0))) STATS.bought.push(s.id); }); }
   if(STATS.bought.indexOf('wood')<0)STATS.bought.push('wood'); if(typeof STATS.spent!=='number')STATS.spent=0; }
 function ownsSkin(s){ if(s.ownerOnly) return isAdmin(); if(isAdmin())return true; if(s.special) return ownsSpecial(s.id); return s.id==='wood' || !!(STATS.bought && STATS.bought.indexOf(s.id)>=0); }
 function buySkin(id){ var s=skinById(id); if(!s||s.special)return; if(ownsSkin(s)){ STATS.equipped=id; applySkin(id); saveStats(); renderShop(); return; }
-  if((STATS.wp||0) < s.cost){ showToast('Need '+(s.cost-(STATS.wp||0))+' more WP.'); return; }
+  if((STATS.wp||0) < s.cost){ showToast('Need '+fmtWP(s.cost-(STATS.wp||0))+' more WP.'); return; }
   STATS.wp=(STATS.wp||0)-s.cost; STATS.spent=(STATS.spent||0)+s.cost; if(!STATS.bought)STATS.bought=[]; STATS.bought.push(id);
   STATS.equipped=id; applySkin(id); try{sPromote();}catch(e){} try{confettiBurst();}catch(e){}
   saveStats(); updateStats(); renderShop(); updatePowerUI(); showToast('🛒 Bought '+s.emoji+' '+s.name+' for '+s.cost+' WP — equipped!'); }
@@ -1102,8 +1113,8 @@ function trailDot(x,y,kind){ var f=ensureFXLayer(); if(!f)return;
   var sz=(kind==='default')?4:5+Math.random()*4; d.style.width=sz+'px'; d.style.height=sz+'px'; f.appendChild(d);
   var rise=kind==='fire'?-(6+Math.random()*10):0;
   d.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:.9},{transform:'translate(-50%,calc(-50% + '+rise+'px)) scale(.15)',opacity:0}],{duration:440,easing:'ease-out'}).onfinish=function(){d.remove();}; }
-function diffName(d){ return ({easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very Hard'})[d]||d; }
-function mostUsedDiff(){ var order=['easy','med','hard','vhard'], best=diff, bc=-1;
+function diffName(d){ return ({xeasy:'Extremely Easy',veasy:'Very Easy',easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very Hard',xhard:'Extremely Hard',hell:'Hell'})[d]||d; }
+function mostUsedDiff(){ var order=['xeasy','veasy','easy','med','hard','vhard','xhard','hell'], best=diff, bc=-1;
   order.forEach(function(k){ var v=diffUsage[k]||0; if(v>=bc){ bc=v; best=k; } });   // ties favour the harder difficulty
   return bc<=0?diff:best; }
 function recordResult(w){ pendingUnlock=[];
@@ -1111,9 +1122,9 @@ function recordResult(w){ pendingUnlock=[];
   let base=0; let wonDiff=diff;
   if(mode==='ai'){
     wonDiff=mostUsedDiff();
-    if(w===humanSide){ base=({easy:1,med:2,hard:3,vhard:4})[wonDiff]||1; }
+    if(w===humanSide){ base=({xeasy:0.25,veasy:0.5,easy:1,med:2,hard:3,vhard:4,xhard:6,hell:10})[wonDiff]; if(base==null)base=1; }
     else { STATS.losses++; STATS.streak=0; STATS.games++;
-      var consol=({hard:1,vhard:2})[wonDiff]||0;                  // even a loss on Hard/Very Hard is worth something
+      var consol=({hard:1,vhard:2,xhard:3,hell:5})[wonDiff]||0;   // even a loss on the hard tiers is worth something
       if(consol>0){ STATS.wp=(STATS.wp||0)+consol; setTimeout(function(){ showToast('💪 +'+consol+' WP for battling on '+diffName(wonDiff)); },900); }
       saveStats(); updateStats(); updateHintVisibility(); return; }
   } else if(mode==='pvp'){ base=1; }                 // 2-player: the winner earns 1 WP
@@ -1132,8 +1143,8 @@ function recordResult(w){ pendingUnlock=[];
   saveStats(); updateStats(); updateHintVisibility();
 }
 function updateStats(){ const el=$('stats'); if(!el)return; const t=T[lang];
-  el.textContent=rankName(wpEarned())+'  ·  🏆 '+(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
-function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+wp+' WP';
+  el.textContent=rankName(wpEarned())+'  ·  🏆 '+fmtWP(STATS.wp||0)+' WP  ·  '+t.wins+' '+STATS.wins+'  ·  '+t.streak+' '+STATS.streak+(STATS.streak>=2?' 🔥':'')+'  ·  '+t.best+' '+STATS.best; }
+function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS.wp||0; $('shopwp').textContent='🏆 '+fmtWP(wp)+' WP';
   let html='';
   var _lv=hintLevel(); var _ln=['Locked','Best move','Deep Assist','Coach+','Auto-Pilot'];
   var _ld=['Unlocks at '+HINT_TIERS[0]+' WP — suggests the best move.','Shows the best move and its exact route.','Adds ⚠ danger warnings + deeper search.','Adds a live position evaluation & threat count.','Unlocks auto-show best move — turn it on in Settings.'];
@@ -1298,7 +1309,7 @@ function applyLang(){const t=T[lang];
   $('tTitle').textContent=t.title;$('tSub').textContent=t.sub;$('newgame').textContent=t.new;
   $('mode').options[0].text=t.pvp;$('mode').options[1].text=t.ai;$('mode').options[2].text=t.cvc;
   updateSideBtn();
-  $('diff').options[0].text=t.easy;$('diff').options[1].text=t.med;$('diff').options[2].text=t.hard;$('diff').options[3].text=t.vhard;
+  (function(){ var dl={xeasy:t.xeasy,veasy:t.veasy,easy:t.easy,med:t.med,hard:t.hard,vhard:t.vhard,xhard:t.xhard,hell:t.hell}; for(var i=0;i<$('diff').options.length;i++){ var o=$('diff').options[i]; if(dl[o.value])o.text=dl[o.value]; } })();
   $('style').options[0].text=t.classic;$('style').options[1].text=t.trad;
   $('undo').textContent=t.undo;$('sound').textContent=soundOn?t.soundOn:t.soundOff;$('music').textContent=musicOn?t.musicOn:t.musicOff;$('coachbtn').textContent=coachOn?t.coachOn:t.coachOff;$('playAgain').textContent=t.playAgain;
   $('fs').textContent=document.body.classList.contains('boardfs')?t.fsExit:t.fs;$('hintlbl').textContent=t.hint;$('skins').textContent='🎨 Skins';updateStats();
@@ -2129,7 +2140,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v75';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v76';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
