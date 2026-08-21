@@ -1059,6 +1059,9 @@ const SKINS=[
 const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
 function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); }
 function grantSpecial(id){ if(!STATS.owned)STATS.owned=[]; if(STATS.owned.indexOf(id)<0){ STATS.owned.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; } return false; }
+function grantAnySkin(id){ var s=skinById(id); if(!s||s.ownerOnly)return false;                              // route special skins → owned, normal skins → bought
+  var arr; if(s.special){ if(!STATS.owned)STATS.owned=[]; arr=STATS.owned; } else { if(!STATS.bought)STATS.bought=[]; arr=STATS.bought; }
+  if(arr.indexOf(id)>=0) return false; arr.push(id); saveStats(); if(typeof pushProfile==='function')pushProfile(); if($('shop')&&$('shop').classList.contains('show'))renderShop(); return true; }
 function seedSpecialSkins(){ var n=(myName||'').toLowerCase();
   if(isAdmin()||n==='joey') grantSpecial('joey');
   if(isAdmin()||n==='theasskicker') grantSpecial('theasskicker');
@@ -1506,7 +1509,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
 }
 function giftableSkinId(){ var n=(myName||'').toLowerCase();
   for(var i=0;i<SKINS.length;i++){ if(SKINS[i].special && SKINS[i].earnByBeating===n) return SKINS[i].id; }   // your own account's special skin
-  if(isAdmin()){ var eq=skinById(STATS.equipped||''); if(eq&&eq.special&&!eq.ownerOnly) return eq.id; }        // owner can hand out whichever special skin they're wearing
+  if(isAdmin()){ var eq=skinById(STATS.equipped||''); if(eq&&eq.id!=='wood'&&!eq.ownerOnly) return eq.id; }      // owner can hand out ANY skin they're wearing (except the owner-only Sovereign)
   return null; }
 function updateGiftUI(){ var b=$('giftfab'); if(!b)return; var id=giftableSkinId(); var show=onlineActive&&!winner&&!!id;
   b.classList.toggle('show', show); if(show){ var sk=skinById(id); b.title='Give '+sk.name+' to your opponent'; } }
@@ -2288,7 +2291,7 @@ function onNet(m){
     loadOnlineState(m.bd,m.t); markConnected();
   } else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv); }catch(e){} applyingRemote=false; }
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
-  else if(m.type==='grantskin'&&m.skin){ if(grantSpecial(m.skin)){ var sk=skinById(m.skin); showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else { showToast('🎁 You already have that skin.'); } }
+  else if(m.type==='grantskin'&&m.skin){ var sk=skinById(m.skin); if(sk && grantAnySkin(m.skin)){ showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else if(sk){ showToast('🎁 You already have '+sk.name+'.'); } }
   else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
   else if(m.type==='monkey'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteMonkey(m.r,m.c); }catch(e){} applyingRemote=false; }
   else if(m.type==='monkeyback'&&m.bd){ applyingRemote=true; try{ loadOnlineState(m.bd,m.t); showToast('🐒 The banished pawns scurried back!'); }catch(e){} applyingRemote=false; }
@@ -2311,7 +2314,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v91';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v92';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
