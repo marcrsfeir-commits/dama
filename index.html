@@ -2305,7 +2305,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v89';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v90';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2717,6 +2717,7 @@ function renderOwner(){ var el=$('ownerlist'); if(!el)return;
       '<button class="btn" data-setwp="'+i+'">Set WP</button>'+
       '<button class="btn" data-unlock="'+i+'">Unlock all</button>'+
       '<button class="btn" data-pw="'+i+'">🔑 Reset password</button>'+
+      '<button class="btn" data-skin="'+i+'">🎁 Grant skin</button>'+
       '<button class="btn" data-reset="'+i+'">Reset</button></div>'; }).join(''); }
 function ownerWrite(u,mutate,label){ if(!u)return; var data=u.data||{STATS:{}}; data.STATS=data.STATS||{}; mutate(data.STATS); data.STATS.equipped=data.STATS.equipped||'wood'; u.data=data;
   var newTs=new Date().toISOString();
@@ -2846,7 +2847,17 @@ $('ownerlist').addEventListener('click',function(e){ var t=e.target;
   var sw=t.closest('[data-setwp]'); if(sw){ var i=+sw.getAttribute('data-setwp'); var inp=$('ownerlist').querySelector('[data-wp="'+i+'"]'); var n=Math.max(0,parseInt(inp&&inp.value,10)||0); ownerWrite(ownerRows[i],function(s){s.wp=n;},'Set WP '+n); return; }
   var ul=t.closest('[data-unlock]'); if(ul){ var j=+ul.getAttribute('data-unlock'); ownerWrite(ownerRows[j],function(s){ if(!s.bought)s.bought=[]; SKINS.forEach(function(sk){ if(!sk.special && s.bought.indexOf(sk.id)<0)s.bought.push(sk.id); }); },'Unlocked all'); return; }
   var rs=t.closest('[data-reset]'); if(rs){ var k=+rs.getAttribute('data-reset'); ownerWrite(ownerRows[k],function(s){s.wp=0;s.equipped='wood';},'Reset'); return; }
-  var pw=t.closest('[data-pw]'); if(pw){ ownerResetPassword(ownerRows[+pw.getAttribute('data-pw')]); } });
+  var pw=t.closest('[data-pw]'); if(pw){ ownerResetPassword(ownerRows[+pw.getAttribute('data-pw')]); return; }
+  var gs=t.closest('[data-skin]'); if(gs){ ownerGrantSkin(ownerRows[+gs.getAttribute('data-skin')]); } });
+function ownerGrantSkin(u){ if(!u)return; var name=u.name||'player';
+  var choices=SKINS.filter(function(s){return !s.ownerOnly;});
+  var menu=choices.map(function(s){return s.emoji+' '+s.id+(s.special?' (special)':'');}).join('\n');
+  var id=window.prompt('Give which skin to '+name+'?\nType the id exactly:\n\n'+menu, 'theasskicker');
+  if(!id)return; id=id.trim().toLowerCase(); var sk=skinById(id);
+  if(!sk||sk.id!==id||sk.ownerOnly){ showToast('No grantable skin "'+id+'"'); return; }
+  ownerWrite(u,function(s){ if(sk.special){ if(!s.owned)s.owned=[]; if(s.owned.indexOf(id)<0)s.owned.push(id); }
+    else { if(!s.bought)s.bought=[]; if(s.bought.indexOf(id)<0)s.bought.push(id); } }, 'Gave '+sk.emoji+' '+sk.name);
+  showToast('🎁 Gave '+sk.emoji+' '+sk.name+' to '+name+' — they’ll get it on their next sync.'); }
 function ownerResetPassword(u){ if(!u)return; var name=u.name||'player';
   var np=window.prompt('New temporary password for '+name+':','Temp1234'); if(!np)return; np=np.trim(); if(np.length<4){ showToast('Password must be 4+ characters.'); return; }
   var email=userToEmail(name);
