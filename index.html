@@ -1479,14 +1479,14 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
     if(dangerSet&&dangerSet.has(key))sq.classList.add('danger');
     if(strikeSelectMode&&cell&&cell.player!==turn&&!cell.king)sq.classList.add('strikable');
     if(godPower){ var gv=false;
-      if(godPower==='strike')gv=(cell&&cell.player!==turn&&!cell.king);
-      else if(godPower==='smite')gv=(cell&&cell.player!==turn);
-      else if(godPower==='crown')gv=(cell&&cell.player===turn&&!cell.king);
-      else if(godPower==='enslave')gv=(cell&&cell.player!==turn&&!cell.king);
+      if(godPower==='strike')gv=(cell&&!cell.king);          // god can target either side
+      else if(godPower==='smite')gv=!!cell;
+      else if(godPower==='crown')gv=(cell&&!cell.king);
+      else if(godPower==='enslave')gv=(cell&&!cell.king);
       else if(godPower==='summon')gv=!cell;
-      else if(godPower==='teleport')gv=godTeleFrom?!cell:(cell&&cell.player===turn);
-      else if(godPower==='shield')gv=(cell&&cell.player===turn);
-      else if(godPower==='retreat')gv=(cell&&cell.player===turn&&!cell.king);
+      else if(godPower==='teleport')gv=godTeleFrom?!cell:!!cell;
+      else if(godPower==='shield')gv=!!cell;
+      else if(godPower==='retreat')gv=(cell&&!cell.king);
       if(gv)sq.classList.add('godtarget'); }
     if(slitherMode){ if(!slitherSel){ if(slitherTargets(mr,mc).length)sq.classList.add('slithersrc'); }
       else { if(slitherSel[0]===mr&&slitherSel[1]===mc)sq.classList.add('sel'); if(slitherTargets(slitherSel[0],slitherSel[1]).some(function(q){return q[0]===mr&&q[1]===mc;}))sq.classList.add('slitherdest'); } }
@@ -1724,17 +1724,17 @@ function jumpPieces(sr,sc){ var d0=disp(sr,sc);
     ],{duration:540,delay:delay,easing:'cubic-bezier(.3,1.5,.5,1)'}); } }
 // ================= Sovereign — owner-only god powers (infinite use) =================
 const GOD_POWERS=[
-  {id:'strike',  icon:'⚡',  label:'Strike',   hint:'Tap an enemy man to vaporise it (kings immune).'},
-  {id:'smite',   icon:'💥',  label:'Smite',    hint:'Tap ANY enemy piece to obliterate it — even a dama.'},
-  {id:'crown',   icon:'👑',  label:'Crown',    hint:'Tap one of your men to crown it a dama.'},
+  {id:'strike',  icon:'⚡',  label:'Strike',   hint:'Tap ANY man (yours or theirs) to vaporise it — kings immune.'},
+  {id:'smite',   icon:'💥',  label:'Smite',    hint:'Tap ANY piece to obliterate it — even a dama, either side.'},
+  {id:'crown',   icon:'👑',  label:'Crown',    hint:'Tap ANY man — yours or your opponent’s — to crown it a dama.'},
   {id:'summon',  icon:'✨',  label:'Summon',   hint:'Tap any empty square to summon a new man for you.'},
-  {id:'teleport',icon:'🌀',  label:'Teleport', hint:'Tap your piece, then an empty square to blink it there.'},
+  {id:'teleport',icon:'🌀',  label:'Teleport', hint:'Tap ANY piece, then an empty square to blink it there.'},
   {id:'enslave', icon:'⛓️',  label:'Enslave',  hint:'Tap an enemy man to turn it to your side.'},
-  {id:'shield',  icon:'🛡️',  label:'Shield',   hint:'Tap one of YOUR pieces — it becomes uncapturable.'},
+  {id:'shield',  icon:'🛡️',  label:'Shield',   hint:'Tap ANY piece — it becomes uncapturable.'},
   {id:'crownall',icon:'♛',   label:'Crown all',hint:'Instantly crown ALL your men into damas.'},
   {id:'rewind',  icon:'↩️',  label:'Rewind',   hint:'Bring back your captured pieces.'},
   {id:'foresee', icon:'👁️',  label:'Foresee',  hint:'Reveal the opponent’s next move.'},
-  {id:'retreat', icon:'🐍',  label:'Retreat',  hint:'Tap one of your men to slither it one square back.'}
+  {id:'retreat', icon:'🐍',  label:'Retreat',  hint:'Tap ANY man to slither it one square back.'}
 ];
 var GOD_INSTANT={crownall:1,rewind:1,foresee:1};
 function isGod(){ return equippedPerk('god')===true && isAdmin(); }   // god powers only while signed in as the owner account
@@ -1762,16 +1762,16 @@ function godRemoteFX(m){                                          // replay the 
 function godRefresh(){ legal=computeLegal(board,turn); render(); renderGodBar(); }
 function checkGodWin(){ var opp=turn===1?2:1; if(countPieces(board,opp)===0){ finishGame(turn); return true; } return false; }
 function applyGod(r,c){ var p=board[r][c];
-  if(godPower==='strike'){ if(!p||p.player===turn){showToast('Tap an ENEMY man.');return;} if(p.king){showToast('Kings are immune to Strike — use 💥 Smite.');return;} godStrike(r,c); }
-  else if(godPower==='smite'){ if(!p||p.player===turn){showToast('Tap an ENEMY piece.');return;} godStrike(r,c); }
-  else if(godPower==='crown'){ if(!p||p.player!==turn){showToast('Tap one of YOUR men.');return;} if(p.king){showToast('That is already a dama.');return;} godCrown(r,c); }
+  if(godPower==='strike'){ if(!p){showToast('Tap a man.');return;} if(p.king){showToast('Kings are immune to Strike — use 💥 Smite.');return;} godStrike(r,c); }
+  else if(godPower==='smite'){ if(!p){showToast('Tap any piece.');return;} godStrike(r,c); }
+  else if(godPower==='crown'){ if(!p){showToast('Tap a man.');return;} if(p.king){showToast('That is already a dama.');return;} godCrown(r,c); }
   else if(godPower==='summon'){ if(p){showToast('Pick an EMPTY square.');return;} godSummon(r,c); }
-  else if(godPower==='enslave'){ if(!p||p.player===turn){showToast('Tap an ENEMY man.');return;} if(p.king){showToast('Only men can be enslaved.');return;} godEnslave(r,c); }
+  else if(godPower==='enslave'){ if(!p){showToast('Tap a man.');return;} if(p.king){showToast('Only men can be enslaved.');return;} godEnslave(r,c); }
   else if(godPower==='teleport'){
-    if(!godTeleFrom){ if(!p||p.player!==turn){showToast('Tap one of YOUR pieces first.');return;} godTeleFrom=[r,c]; selected=[r,c]; render(); showToast('🌀 Now tap an empty square.'); return; }
+    if(!godTeleFrom){ if(!p){showToast('Tap any piece first.');return;} godTeleFrom=[r,c]; selected=[r,c]; render(); showToast('🌀 Now tap an empty square.'); return; }
     if(p){showToast('Tap an EMPTY square.');return;} godTeleport(godTeleFrom,[r,c]); godTeleFrom=null; }
-  else if(godPower==='shield'){ if(!p||p.player!==turn){showToast('Tap one of YOUR pieces.');return;} godShield(r,c); }
-  else if(godPower==='retreat'){ if(!p||p.player!==turn||p.king){showToast('Tap one of YOUR men.');return;} godRetreat(r,c); } }
+  else if(godPower==='shield'){ if(!p){showToast('Tap any piece.');return;} godShield(r,c); }
+  else if(godPower==='retreat'){ if(!p||p.king){showToast('Tap any man.');return;} godRetreat(r,c); } }
 function godShield(r,c){ if(!SHIELD||!SHIELD.add)SHIELD=new Set(); SHIELD.add(r+','+c); shieldOwner=turn; godRefresh(); boardBurst(r,c); updatePowerUI&&updatePowerUI(); try{sPromote();}catch(e){} showToast('🛡️ Shielded — uncapturable this round.'); godSync('shield',r,c); }
 function godCrownAll(){ var me=turn,n=0; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===me&&!p.king){ p.king=true; n++; boardBurst(r,c); } }
   if(n){ godRefresh(); try{sPromote();}catch(e){} showToast('♛ Crowned all '+n+' of your men!'); godSync('crownall'); } else showToast('No men to crown.'); }
@@ -2344,7 +2344,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v93';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v94';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
