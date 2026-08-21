@@ -2233,7 +2233,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v85';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v86';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2243,7 +2243,11 @@ function loadSupabase(cb){ if(sbCreate){cb(true);return;}
   try{ import('https://esm.sh/@supabase/supabase-js@2').then(function(m){ if(m&&m.createClient){ sbCreate=m.createClient; cb(true); } else cb(false); }, function(){ cb(false); }); }
   catch(e){ cb(false); } }
 function sbInit(cb){ if(sb){cb(true);return;} loadSupabase(function(ok){ if(!ok){cb(false);return;}
-  try{ sb=sbCreate(SB_URL,SB_ANON,{auth:{persistSession:true,autoRefreshToken:true}}); cb(true); }catch(e){ cb(false); } }); }
+  try{ sb=sbCreate(SB_URL,SB_ANON,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+    try{ sb.auth.onAuthStateChange(function(ev,session){ var u=session&&session.user;   // once the stored token loads/refreshes, sign back in automatically (never auto-sign-out here)
+      if(u && (!sbUser || sbUser.id!==u.id)){ sbUser=u; onSignedIn(true); } }); }catch(e){}
+    cb(true);
+  }catch(e){ cb(false); } }); }
 function acctStatus(t){ var e=$('acctstatus'); if(e)e.textContent=t||''; }
 const ACCT_DOMAIN='@dama.player';                                 // usernames map to an internal address — no real email is used
 function userToEmail(u){ return u.toLowerCase().replace(/[^a-z0-9._-]/g,'')+ACCT_DOMAIN; }
@@ -2540,8 +2544,12 @@ function stopCloudPoll(){ if(pollTimer){clearInterval(pollTimer);pollTimer=null;
 document.addEventListener('visibilitychange',function(){ if(!document.hidden)cloudPullOnly(); });
 window.addEventListener('focus',function(){ cloudPullOnly(); });
 window.addEventListener('online',function(){ cloudPullOnly(); });
-function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag||!navigator.onLine)return;
-  sbInit(function(ok){ if(!ok)return; sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u){ sbUser=u; onSignedIn(true); } }); }); }
+function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(!flag)return;   // don't gate on navigator.onLine — the token lives in local storage and works offline
+  sbInit(function(ok){ if(!ok)return; try{ sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u&&!sbUser){ sbUser=u; onSignedIn(true); } }); }catch(e){} }); }
+function tryRestoreSession(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(flag&&!sbUser) acctRestoreOnLoad(); }
+window.addEventListener('online', tryRestoreSession);
+window.addEventListener('focus', tryRestoreSession);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) tryRestoreSession(); });
 
 // ---- friends + presence + live challenges (relayed over MQTT) ----
 let inboxMqc=null, presenceOn={}, pendingChallenge=null, ownerRows=[];
