@@ -1574,7 +1574,7 @@ function apply(mv){
   monkeyTrack(mover);                                            // Monkey Mayhem: count down the 2-turn banish, then bring pawns back
   powerTrack(mover,mv);                                          // update / expire the Coronation crowns before scoring the position
   shieldTrack(mover,mv);                                          // Fortress shield follows its piece
-  if(onlineActive&&!applyingRemote) sendMsg({type:'move',mv:mv});// mirror my move to my online opponent
+  if(onlineActive&&!applyingRemote) sendMsg({type:'move',mv:mv, sh:Array.from(SHIELD||[]), so:shieldOwner, sp:shieldPerm});// mirror my move + shield state to my online opponent
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
   const promoted=wasMan&&board[mv.to[0]][mv.to[1]].king;
   const next=turn===1?2:1;turn=next;
@@ -2324,7 +2324,9 @@ function onNet(m){
     if(!onlineActive){ onlineActive=true; onlineSide=2; disableLocalSelectors(true); keepAwake(true); }
     if(joinTimer){clearInterval(joinTimer);joinTimer=null;}
     loadOnlineState(m.bd,m.t); markConnected();
-  } else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv); }catch(e){} applyingRemote=false; }
+  } else if(m.type==='move'&&m.mv){ applyingRemote=true; try{ apply(m.mv);
+      if(typeof m.sh!=='undefined'){ SHIELD=new Set(m.sh||[]); shieldOwner=m.so||0; shieldPerm=!!m.sp; legal=computeLegal(board,turn); render(); }   // adopt the mover's shield state so captures stay blocked
+    }catch(e){} applyingRemote=false; }
   else if(m.type==='reqnew'){ if(onlineSide===1){ newGame(); sendSync(); } }
   else if(m.type==='grantskin'&&m.skin){ var sk=skinById(m.skin); if(sk && grantAnySkin(m.skin)){ showToast('🎁 '+(m.fromName||'A friend')+' gave you '+sk.emoji+' '+sk.name+'! Equip it in Skins.'); } else if(sk){ showToast('🎁 You already have '+sk.name+'.'); } }
   else if(m.type==='strike'&&typeof m.r==='number'){ applyingRemote=true; try{ applyRemoteStrike(m.r,m.c); }catch(e){} applyingRemote=false; }
@@ -2350,7 +2352,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v96';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v97';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
