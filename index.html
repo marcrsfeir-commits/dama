@@ -1504,9 +1504,14 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
   updateSlitherUI();
   updateMonkeyUI();
 }
-function canGiftJoey(){ return onlineActive && !winner && ownsSpecial('joey') && (isAdmin() || ((myName||'').toLowerCase()==='joey')); }
-function updateGiftUI(){ var b=$('giftfab'); if(b) b.classList.toggle('show', canGiftJoey()); }
-function giftJoeySkin(){ if(!canGiftJoey())return; sendMsg({type:'grantskin', skin:'joey', fromName:myName}); showToast("🎁 Sent Joey's Galaxy to your opponent!"); }
+function giftableSkinId(){ var n=(myName||'').toLowerCase();
+  for(var i=0;i<SKINS.length;i++){ if(SKINS[i].special && SKINS[i].earnByBeating===n) return SKINS[i].id; }   // your own account's special skin
+  if(isAdmin()){ var eq=skinById(STATS.equipped||''); if(eq&&eq.special&&!eq.ownerOnly) return eq.id; }        // owner can hand out whichever special skin they're wearing
+  return null; }
+function updateGiftUI(){ var b=$('giftfab'); if(!b)return; var id=giftableSkinId(); var show=onlineActive&&!winner&&!!id;
+  b.classList.toggle('show', show); if(show){ var sk=skinById(id); b.title='Give '+sk.name+' to your opponent'; } }
+function giftSkin(){ var id=giftableSkinId(); if(!id||!onlineActive){ showToast('You can only gift while in an online game.'); return; }
+  sendMsg({type:'grantskin', skin:id, fromName:myName}); var sk=skinById(id); showToast('🎁 Sent '+sk.emoji+' '+sk.name+' to your opponent!'); }
 function updateFSDock(){ var u=$('fsundo'), h=$('fshint');
   if(u)u.disabled=(onlineActive||puzzleActive||!history.length||thinking||animating);
   if(h){ h.disabled=(puzzleActive?(!puzzle||puzzle.solved):(!hintUnlocked()||!canAssist())); h.style.display=(puzzleActive||hintUnlocked())?'flex':'none'; } }
@@ -2306,7 +2311,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v90';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v91';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2814,7 +2819,7 @@ $('fs').addEventListener('click',toggleBoardFS);
 $('fsx').addEventListener('click',toggleBoardFS);
 $('hintfab').addEventListener('click',showHint);
 $('powerfab').addEventListener('click',activatePower);
-$('giftfab').addEventListener('click',giftJoeySkin);
+$('giftfab').addEventListener('click',giftSkin);
 $('strikefab').addEventListener('click',activateStrike);
 $('godbar').addEventListener('click',function(e){ var b=e.target.closest('[data-god]'); if(b)selectGod(b.getAttribute('data-god')); });
 $('slitherfab').addEventListener('click',activateSlither);
