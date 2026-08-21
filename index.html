@@ -1809,11 +1809,9 @@ function applyRemoteMonkey(r,c){ monkeyAttackFX(r,c,function(){ if(board[r]&&boa
 function nearestEmpty(r,c){ if(!board[r]||!board[r][c])return [r,c]; for(var rad=1;rad<8;rad++){ for(var dr=-rad;dr<=rad;dr++)for(var dc=-rad;dc<=rad;dc++){ if(Math.abs(dr)!==rad&&Math.abs(dc)!==rad)continue; var nr=r+dr,nc=c+dc; if(nr>=0&&nr<8&&nc>=0&&nc<8&&!board[nr][nc])return [nr,nc]; } } return null; }
 // ================= HELL MODE — the machine spins a wheel and wields a random skin power =================
 const HELL_POWERS=[
-  {id:'strike',   icon:'⚡', name:'Strike',     desc:'Every few turns it vaporises one of your pawns.'},
-  {id:'smite',    icon:'💥', name:'Smite',      desc:'Every few turns it obliterates your best piece — even a dama.'},
-  {id:'coronation',icon:'👑',name:'Coronation', desc:'Every few turns it crowns one of its men into a dama.'},
-  {id:'summon',   icon:'✨', name:'Summon',     desc:'Every few turns it conjures a new pawn for itself.'},
-  {id:'monkeys',  icon:'🐒', name:'Monkey Raid',desc:'Once, its monkeys snatch three of your pawns.'}
+  {id:'strike',   icon:'⚡', name:'Strike',     desc:'Like the Ass Kicker — once every 10 of its moves it vaporises one of your pawns.'},
+  {id:'coronation',icon:'👑',name:'Coronation', desc:'Like Joey — once a game it crowns its best man into a dama.'},
+  {id:'monkeys',  icon:'🐒', name:'Monkey Raid',desc:'Like Monkey Mayhem — once a game its monkeys snatch three of your pawns.'}
 ];
 function hellPowerMeta(id){ for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===id)return HELL_POWERS[i]; return null; }
 function hellBolt(r,c){ try{ var NS='http://www.w3.org/2000/svg'; var sq=boardEl.children[dIndex(r,c)],rect=sq&&sq.getBoundingClientRect(); if(!rect){ boardBurst(r,c); return; }
@@ -1836,20 +1834,21 @@ function hellCoronate(){ var aiSide=turn, best=null,bs=-1; for(var r=0;r<8;r++)f
 function hellMonkeyRaid(){ var taken=0; for(var n=0;n<3;n++){ var t=hellBestHumanMan(false); if(!t)break; board[t[0]][t[1]]=null; hellBurstAt(t[0],t[1]); taken++; } if(taken){ legal=computeLegal(board,turn); render(); showToast('☠️ HELL Monkey Raid — snatched '+taken+' pawns!'); try{sMonkey&&sMonkey();}catch(e){} hellCheckWin(); } }
 function hellBurstAt(r,c){ try{ var f=ensureFXLayer(); if(f)boardBurst(r,c); }catch(e){} }
 function hellApplyPower(){ if(!hellPower)return; hellCount++;
-  if(hellPower==='strike'){ if(hellCount>=4 && hellCount%6===0) hellVaporize(false,'Strike'); }
-  else if(hellPower==='smite'){ if(hellCount>=5 && hellCount%8===0) hellVaporize(true,'Smite'); }
-  else if(hellPower==='coronation'){ if(hellCount>=3 && hellCount%7===0) hellCoronate(); }
-  else if(hellPower==='summon'){ if(hellCount>=3 && hellCount%6===0) hellSummon(); }
-  else if(hellPower==='monkeys'){ if(!hellOnceDone && hellCount>=3){ hellOnceDone=true; hellMonkeyRaid(); } } }
+  if(hellPower==='strike'){ if(hellCount%10===0) hellVaporize(false,'Strike'); }        // Ass Kicker cadence: every 10 of its moves
+  else if(hellPower==='coronation'){ if(!hellOnceDone && hellCount>=4){ hellOnceDone=true; hellCoronate(); } }   // once per game
+  else if(hellPower==='monkeys'){ if(!hellOnceDone && hellCount>=4){ hellOnceDone=true; hellMonkeyRaid(); } } }  // once per game
 function hellStartWheel(){ hellPower=HELL_POWERS[Math.floor(Math.random()*HELL_POWERS.length)].id; hellShowWheel(hellPower); }
 function hellShowWheel(pid){ var idx=0; for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===pid)idx=i;
   var el=$('hellwheel'), wheel=$('hellwheelspin'); if(!el||!wheel)return;
-  wheel.innerHTML=HELL_POWERS.map(function(p,i){ var ang=i*72; return '<span class="hwico" style="transform:rotate('+ang+'deg) translateY(-74px) rotate(-'+ang+'deg)">'+p.icon+'</span>'; }).join('');
+  var n=HELL_POWERS.length, seg=360/n, stops=[];
+  for(var s=0;s<n;s++){ stops.push((s%2?'#5a1818':'#3a1010')+' '+(s*seg).toFixed(1)+'deg '+((s+1)*seg).toFixed(1)+'deg'); }
+  wheel.style.background='conic-gradient('+stops.join(',')+')';
+  wheel.innerHTML=HELL_POWERS.map(function(p,i){ var ang=i*seg+seg/2; return '<span class="hwico" style="transform:rotate('+ang+'deg) translateY(-74px) rotate(-'+ang+'deg)">'+p.icon+'</span>'; }).join('');
   wheel.style.transition='none'; wheel.style.transform='rotate(0deg)';
   if($('hellresult')){ $('hellresult').innerHTML=''; $('hellresult').classList.remove('show'); }
   el.classList.add('show');
   requestAnimationFrame(function(){ requestAnimationFrame(function(){
-    var rot=360*5 + (360 - idx*72);
+    var rot=360*5 + (360 - (idx*seg+seg/2));
     wheel.style.transition='transform 2.3s cubic-bezier(.15,.85,.25,1)';
     wheel.style.transform='rotate('+rot+'deg)';
   }); });
@@ -2293,7 +2292,10 @@ function onNet(m){
       else { loadOnlineState(m.bd,m.t); godRemoteFX(m); }                                   // update board, then burst/anim on top
     }catch(e){ try{loadOnlineState(m.bd,m.t);}catch(_){} }
     applyingRemote=false; showToast('👑 The Sovereign wields '+(m.pw||'a power')+'…'); }
-  else if(m.type==='bye'){ showToast('Opponent left the game'); }
+  else if(m.type==='bye'){
+    if(onlineActive && !winner && humanSide){ showToast('🏆 Your opponent left — you win!'); finishGame(humanSide);   // rage-quit → the player who stayed wins the online game
+      onlineActive=false; oppSeen=false; try{cleanupMqtt();}catch(e){} disableLocalSelectors(false); }
+    else { showToast('Opponent left the game'); } }
 }
 function markConnected(){ if(!oppSeen){ oppSeen=true; olStatus('Connected!'); showToast('🌐 Connected — playing online'); setTimeout(closeOnline,700); } olRefresh(); }
 function leaveOnline(){ sendMsg({type:'bye'}); cleanupMqtt(); onlineActive=false; oppSeen=false; disableLocalSelectors(false); showToast('Left the online game'); newGame(); closeOnline(); }
@@ -2303,7 +2305,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v87';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v88';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
