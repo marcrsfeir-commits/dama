@@ -585,6 +585,12 @@
 </div></div>
 <div id="resumebar" class="resumebar" style="display:none"><span>⏸️ You have a game in progress.</span><button class="btn primary" id="resumebtn">Resume</button><button class="btn" id="resumedismiss">Dismiss</button></div>
 <div id="toast" class="toast" role="status"></div>
+<div id="diffmodal" class="shop"><div class="shopcard" style="max-width:360px;text-align:center">
+  <div class="shophead" style="justify-content:center"><span>⚙️ Change difficulty</span></div>
+  <div id="diffq" class="olnote" style="margin:2px 0 12px"></div>
+  <div class="setbtns" style="justify-content:center"><button class="btn primary" id="diffcont">Continue this game</button><button class="btn" id="diffrestart">Restart</button></div>
+  <div class="shopnote">Continue keeps the board — your win still pays for the difficulty you played the most.</div>
+</div></div>
 <div id="online" class="shop"><div class="shopcard">
   <div class="shophead"><span>🌐 Play online</span><button id="onlineclose" class="shopx" aria-label="Close">✕</button></div>
   <div id="olsetup">
@@ -2352,7 +2358,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v97';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v98';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2823,12 +2829,19 @@ $('fsundo').addEventListener('click',function(){ initAudio(); undo(); });
 $('fshint').addEventListener('click',function(){ initAudio(); if(puzzleActive){ puzzleReveal(); } else { showHint(); } });
 $('fsxbtn').addEventListener('click',toggleBoardFS);
 // ---- live difficulty switching mid-game (vs Computer only) ----
+var pendingDiff=null, prevDiff=null;
+function applyDiffLive(nd){ diff=nd; savePrefs(); if(diff==='hell' && !hellPower){ hellStartWheel(); } else if(diff!=='hell'){ hellPower=null; } }
 $('diff').addEventListener('change',function(){
-  if(mode==='ai' && !winner && !forcedGame && campaignLevel==null && survival==null && !puzzleActive){
-    diff=this.value; savePrefs(); showToast('⚙️ Difficulty → '+diffName(diff)+' — WP counts the one you play most.');
-    if(diff==='hell' && !hellPower){ hellStartWheel(); } else if(diff!=='hell'){ hellPower=null; }
-  }
+  if(!(mode==='ai' && !forcedGame && campaignLevel==null && survival==null && !puzzleActive)) return;   // only plain vs-Computer games
+  var nd=this.value;
+  if(winner || history.length===0){ applyDiffLive(nd); return; }                 // nothing in progress → just switch
+  pendingDiff=nd; prevDiff=diff;                                                  // mid-game → ask restart or continue
+  if($('diffq'))$('diffq').textContent='Switch to '+diffName(nd)+' — keep this game going, or restart?';
+  $('diffmodal').classList.add('show');
 });
+$('diffcont').addEventListener('click',function(){ $('diffmodal').classList.remove('show'); if(pendingDiff){ applyDiffLive(pendingDiff); showToast('⚙️ Now '+diffName(diff)+' — game continues; WP counts the one you play most.'); pendingDiff=null; } });
+$('diffrestart').addEventListener('click',function(){ $('diffmodal').classList.remove('show'); if(pendingDiff){ diff=pendingDiff; if(diff!=='hell')hellPower=null; savePrefs(); newGame(); pendingDiff=null; } });
+$('diffmodal').addEventListener('click',function(e){ if(e.target===$('diffmodal')){ $('diffmodal').classList.remove('show'); if(prevDiff){ $('diff').value=prevDiff; } pendingDiff=null; } });
 $('hellwheel').addEventListener('click',hellCloseWheel);
 $('statsclose').addEventListener('click',closeStats);
 $('statsmodal').addEventListener('click',function(e){ if(e.target===$('statsmodal'))closeStats(); });
