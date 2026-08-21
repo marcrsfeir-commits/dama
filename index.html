@@ -247,6 +247,16 @@
   [data-skin="youxito"] .king::after{z-index:3;}
   .fxmonkey{position:absolute;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.55));z-index:9;line-height:1;}
   .sq.monkeytarget{box-shadow:inset 0 0 0 3px rgba(255,206,74,.9);cursor:pointer;animation:hintpulse 1s ease-in-out infinite;}
+  .hellwheel{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(2px);}
+  .hellwheel.show{display:flex;}
+  .hwcard{background:var(--panel);border:2px solid #ff3a1a;border-radius:18px;padding:18px 22px;text-align:center;box-shadow:0 0 44px rgba(255,60,20,.45);max-width:88vw;}
+  .hwtitle{color:#ff6a3a;font-weight:800;letter-spacing:2px;margin-bottom:12px;font-size:15px;}
+  .hwstage{position:relative;width:180px;height:180px;margin:0 auto;}
+  .hwpointer{position:absolute;top:-10px;left:50%;transform:translateX(-50%);color:#ff3a1a;font-size:24px;z-index:3;filter:drop-shadow(0 2px 3px #000);}
+  .hwspin{position:absolute;inset:0;border-radius:50%;border:4px solid #ff3a1a;background:conic-gradient(#3a1010 0 20%,#5a1818 0 40%,#3a1010 0 60%,#5a1818 0 80%,#3a1010 0 100%);box-shadow:inset 0 0 24px rgba(0,0,0,.6),0 0 18px rgba(255,60,20,.4);}
+  .hwico{position:absolute;top:50%;left:50%;margin:-16px 0 0 -16px;width:32px;height:32px;font-size:25px;display:flex;align-items:center;justify-content:center;}
+  .hwresult{margin-top:14px;min-height:20px;color:var(--ink);opacity:0;transition:opacity .35s;font-size:15px;line-height:1.5;}
+  .hwresult.show{opacity:1;}
   .monkeyfab{position:fixed;right:14px;bottom:150px;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;
     width:56px;height:56px;border-radius:16px;border:1px solid #ffce4a;background:linear-gradient(160deg,var(--panel),rgba(200,150,60,.2));color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;}
   .monkeyfab.show{display:flex;} .monkeyfab:active{transform:translateY(1px);}
@@ -493,6 +503,14 @@
   <span class="hicon">💀</span><span class="hlbl">Strike</span>
 </button>
 <div id="godbar" class="godbar"></div>
+<div id="hellwheel" class="hellwheel">
+  <div class="hwcard">
+    <div class="hwtitle">☠️ HELL WHEEL ☠️</div>
+    <div class="hwstage"><div class="hwpointer">▼</div><div id="hellwheelspin" class="hwspin"></div></div>
+    <div id="hellresult" class="hwresult"></div>
+    <div class="olnote" style="margin-top:6px;opacity:.6">tap to skip</div>
+  </div>
+</div>
 <button id="slitherfab" class="slitherfab" title="Slither — retreat a man one square backward (5 per game)">
   <span class="hicon">🐍</span><span class="hlbl">Slither</span>
 </button>
@@ -1346,6 +1364,7 @@ let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;  
 let godPower=null, godTeleFrom=null;                             // Sovereign (owner): infinite god powers
 let slitherLeft=0, slitherMode=false, slitherSel=null;          // Serpent: move a man backward, 5x per game
 let monkeyUsed=false, monkeyMode=false, monkeyPicks=0, monkeyPickSet=null, monkeyBanish=null;   // Monkey Mayhem: once/game, monkeys banish up to 4 enemy pawns for 2 turns
+let hellPower=null, hellCount=0, hellOnceDone=false;            // Hell mode: the machine spins a wheel and wields one random skin power against you
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1378,7 +1397,8 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;monkeyBanish=null;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;monkeyBanish=null;hellPower=null;hellCount=0;hellOnceDone=false;savePrefs();hideCoachPanel();updateCoachUI();
+  if(diff==='hell'&&mode==='ai'){ hellStartWheel(); }
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1787,6 +1807,55 @@ function monkeyPick(r,c){ var pc=board[r][c];
   render(); updateMonkeyUI(); }
 function applyRemoteMonkey(r,c){ monkeyAttackFX(r,c,function(){ if(board[r]&&board[r][c])board[r][c]=null; legal=computeLegal(board,turn); render(); }); }
 function nearestEmpty(r,c){ if(!board[r]||!board[r][c])return [r,c]; for(var rad=1;rad<8;rad++){ for(var dr=-rad;dr<=rad;dr++)for(var dc=-rad;dc<=rad;dc++){ if(Math.abs(dr)!==rad&&Math.abs(dc)!==rad)continue; var nr=r+dr,nc=c+dc; if(nr>=0&&nr<8&&nc>=0&&nc<8&&!board[nr][nc])return [nr,nc]; } } return null; }
+// ================= HELL MODE — the machine spins a wheel and wields a random skin power =================
+const HELL_POWERS=[
+  {id:'strike',   icon:'⚡', name:'Strike',     desc:'Every few turns it vaporises one of your pawns.'},
+  {id:'smite',    icon:'💥', name:'Smite',      desc:'Every few turns it obliterates your best piece — even a dama.'},
+  {id:'coronation',icon:'👑',name:'Coronation', desc:'Every few turns it crowns one of its men into a dama.'},
+  {id:'summon',   icon:'✨', name:'Summon',     desc:'Every few turns it conjures a new pawn for itself.'},
+  {id:'monkeys',  icon:'🐒', name:'Monkey Raid',desc:'Once, its monkeys snatch three of your pawns.'}
+];
+function hellPowerMeta(id){ for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===id)return HELL_POWERS[i]; return null; }
+function hellBolt(r,c){ try{ var NS='http://www.w3.org/2000/svg'; var sq=boardEl.children[dIndex(r,c)],rect=sq&&sq.getBoundingClientRect(); if(!rect){ boardBurst(r,c); return; }
+  var ex=rect.left+rect.width/2, ey=rect.top+rect.height/2, sx=innerWidth*(Math.random()<.5?0.15:0.85), sy=-24;
+  var svg=document.createElementNS(NS,'svg'); svg.setAttribute('style','position:fixed;inset:0;width:100vw;height:100vh;z-index:200;pointer-events:none;overflow:visible;');
+  var d=jaggedPath(sx,sy,ex,ey,16,30);
+  [['#ff2a12',9],['#ff8a4a',5],['#ffffff',2]].forEach(function(a){ var p=document.createElementNS(NS,'path'); p.setAttribute('d',d); p.setAttribute('fill','none'); p.setAttribute('stroke',a[0]); p.setAttribute('stroke-width',a[1]); p.setAttribute('stroke-linecap','round'); p.setAttribute('style','filter:drop-shadow(0 0 7px '+a[0]+');'); svg.appendChild(p); var L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; p.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:160,fill:'forwards'}); });
+  document.body.appendChild(svg); boardBurst(r,c);
+  setTimeout(function(){ try{svg.remove();}catch(e){} }, 520);
+}catch(e){ try{boardBurst(r,c);}catch(_){} } }
+function hellBestHumanMan(kingsToo){ var best=null,bs=-1; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(!p||p.player!==humanSide)continue; if(p.king&&!kingsToo)continue;
+  var adv=humanSide===1?(6-r):(r-1); var sc=(p.king?100:0)+Math.max(0,adv)*10+(3.5-Math.abs(c-3.5)); if(sc>bs){bs=sc;best=[r,c];} } return best; }
+function hellCheckWin(){ if(countPieces(board,humanSide)===0){ finishGame(turn); return true; } return false; }
+function hellVaporize(kingsToo,label){ var t=hellBestHumanMan(kingsToo); if(!t)return false; board[t[0]][t[1]]=null; legal=computeLegal(board,turn); hellBolt(t[0],t[1]); jumpPieces(t[0],t[1]); render(); showToast('☠️ HELL '+label+'!'); try{sCapture();}catch(e){} hellCheckWin(); return true; }
+function hellSummon(){ var aiSide=turn, back=aiSide===1?[7,6,5]:[0,1,2], done=false;
+  for(var bi=0;bi<back.length&&!done;bi++){ var r=back[bi]; for(var c=0;c<8;c++){ if(!board[r][c]){ board[r][c]={player:aiSide,king:false}; hellBurstAt(r,c); done=true; break; } } }
+  if(done){ legal=computeLegal(board,turn); render(); showToast('☠️ HELL Summon — it grew its army!'); try{sPromote();}catch(e){} } }
+function hellCoronate(){ var aiSide=turn, best=null,bs=-1; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===aiSide&&!p.king){ var adv=aiSide===1?(6-r):(r-1); if(adv>bs){bs=adv;best=[r,c];} } }
+  if(best){ board[best[0]][best[1]].king=true; legal=computeLegal(board,turn); hellBurstAt(best[0],best[1]); var sq=boardEl.children[dIndex(best[0],best[1])],pc=sq&&sq.querySelector('.piece'); if(pc){pc.classList.add('promoting');setTimeout(function(){pc.classList.remove('promoting');},640);} render(); showToast('☠️ HELL Coronation — a new dama rises!'); try{sPromote();}catch(e){} } }
+function hellMonkeyRaid(){ var taken=0; for(var n=0;n<3;n++){ var t=hellBestHumanMan(false); if(!t)break; board[t[0]][t[1]]=null; hellBurstAt(t[0],t[1]); taken++; } if(taken){ legal=computeLegal(board,turn); render(); showToast('☠️ HELL Monkey Raid — snatched '+taken+' pawns!'); try{sMonkey&&sMonkey();}catch(e){} hellCheckWin(); } }
+function hellBurstAt(r,c){ try{ var f=ensureFXLayer(); if(f)boardBurst(r,c); }catch(e){} }
+function hellApplyPower(){ if(!hellPower)return; hellCount++;
+  if(hellPower==='strike'){ if(hellCount>=4 && hellCount%6===0) hellVaporize(false,'Strike'); }
+  else if(hellPower==='smite'){ if(hellCount>=5 && hellCount%8===0) hellVaporize(true,'Smite'); }
+  else if(hellPower==='coronation'){ if(hellCount>=3 && hellCount%7===0) hellCoronate(); }
+  else if(hellPower==='summon'){ if(hellCount>=3 && hellCount%6===0) hellSummon(); }
+  else if(hellPower==='monkeys'){ if(!hellOnceDone && hellCount>=3){ hellOnceDone=true; hellMonkeyRaid(); } } }
+function hellStartWheel(){ hellPower=HELL_POWERS[Math.floor(Math.random()*HELL_POWERS.length)].id; hellShowWheel(hellPower); }
+function hellShowWheel(pid){ var idx=0; for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===pid)idx=i;
+  var el=$('hellwheel'), wheel=$('hellwheelspin'); if(!el||!wheel)return;
+  wheel.innerHTML=HELL_POWERS.map(function(p,i){ var ang=i*72; return '<span class="hwico" style="transform:rotate('+ang+'deg) translateY(-74px) rotate(-'+ang+'deg)">'+p.icon+'</span>'; }).join('');
+  wheel.style.transition='none'; wheel.style.transform='rotate(0deg)';
+  if($('hellresult')){ $('hellresult').innerHTML=''; $('hellresult').classList.remove('show'); }
+  el.classList.add('show');
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    var rot=360*5 + (360 - idx*72);
+    wheel.style.transition='transform 2.3s cubic-bezier(.15,.85,.25,1)';
+    wheel.style.transform='rotate('+rot+'deg)';
+  }); });
+  setTimeout(function(){ var m=hellPowerMeta(pid); if($('hellresult')){ $('hellresult').innerHTML='☠️ The machine wields:<br><b style="font-size:19px">'+m.icon+' '+m.name+'</b><br><span style="font-size:12px;opacity:.85">'+m.desc+'</span>'; $('hellresult').classList.add('show'); } try{sPromote();}catch(e){} }, 2400);
+  setTimeout(function(){ el.classList.remove('show'); }, 4400); }
+function hellCloseWheel(){ var el=$('hellwheel'); if(el)el.classList.remove('show'); }
 function monkeyTrack(mover){ if(!monkeyBanish)return; if(mover!==monkeyBanish.owner)return;
   monkeyBanish.remaining--; if(monkeyBanish.remaining<=0) monkeyRestore(); }
 function monkeyRestore(){ if(!monkeyBanish)return; var cells=monkeyBanish.cells; monkeyBanish=null; var placed=[];
@@ -1874,6 +1943,7 @@ function maybeAI(){ if(winner)return;
   const aiTurn=(mode==='ai'&&turn!==humanSide)||mode==='cvc';
   if(!aiTurn)return;
   if(mode==='ai') diffUsage[diff]=(diffUsage[diff]||0)+1;    // tally which difficulty this game was mostly played at
+  if(diff==='hell'&&mode==='ai'&&hellPower){ try{ hellApplyPower(); }catch(e){} if(winner)return; }   // the machine wields its wheel power
   thinking=true;render();
   const pace=(mode==='cvc')?600:120, g=gameId;
   setTimeout(function(){ if(g!==gameId||winner){thinking=false;return;}
@@ -2233,7 +2303,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v86';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v87';                                          // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2702,8 +2772,10 @@ $('fsxbtn').addEventListener('click',toggleBoardFS);
 $('diff').addEventListener('change',function(){
   if(mode==='ai' && !winner && !forcedGame && campaignLevel==null && survival==null && !puzzleActive){
     diff=this.value; savePrefs(); showToast('⚙️ Difficulty → '+diffName(diff)+' — WP counts the one you play most.');
+    if(diff==='hell' && !hellPower){ hellStartWheel(); } else if(diff!=='hell'){ hellPower=null; }
   }
 });
+$('hellwheel').addEventListener('click',hellCloseWheel);
 $('statsclose').addEventListener('click',closeStats);
 $('statsmodal').addEventListener('click',function(e){ if(e.target===$('statsmodal'))closeStats(); });
 $('resumebtn').addEventListener('click',function(){ initAudio(); doResume(); });
