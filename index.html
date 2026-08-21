@@ -645,6 +645,7 @@
 <div id="owner" class="shop"><div class="shopcard">
   <div class="shophead"><span>🛠️ Owner tools — all players</span><button id="ownerclose" class="shopx" aria-label="Close">✕</button></div>
   <div class="setbtns" style="margin-bottom:6px"><button class="btn" id="ownerrefresh">↻ Refresh</button><span id="ownercount" class="olnote" style="margin:0;align-self:center"></span></div>
+  <div id="ownerstat" class="olnote" style="margin:0 0 6px;min-height:16px"></div>
   <div id="ownerlist" class="friendlist"></div>
   <div class="shopnote">Changes save to that player's account and take effect next time they open the game. Set a WP total, unlock everything, or reset a player.</div>
 </div></div>
@@ -2721,12 +2722,16 @@ function renderOwner(){ var el=$('ownerlist'); if(!el)return;
       '<button class="btn" data-reset="'+i+'">Reset</button></div>'; }).join(''); }
 function ownerWrite(u,mutate,label){ if(!u)return; var data=u.data||{STATS:{}}; data.STATS=data.STATS||{}; mutate(data.STATS); data.STATS.equipped=data.STATS.equipped||'wood'; u.data=data;
   var newTs=new Date().toISOString();
-  sb.from('progress').upsert({user_id:u.uid,data:data,updated_at:newTs}).select('updated_at').then(function(r){ if(r&&r.error){ showToast('Save failed: '+r.error.message); return; }
+  function ostat(t,bad){ var e=$('ownerstat'); if(e){ e.textContent=t; e.style.color=bad?'#e0563a':'#8fae6b'; } }
+  ostat('Saving '+(label||'')+' for '+(u.name||'')+'…');
+  sb.from('progress').upsert({user_id:u.uid,data:data,updated_at:newTs},{onConflict:'user_id'}).select('user_id,updated_at').then(function(r){
+    if(r&&r.error){ ostat('❌ '+label+' FAILED: '+r.error.message+(/(policy|permission|denied)/i.test(r.error.message||'')?'  → the database is blocking the owner from writing. Run the RLS fix.':''), true); showToast('Save failed: '+r.error.message); return; }
+    if(!r||!r.data||!r.data.length){ ostat('❌ '+label+': the write returned no rows — the database silently blocked it (RLS). Run the RLS fix.', true); return; }
     var ts=(r.data&&r.data[0]&&r.data[0].updated_at)||newTs;
     if(u.uid===(sbUser&&sbUser.id)){ adoptCloud(data); setCts(ts); }   // editing myself → reflect on this device now & mark synced so it isn't overwritten
     else { inboxConnect(); inboxSend(u.uid,{type:'synced'}); }          // editing someone else → nudge their device to pull immediately
-    showToast(label+' — '+(u.name||'')); renderOwner();
-  }, function(){ showToast('Save failed'); }); }
+    ostat('✅ '+label+' saved for '+(u.name||'')+' — synced.'); showToast(label+' — '+(u.name||'')); renderOwner();
+  }, function(err){ ostat('❌ '+label+' FAILED: '+(err&&err.message||'network/permission error'), true); showToast('Save failed'); }); }
 
 // ================= wire up =================
 $('newgame').addEventListener('click',onlineNewGameShared);
