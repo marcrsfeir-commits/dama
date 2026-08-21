@@ -1,5 +1,5 @@
 // Dama — offline service worker
-const CACHE = 'dama-v88';
+const CACHE = 'dama-v89';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './music.mp3'];
 
 self.addEventListener('install', function (e) {
@@ -27,11 +27,14 @@ self.addEventListener('fetch', function (e) {
     // fall back to the cached copy (offline / airplane mode).
     e.respondWith(
       fetch(req).then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(req, copy); }).catch(function () {});
+        // Keep BOTH the visited URL and the offline-fallback (./index.html and ./) fresh on every online load,
+        // so an offline reopen always serves the latest build — not a stale copy from first install.
+        try { var c1 = res.clone(), c2 = res.clone(), c3 = res.clone();
+          caches.open(CACHE).then(function (c) { c.put(req, c1); c.put('./index.html', c2); c.put('./', c3); }).catch(function () {});
+        } catch (err) {}
         return res;
       }).catch(function () {
-        return caches.match(req).then(function (hit) { return hit || caches.match('./index.html'); });
+        return caches.match(req).then(function (hit) { return hit || caches.match('./index.html') || caches.match('./'); });
       })
     );
     return;
