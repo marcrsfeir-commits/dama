@@ -2536,7 +2536,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v118';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v119';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2721,8 +2721,8 @@ function applyArenaBg(src){ var a=$('arenabg'); if(!a)return;
   else{ a.classList.remove('show'); a.style.backgroundImage=''; document.body.classList.remove('tower-active'); } }
 function openTowers(){ closeAllModals(); towerRun=null; if($('towerexit'))$('towerexit').classList.remove('show'); renderTowerMap(); var m=$('towermap'); if(m)m.classList.add('show'); }
 function firstPickTower(){ for(var i=0;i<TOWERS.length;i++){ if(towerUnlocked(i)&&!towerDone(i)) return i; } return TOWERS.length-1; }
-function sizeMKtowers(){ var f=$('towermapinner'); if(!f)return; var H=f.clientHeight||600; var avail=H-64-26-24; if(avail<220)avail=220;   // fit the tallest (15-floor) tower to the field height
-  var ch=Math.max(24,Math.min(60,Math.floor(avail/15))); var cw=Math.round(ch*1.9);
+function sizeMKtowers(){ var f=$('towermapinner'); if(!f)return; var H=(window.innerHeight||700)-52; var avail=H-68-30-24-8; if(avail<240)avail=240;   // fit the tallest (15-floor) tower to the field height (use window height — reliable during open transition)
+  var ch=Math.max(28,Math.min(62,Math.floor(avail/15))); var cw=Math.round(ch*1.9);
   f.style.setProperty('--mkh',ch+'px'); f.style.setProperty('--mkw',cw+'px'); }
 function renderTowerMap(){ var el=$('towermapinner'); if(!el)return;
   el.innerHTML=TOWERS.map(function(tw,i){ var done=towerDone(i), unlocked=towerUnlocked(i);
