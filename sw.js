@@ -1,5 +1,5 @@
 // Dama — offline service worker
-const CACHE = 'dama-v105';
+const CACHE = 'dama-v106';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './music.mp3', './music-oud.mp3', './music-lofi.mp3', './music-zen.mp3', './towers/map.jpg', './towers/tw1-1.jpg', './towers/tw1-2.jpg', './towers/tw1-3.jpg', './towers/tw1-4.jpg', './towers/tw1-5.jpg', './towers/tw2-1.jpg', './towers/tw2-2.jpg', './towers/tw2-3.jpg', './towers/tw2-4.jpg', './towers/tw2-5.jpg', './towers/tw2-6.jpg', './towers/tw2-7.jpg', './towers/tw3-1.jpg', './towers/tw3-2.jpg', './towers/tw3-3.jpg', './towers/tw3-4.jpg', './towers/tw3-5.jpg', './towers/tw3-6.jpg', './towers/tw3-7.jpg', './towers/tw3-8.jpg', './towers/tw3-9.jpg', './towers/tw3-10.jpg', './towers/tw4-1.jpg', './towers/tw4-2.jpg', './towers/tw4-3.jpg', './towers/tw4-4.jpg', './towers/tw4-5.jpg', './towers/tw4-6.jpg', './towers/tw4-7.jpg', './towers/tw4-8.jpg', './towers/tw4-9.jpg', './towers/tw4-10.jpg', './towers/tw4-11.jpg', './towers/tw4-12.jpg', './towers/tw4-13.jpg', './towers/tw4-14.jpg', './towers/tw4-15.jpg', './towers/tower1.jpg', './towers/tower2.jpg', './towers/tower3.jpg', './towers/tower4.jpg'];
 
 self.addEventListener('install', function (e) {
@@ -26,7 +26,8 @@ self.addEventListener('fetch', function (e) {
     // Network-first for the page: always try to get the latest when online,
     // fall back to the cached copy (offline / airplane mode).
     e.respondWith(
-      fetch(req).then(function (res) {
+      fetch(req.url, { cache: 'no-store' }).then(function (res) {
+        // no-store bypasses the browser HTTP cache (GitHub Pages caches HTML ~10min) so a reload ALWAYS gets the newest build.
         // Keep BOTH the visited URL and the offline-fallback (./index.html and ./) fresh on every online load,
         // so an offline reopen always serves the latest build — not a stale copy from first install.
         try { var c1 = res.clone(), c2 = res.clone(), c3 = res.clone();
