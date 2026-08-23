@@ -548,6 +548,8 @@
   <div class="setbtns"><button class="btn" id="statsopen">📊 My stats</button></div>
   <div class="setbtns"><button class="btn" id="backup">⬇︎ Backup save</button><button class="btn" id="restore">⬆︎ Restore</button><button class="btn" id="resetprog">Reset progress</button></div>
   <input type="file" id="restorefile" accept="application/json" style="display:none">
+  <div class="achv-title">🎼 Music track</div>
+  <div class="setrow"><label for="musictrack">Now playing</label><select id="musictrack"></select></div>
   <div class="achv-title">🎵 Your music</div>
   <div id="musicdrop" class="musicdrop" tabindex="0" role="button" aria-label="Add your own music">Drag &amp; drop a song here, or tap to choose.<br><span class="muted-note">Saved on your device only — never uploaded.</span></div>
   <div id="musicname" class="musicname"></div>
@@ -1280,12 +1282,21 @@ function coachSummaryText(){ if(!coachStats)return''; const t=T[lang],parts=[];
 
 // ================= sound =================
 let audioCtx=null, soundOn=true, musicOn=false, musicTimer=null, musicGain=null, musicStep=0, sfxGain=null, sfxVol=0.9, musicVol=0.55, bgm=null, bgmReady=false;
+// ---- music tracks (v100): real recorded loops (files) + a live synth loop + user upload ----
+let musicTrack='file', shufflePick=null;
+const MUSIC_FILES={ file:'./music.mp3', oud:'./music-oud.mp3', lofi:'./music-lofi.mp3', zen:'./music-zen.mp3' };
+// menu order + labels ('user' appended dynamically only when a saved song exists)
+const MUSIC_MENU=[ ['file','🎼 Classic'], ['oud','🌙 Oud Café'], ['lofi','🎧 Lo-Fi Nights'], ['zen','🌌 Zen Focus'], ['live','🪕 Oud Live (synth)'], ['shuffle','🎲 Shuffle'] ];
+const SHUFFLE_POOL=['file','oud','lofi','zen','live'];
+function resolveTrack(){ if(musicTrack==='shuffle'){ if(!shufflePick){ shufflePick=SHUFFLE_POOL[Math.floor(Math.random()*SHUFFLE_POOL.length)]; } return shufflePick; } return musicTrack; }
 function initAudio(){ if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(audioCtx&&!sfxGain){sfxGain=audioCtx.createGain();sfxGain.gain.value=sfxVol;sfxGain.connect(audioCtx.destination);}
   if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
-  if(!bgm){ try{ bgm=new Audio('./music.mp3'); bgm.loop=true; bgm.preload='auto';
-    bgm.addEventListener('canplaythrough',function(){ bgmReady=true; if(musicOn){stopMusic();startMusic();} });
-    bgm.addEventListener('error',function(){ bgmReady=false; }); }catch(e){} }
+  var _rid=resolveTrack();
+  if(!bgm && _rid!=='live'){ var _src=(_rid==='user')?userMusicURL:MUSIC_FILES[_rid];
+    if(_src){ try{ bgm=new Audio(_src); bgm.loop=true; bgm.preload='auto'; bgm._srcId=_rid;
+      bgm.addEventListener('canplaythrough',function(){ bgmReady=true; if(musicOn)startMusic(); });
+      bgm.addEventListener('error',function(){ bgmReady=false; }); }catch(e){} } }
   if(musicOn)startMusic(); }
 function tone(freq,dur,type,vol,when){ if(!audioCtx)return;const t=when||audioCtx.currentTime;
   const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
@@ -1346,10 +1357,7 @@ function mPerc(when,type){ if(!audioCtx||!musicGain)return; const g=audioCtx.cre
     const f=audioCtx.createBiquadFilter(); f.type='highpass'; f.frequency.value=2600;
     g.gain.setValueAtTime(0.08,when); g.gain.exponentialRampToValueAtTime(0.0001,when+0.06);
     n.connect(f).connect(g); n.start(when); } }
-function startMusic(){
-  if(bgm){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}   // a file track is in charge — never run the synth loop alongside it
-    if(bgmReady){ try{ bgm.volume=musicVol; var pp=bgm.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} }
-    return; }
+function startSynth(){                                            // the live procedural loop (zero-size, endless variation)
   if(!audioCtx||musicTimer)return;
   if(!musicGain){musicGain=audioCtx.createGain();musicGain.gain.value=musicVol;musicGain.connect(audioCtx.destination);}
   const stepDur=0.5; let nextTime=audioCtx.currentTime+0.15;
@@ -1368,7 +1376,35 @@ function startMusic(){
         let n; do{ n=Math.floor(Math.random()*M_PHRASES.length); }while(n===mPhrase&&M_PHRASES.length>1); mPhrase=n;
         mOct = Math.random()<0.22 ? 1 : (Math.random()<0.15 ? -1 : 0); }
       nextTime+=stepDur; } },140); }
+function startMusic(){
+  if(!musicOn) return;
+  var id=resolveTrack();
+  if(id==='live'){                                               // procedural synth — no audio file
+    if(bgm){try{bgm.pause();}catch(e){}}
+    if(!audioCtx) return;
+    if(musicTimer) return;                                       // already looping
+    startSynth(); return;
+  }
+  // audio-file tracks (file/oud/lofi/zen) or the user's uploaded song
+  if(musicTimer){clearInterval(musicTimer);musicTimer=null;}      // never run the synth alongside a file track
+  var src=(id==='user')?userMusicURL:MUSIC_FILES[id];
+  if(!src) return;
+  if(!bgm || bgm._srcId!==id){ setBgmSrc(src); if(bgm) bgm._srcId=id; return; }   // load; canplaythrough re-calls startMusic
+  if(bgmReady){ try{ bgm.volume=musicVol; var pp=bgm.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} }
+}
 function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;} if(bgm){try{bgm.pause();}catch(e){}} }
+// ---- pause/resume music when the app is backgrounded or the screen locks (fixes iOS PWA lockscreen playback) ----
+function pauseAudioForBg(){
+  try{ if(bgm) bgm.pause(); }catch(e){}
+  if(musicTimer){ clearInterval(musicTimer); musicTimer=null; }
+  try{ if(audioCtx && audioCtx.state==='running' && audioCtx.suspend) audioCtx.suspend(); }catch(e){}
+}
+function resumeAudioFromBg(){
+  try{ if(audioCtx && audioCtx.state==='suspended' && audioCtx.resume) audioCtx.resume(); }catch(e){}
+  if(musicOn) startMusic();
+}
+document.addEventListener('visibilitychange',function(){ if(document.hidden) pauseAudioForBg(); else resumeAudioFromBg(); });
+window.addEventListener('pagehide', pauseAudioForBg);
 
 // ================= state =================
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
@@ -2058,8 +2094,9 @@ function loadPrefs(){ try{ const s=localStorage.getItem('dama-prefs'); if(!s)ret
   if(typeof p.sound==='boolean')soundOn=p.sound; if(typeof p.music==='boolean')musicOn=p.music; if(typeof p.coach==='boolean')coachOn=p.coach;
   if(typeof p.coachMode==='boolean')coachMode=p.coachMode;
   if(typeof p.sfx==='number')sfxVol=p.sfx; if(typeof p.mus==='number')musicVol=p.mus;
-  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; userBlitz=blitzSecs; if(typeof p.spack==='string')soundPack=p.spack; if(typeof p.autohint==='boolean')autoHint=p.autohint; }catch(e){} }
-function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:userBlitz,spack:soundPack,autohint:autoHint})); }catch(e){} }
+  if(typeof p.anim==='number')animSpeed=p.anim; if(typeof p.blitz==='number')blitzSecs=p.blitz; userBlitz=blitzSecs; if(typeof p.spack==='string')soundPack=p.spack; if(typeof p.autohint==='boolean')autoHint=p.autohint;
+  if(typeof p.track==='string')musicTrack=p.track; }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem('dama-prefs',JSON.stringify({mode:$('mode').value,diff:$('diff').value,style:$('style').value,side:sideChoice,sound:soundOn,music:musicOn,coach:coachOn,coachMode:coachMode,sfx:sfxVol,mus:musicVol,anim:animSpeed,blitz:userBlitz,spack:soundPack,autohint:autoHint,track:musicTrack})); }catch(e){} }
 function confettiBurst(){ try{ const cols=fxColors().concat(['#ffd85a','#8fae6b','#6db0ff']); const N=42;
   for(let i=0;i<N;i++){ const s=document.createElement('div'); s.className='confetti';
     s.style.left=(Math.random()*100)+'vw'; s.style.background=cols[i%cols.length]; s.style.width=s.style.height=(6+Math.random()*6)+'px';
@@ -2072,7 +2109,7 @@ function showToast(msg,onClick){ const el=$('toast'); if(!el)return; el.textCont
   if(toastTimer)clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},9000); }
 function renderAchv(){ const g=$('achvgrid'); if(!g)return; let html=''; ACHV.forEach(function(a){ const got=STATS.achv&&STATS.achv[a.id];
   html+='<div class="scard '+(got?'owned':'locked')+'"><div class="sname">'+a.emoji+' '+a.name+'</div><div class="sdesc">'+a.t+'</div><div class="sfoot"><span class="stag '+(got?'ok':'')+'">'+(got?'Earned':'Locked')+'</span></div></div>'; }); g.innerHTML=html; }
-function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(userBlitz||0); if($('soundpack'))$('soundpack').value=soundPack||'classic'; if($('autohint'))$('autohint').value=autoHint?'1':'0'; renderAchv(); $('setmodal').classList.add('show'); }
+function openSettings(){ $('volmus').value=Math.round(musicVol*100); $('volsfx').value=Math.round(sfxVol*100); if($('animspeed'))$('animspeed').value=Math.round((animSpeed||1)*100); if($('blitz'))$('blitz').value=String(userBlitz||0); if($('soundpack'))$('soundpack').value=soundPack||'classic'; if($('autohint'))$('autohint').value=autoHint?'1':'0'; populateMusicMenu(); renderAchv(); $('setmodal').classList.add('show'); }
 // ---- ranks / tiers (used by stats + progression) ----
 const RANKS=[[0,'Bronze','🥉'],[40,'Silver','🥈'],[90,'Gold','🥇'],[160,'Platinum','💠'],[260,'Diamond','🔷'],[400,'Master','👑']];
 function rankInfo(wp){ var r=RANKS[0]; for(var i=0;i<RANKS.length;i++){ if((wp||0)>=RANKS[i][0])r=RANKS[i]; } return r; }
@@ -2144,17 +2181,30 @@ function idbDel(k){ return idbOpen().then(function(db){ return new Promise(funct
 function setBgmSrc(src){ if(bgm){try{bgm.pause();}catch(e){}} bgm=new Audio(src); bgm.loop=true; bgm.volume=musicVol; bgmReady=false;
   bgm.addEventListener('canplaythrough',function(){ bgmReady=true; if(musicOn)startMusic(); });
   bgm.addEventListener('error',function(){ bgmReady=false; }); bgm.load(); }
-function setUserMusic(blob){ try{ if(userMusicURL)URL.revokeObjectURL(userMusicURL); }catch(e){} userMusicURL=URL.createObjectURL(blob); setBgmSrc(userMusicURL); }
+function setUserMusic(blob){ try{ if(userMusicURL)URL.revokeObjectURL(userMusicURL); }catch(e){} userMusicURL=URL.createObjectURL(blob); musicTrack='user'; shufflePick=null; setBgmSrc(userMusicURL); if(bgm)bgm._srcId='user'; }
 function handleMusicFile(file){ if(!file)return;
   var ok=(/^audio\//.test(file.type||'')) || /\.(mp3|m4a|aac|ogg|oga|wav|flac|opus)$/i.test(file.name||'');
   if(!ok){ showToast('Please choose an audio file.'); return; }
   idbPut('music',file).catch(function(){ showToast('Could not save the song on this device.'); });
-  setUserMusic(file); musicOn=true; if($('music'))$('music').textContent=T[lang].musicOn; savePrefs(); initAudio(); startMusic();
+  setUserMusic(file); musicOn=true; if($('music'))$('music').textContent=T[lang].musicOn; savePrefs(); initAudio(); startMusic(); populateMusicMenu();
   if($('musicname'))$('musicname').textContent='♪ '+(file.name||'your track'); showToast('🎵 Saved on this device — playing your song');
 }
 function revertMusic(){ idbDel('music').catch(function(){}); try{ if(userMusicURL)URL.revokeObjectURL(userMusicURL); }catch(e){} userMusicURL=null;
-  setBgmSrc('./music.mp3'); if($('musicname'))$('musicname').textContent=''; showToast('Reverted to the built-in track'); }
-function loadUserMusic(){ try{ if(typeof indexedDB==='undefined')return; idbGet('music').then(function(b){ if(b){ setUserMusic(b); if($('musicname'))$('musicname').textContent='♪ your saved song'; } }).catch(function(){}); }catch(e){} }
+  if(musicTrack==='user'){ musicTrack='file'; shufflePick=null; } bgm=null; bgmReady=false; savePrefs();
+  if(musicOn){ initAudio(); startMusic(); } populateMusicMenu();
+  if($('musicname'))$('musicname').textContent=''; showToast('Reverted to the built-in track'); }
+function loadUserMusic(){ try{ if(typeof indexedDB==='undefined')return; idbGet('music').then(function(b){ if(b){ try{ if(userMusicURL)URL.revokeObjectURL(userMusicURL); }catch(e){} userMusicURL=URL.createObjectURL(b); if($('musicname'))$('musicname').textContent='♪ your saved song'; populateMusicMenu(); if(musicTrack==='user'&&musicOn){ startMusic(); } } }).catch(function(){}); }catch(e){} }
+// ---- track picker ----
+function populateMusicMenu(){ var sel=$('musictrack'); if(!sel)return; var items=MUSIC_MENU.slice(); if(userMusicURL) items.push(['user','🎵 Your song']);
+  sel.innerHTML=items.map(function(it){ return '<option value="'+it[0]+'">'+it[1]+'</option>'; }).join('');
+  if(!items.some(function(it){return it[0]===musicTrack;})) musicTrack='file';
+  sel.value=musicTrack; }
+function selectMusic(id){ if(id==='user' && !userMusicURL){ var mf=$('musicfile'); if(mf)mf.click(); if($('musictrack'))$('musictrack').value=musicTrack; return; }
+  musicTrack=id; shufflePick=null;
+  if(id!=='live'){ var rid=resolveTrack(); var src=(rid==='user')?userMusicURL:MUSIC_FILES[rid];
+    if(src && (!bgm || bgm._srcId!==rid)){ setBgmSrc(src); if(bgm)bgm._srcId=rid; } }
+  else if(bgm){ try{bgm.pause();}catch(e){} }
+  savePrefs(); if(musicOn){ initAudio(); startMusic(); } }
 
 // ================= admin (hidden, password-gated) =================
 const ADMIN_PASS='dama2468';
@@ -2363,7 +2413,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v99';                                          // shown in-game so players can confirm they're up to date
+const APP_VERSION='v100';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2859,6 +2909,7 @@ $('resetprog').addEventListener('click',doReset);
 $('musicdrop').addEventListener('click',function(){ $('musicfile').click(); });
 $('musicfile').addEventListener('change',function(){ if(this.files&&this.files[0])handleMusicFile(this.files[0]); this.value=''; });
 $('musicremove').addEventListener('click',revertMusic);
+$('musictrack').addEventListener('change',function(){ selectMusic(this.value); });
 ['dragenter','dragover'].forEach(function(ev){ $('musicdrop').addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); this.classList.add('drag'); }); });
 ['dragleave','drop'].forEach(function(ev){ $('musicdrop').addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); this.classList.remove('drag'); }); });
 $('musicdrop').addEventListener('drop',function(e){ if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])handleMusicFile(e.dataTransfer.files[0]); });
