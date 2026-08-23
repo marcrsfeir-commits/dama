@@ -1410,7 +1410,7 @@ window.addEventListener('pagehide', pauseAudioForBg);
 let board,turn,selected,winner,legal,lastMove,history,mode,humanSide,diff,style,thinking,animating,flip,hint;
 let animSpeed=1;                                                  // move-animation speed multiplier (Settings)
 let autoHint=false;                                              // when on, the best move is shown automatically each turn (off by default — hints only on tap)
-let forcedGame=null, campaignLevel=null, survival=null, userBlitz=0;   // Campaign / Time Attack / Survival mode state
+let forcedGame=null, campaignLevel=null, survival=null, userBlitz=0, towerFloor=null;   // Campaign / Time Attack / Survival / Towers mode state
 let diffUsage={};                                                // how many AI turns were played at each difficulty this game (for WP)
 let puzzleActive=false, puzzle=null;                             // Puzzle mode state
 let SHIELD=new Set(), shieldOwner=0, powerSelectMode=null, shieldPerm=false;   // Fortress shield + power-up piece-select mode; shieldPerm = god's permanent multi-shield
@@ -1453,6 +1453,9 @@ function newGame(doBounce){
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
   moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;shieldPerm=false;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;monkeyBanish=null;hellPower=null;hellCount=0;hellOnceDone=false;savePrefs();hideCoachPanel();updateCoachUI();
   if(diff==='hell'&&mode==='ai'){ hellStartWheel(); }
+  towerFloor = (forcedGame&&forcedGame.tower!=null) ? forcedGame.tower : null;                        // Towers: only a real tower fight keeps its floor context
+  if(forcedGame&&forcedGame.power){ hellPower=forcedGame.power; hellCount=0; hellOnceDone=false; }     // Towers: opponent wields its skin power
+  applyArenaBg(forcedGame&&forcedGame.bg);                                                            // Towers: cinematic arena backdrop (cleared when absent)
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1927,7 +1930,9 @@ function hellBurstAt(r,c){ try{ var f=ensureFXLayer(); if(f)boardBurst(r,c); }ca
 function hellApplyPower(){ if(!hellPower)return; hellCount++;
   if(hellPower==='strike'){ if(hellCount%10===0) hellVaporize(false,'Strike'); }        // Ass Kicker cadence: every 10 of its moves
   else if(hellPower==='coronation'){ if(!hellOnceDone && hellCount>=4){ hellOnceDone=true; hellCoronate(); } }   // once per game
-  else if(hellPower==='monkeys'){ if(!hellOnceDone && hellCount>=4){ hellOnceDone=true; hellMonkeyRaid(); } } }  // once per game
+  else if(hellPower==='monkeys'){ if(!hellOnceDone && hellCount>=4){ hellOnceDone=true; hellMonkeyRaid(); } }  // once per game
+  else if(hellPower==='summon'){ if(hellCount%6===0) hellSummon(); }                                          // Serpent: keeps regrowing its coils
+  else if(hellPower==='sovereign'){ if(hellCount%8===0) hellVaporize(false,'Smite'); if(hellCount===5){ hellCoronate(); } if(hellCount%12===0) hellSummon(); } }  // Sovereign boss combo
 function hellStartWheel(){ hellPower=HELL_POWERS[Math.floor(Math.random()*HELL_POWERS.length)].id; hellShowWheel(hellPower); }
 function hellShowWheel(pid){ var idx=0; for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===pid)idx=i;
   var el=$('hellwheel'), wheel=$('hellwheelspin'); if(!el||!wheel)return;
@@ -2033,7 +2038,7 @@ function maybeAI(){ if(winner)return;
   const aiTurn=(mode==='ai'&&turn!==humanSide)||mode==='cvc';
   if(!aiTurn)return;
   if(mode==='ai') diffUsage[diff]=(diffUsage[diff]||0)+1;    // tally which difficulty this game was mostly played at
-  if(diff==='hell'&&mode==='ai'&&hellPower){ try{ hellApplyPower(); }catch(e){} if(winner)return; }   // the machine wields its wheel power
+  if(mode==='ai'&&hellPower){ try{ hellApplyPower(); }catch(e){} if(winner)return; }   // the machine wields its wheel/Tower power
   thinking=true;render();
   const pace=(mode==='cvc')?600:120, g=gameId;
   setTimeout(function(){ if(g!==gameId||winner){thinking=false;return;}
@@ -2413,7 +2418,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v100';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v101';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2477,7 +2482,7 @@ let PUZZLES=PUZZLE_DATA;
 function fenToBoard(f){ var b=[]; for(var r=0;r<8;r++){ var row=[]; for(var c=0;c<8;c++){ var ch=f[r*8+c];
   row.push(ch==='.'?null:{player:(ch==='l'||ch==='L')?1:2, king:(ch==='L'||ch==='D')}); } b.push(row); } return b; }
 function hashStr(s){ var h=2166136261; for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
-function closeAllModals(){ ['play','puzlist','campaign','timeattack','questmodal','shop','setmodal','statsmodal','online','account','friends','owner','admin'].forEach(function(id){ var e=$(id); if(e)e.classList.remove('show'); }); }
+function closeAllModals(){ ['play','puzlist','campaign','timeattack','towers','questmodal','shop','setmodal','statsmodal','online','account','friends','owner','admin'].forEach(function(id){ var e=$(id); if(e)e.classList.remove('show'); }); }
 function diffBadge(d){ return '<span class="badge-diff d-'+d+'">'+d+'</span>'; }
 
 // ---------- Puzzle mode ----------
@@ -2570,7 +2575,124 @@ function postGameModes(w){
       pendingUnlock.push('🏰 Beat '+op.name+' (+'+op.wp+' WP)');
       if(i+1<LADDER.length) pendingUnlock.push('🔓 '+LADDER[i+1].name+' unlocked'); else pendingUnlock.push('👑 Campaign complete!');
       saveStats(); updateStats(); } }
+  if(towerFloor!=null){ var ti=towerFloor, tf=TOWER[ti];                                   // Towers: reward on a fresh floor clear
+    if(w===humanSide && towerProgress()===ti-1){ STATS.tower=ti; STATS.wp=(STATS.wp||0)+tf.wp;
+      pendingUnlock.push(tf.emoji+' Floor '+(ti+1)+' cleared — '+tf.name+' (+'+tf.wp+' WP)');
+      if(tf.unlock){ try{ if(grantAnySkin(tf.unlock)){ var us=skinById(tf.unlock); if(us) pendingUnlock.push(us.emoji+' '+us.name+' skin unlocked!'); } }catch(e){} }
+      if(ti+1<TOWER.length) pendingUnlock.push('🔓 Floor '+(ti+2)+' unlocked'); else pendingUnlock.push('🏆 TOWER CONQUERED — you beat them all!');
+      saveStats(); updateStats(); } }
 }
+
+// ==================== ⚔️ TOWERS (Mortal-Kombat-style skin-champion ladder) ====================
+// Each floor = a themed boss fight vs an AI wearing a skin & wielding its real power, in a cinematic arena.
+const TOWER=[
+  {id:'joey',        name:"Joey's Galaxy", emoji:'🌌', diff:'hard',  power:'coronation', bg:'towers/bg-galaxy.jpg',    unlock:'joey',         wp:8,  sub:'Crowns its men into damas.'},
+  {id:'youxito',     name:'Monkey Mayhem', emoji:'🐵', diff:'hard',  power:'monkeys',    bg:'towers/bg-jungle.jpg',    unlock:'youxito',      wp:12, sub:'Monkeys snatch your pawns.'},
+  {id:'serpent',     name:'Serpent',       emoji:'🐍', diff:'vhard', power:'summon',     bg:'towers/bg-serpent.jpg',   unlock:'serpent',      wp:16, sub:'Endlessly regrows its coils.'},
+  {id:'theasskicker',name:'The Ass Kicker',emoji:'💀', diff:'vhard', power:'strike',     bg:'towers/bg-lightning.jpg', unlock:'theasskicker', wp:22, sub:'Vaporises a pawn every 10 moves.'},
+  {id:'sovereign',   name:'Sovereign',     emoji:'👑', diff:'xhard', power:'sovereign',  bg:'towers/bg-throne.jpg',    unlock:null,           wp:40, sub:'FINAL BOSS — wields god-powers.'}
+];
+function towerProgress(){ return (typeof STATS.tower==='number')?STATS.tower:-1; }
+function towerBoss(i){ return i===TOWER.length-1; }
+function applyArenaBg(src){ var a=$('arenabg'); if(!a)return;
+  if(src){ a.style.backgroundImage='url('+src+')'; a.classList.add('show'); document.body.classList.add('tower-active'); }
+  else{ a.classList.remove('show'); a.style.backgroundImage=''; document.body.classList.remove('tower-active'); } }
+function openTowers(){ closeAllModals(); renderTowers(); var m=$('towers'); if(m)m.classList.add('show'); }
+function renderTowers(){ var el=$('towerlist'); if(!el)return; var prog=towerProgress();
+  var dn={easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very hard',xhard:'Extremely hard',hell:'Hell'};
+  el.innerHTML=TOWER.map(function(tf,i){ var cleared=i<=prog, unlocked=i<=prog+1, boss=towerBoss(i);
+    var btn = !unlocked ? '<span class="fwp">🔒</span>' : '<button class="btn '+(cleared?'':'primary')+' twbtn" data-tw="'+i+'">'+(cleared?'Replay':'Fight ▸')+'</button>';
+    var unl = tf.unlock ? ' · win unlocks the skin' : (boss?' · win = 🏆 crown':'');
+    return '<div class="twrow'+(unlocked?'':' locked')+(boss?' boss':'')+'" style="--twbg:url('+tf.bg+')">'+
+      '<div class="twem">'+tf.emoji+'</div>'+
+      '<div class="twinfo"><div class="twname">'+(cleared?'✅ ':'')+(boss?'👑 FINAL BOSS · ':('Floor '+(i+1)+' · '))+tf.name+'</div>'+
+      '<div class="twsub">'+(dn[tf.diff]||tf.diff)+' · '+tf.sub+' · +'+tf.wp+' WP'+unl+'</div></div>'+btn+'</div>';
+  }).join('');
+  el.querySelectorAll('.twbtn').forEach(function(b){ b.onclick=function(){ startTowerFloor(+b.getAttribute('data-tw')); }; });
+}
+function startTowerFloor(i){ if(i>towerProgress()+1){ showToast('🔒 Clear the floor below first.'); return; }
+  var tf=TOWER[i]; closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; survival=null; campaignLevel=null;
+  showVS(tf,i,function(){ forcedGame={mode:'ai', side:1, diff:tf.diff, blitz:0, power:tf.power, bg:tf.bg, tower:i}; towerFloor=i; sideChoice=1; newGame(); });
+}
+function showVS(tf,i,cb){ var v=$('vsintro'); if(!v){ cb&&cb(); return; } var boss=towerBoss(i);
+  v.style.setProperty('--vsbg','url('+tf.bg+')');
+  v.querySelector('.vs-floor').textContent = boss ? 'FINAL BOSS' : ('FLOOR '+(i+1));
+  v.querySelector('.vs-em').textContent = tf.emoji;
+  v.querySelector('.vs-name').textContent = tf.name;
+  v.querySelector('.vs-sub').textContent = tf.sub;
+  var fight=v.querySelector('.vs-fight'); if(fight)fight.classList.remove('on');
+  v.classList.remove('go'); void v.offsetWidth; v.classList.add('show','go');
+  try{ if(!audioCtx)initAudio(); sPromote&&sPromote(); }catch(e){}
+  setTimeout(function(){ if(fight)fight.classList.add('on'); try{ sCapture&&sCapture(); }catch(e){} }, 1450);
+  setTimeout(function(){ v.classList.remove('show','go'); if(fight)fight.classList.remove('on'); cb&&cb(); }, 2350);
+}
+function initTowersDOM(){
+  if($('arenabg'))return;
+  var bg=document.createElement('div'); bg.id='arenabg'; document.body.insertBefore(bg, document.body.firstChild);
+  var vs=document.createElement('div'); vs.id='vsintro';
+  vs.innerHTML='<div class="vsinner">'+
+    '<div class="vs-floor"></div>'+
+    '<div class="vs-row vs-you"><div class="vs-em">🫵</div><div class="vs-name">YOU</div><div class="vs-sub">Challenger</div></div>'+
+    '<div class="vs-versus">VS</div>'+
+    '<div class="vs-row vs-opp"><div class="vs-em"></div><div class="vs-name"></div><div class="vs-sub"></div></div>'+
+    '<div class="vs-fight">FIGHT!</div></div>';
+  document.body.appendChild(vs);
+  var m=document.createElement('div'); m.id='towers'; m.className='shop';
+  m.innerHTML='<div class="shopcard"><div class="shophead"><span>⚔️ Towers</span><button id="towersclose" class="shopx" aria-label="Close">✕</button></div>'+
+    '<div id="towerlist" class="friendlist"></div>'+
+    '<div class="shopnote">Climb the tower — every floor is a themed boss fight against a skin champion wielding its <b>real power</b> in its own arena. Beat one to unlock its skin and open the next floor. The Sovereign waits at the top.</div></div>';
+  document.body.appendChild(m);
+  var st=document.createElement('style'); st.id='towercss'; st.textContent=[
+    '#arenabg{position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;opacity:0;transition:opacity .5s ease;pointer-events:none;}',
+    '#arenabg.show{opacity:1;}',
+    '#arenabg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,5,10,.62),rgba(6,5,10,.30) 42%,rgba(6,5,10,.78));}',
+    'body.tower-active .wrap{position:relative;z-index:1;}',
+    'body.tower-active{background:#05040a;}',
+    'body.tower-active .head h1,body.tower-active .status,body.tower-active .turn,body.tower-active .count{text-shadow:0 2px 10px rgba(0,0,0,.9);}',
+    'body.tower-active .frame{box-shadow:0 10px 46px rgba(0,0,0,.75),0 0 0 2px rgba(0,0,0,.35);}',
+    '.hubcard-tower{background:linear-gradient(150deg,rgba(120,40,160,.30),rgba(180,40,60,.22))!important;border-color:rgba(210,120,220,.5)!important;}',
+    '.twrow{display:flex;align-items:center;gap:12px;padding:12px;margin:8px 0;border-radius:14px;position:relative;overflow:hidden;background:#181018;border:1px solid rgba(255,255,255,.08);}',
+    '.twrow::before{content:"";position:absolute;inset:0;background-image:var(--twbg);background-size:cover;background-position:center;opacity:.42;}',
+    '.twrow::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,8,14,.86),rgba(10,8,14,.42));}',
+    '.twrow>*{position:relative;z-index:1;}',
+    '.twrow.locked{filter:grayscale(.7) brightness(.6);}',
+    '.twrow.boss{border-color:rgba(255,200,90,.55);box-shadow:0 0 18px rgba(255,190,70,.25) inset;}',
+    '.twem{font-size:30px;width:44px;text-align:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));}',
+    '.twinfo{flex:1;min-width:0;}',
+    '.twname{font-weight:800;color:#fff;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.8);}',
+    '.twsub{font-size:12px;color:#d8cfe0;opacity:.92;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.8);}',
+    '.twrow.boss .twname{color:#ffd970;}',
+    '#vsintro{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;background:#04030a;transition:opacity .25s;overflow:hidden;}',
+    '#vsintro.show{opacity:1;pointer-events:auto;}',
+    '#vsintro::before{content:"";position:absolute;inset:0;background-image:var(--vsbg);background-size:cover;background-position:center;opacity:.5;}',
+    '#vsintro::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 50%,rgba(4,3,10,.35),rgba(4,3,10,.9));}',
+    '.vsinner{position:relative;z-index:1;text-align:center;color:#fff;width:100%;padding:20px;}',
+    '.vs-floor{font-size:15px;letter-spacing:5px;font-weight:800;color:#ffd970;opacity:0;text-shadow:0 2px 8px #000;margin-bottom:10px;}',
+    '.vs-row{display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0;}',
+    '.vs-row .vs-em{font-size:66px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.8));}',
+    '.vs-row .vs-name{font-size:26px;font-weight:900;text-shadow:0 2px 10px #000;}',
+    '.vs-row .vs-sub{font-size:12px;opacity:.85;text-shadow:0 1px 4px #000;}',
+    '.vs-you{opacity:0;transform:translateX(-60vw);}',
+    '.vs-opp{opacity:0;transform:translateX(60vw);}',
+    '.vs-opp .vs-name{color:#ff7a6a;}',
+    '.vs-versus{font-size:40px;font-weight:900;color:#fff;margin:6px 0;opacity:0;transform:scale(2.4);text-shadow:0 0 20px rgba(255,120,80,.9),0 3px 10px #000;}',
+    '#vsintro.go .vs-floor{animation:vsFloor .5s .05s ease forwards;}',
+    '#vsintro.go .vs-you{animation:vsInL .55s .12s cubic-bezier(.2,.9,.25,1) forwards;}',
+    '#vsintro.go .vs-opp{animation:vsInR .55s .12s cubic-bezier(.2,.9,.25,1) forwards;}',
+    '#vsintro.go .vs-versus{animation:vsPop .5s .7s cubic-bezier(.2,1.4,.3,1) forwards;}',
+    '.vs-fight{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%) scale(.4);font-size:64px;font-weight:900;letter-spacing:3px;color:#ffcf3a;opacity:0;text-shadow:0 0 26px rgba(255,90,40,.95),0 4px 14px #000;pointer-events:none;}',
+    '.vs-fight.on{animation:vsFight .85s ease forwards;}',
+    '@keyframes vsFloor{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:none;}}',
+    '@keyframes vsInL{from{opacity:0;transform:translateX(-60vw);}60%{opacity:1;}to{opacity:1;transform:translateX(0);}}',
+    '@keyframes vsInR{from{opacity:0;transform:translateX(60vw);}60%{opacity:1;}to{opacity:1;transform:translateX(0);}}',
+    '@keyframes vsPop{from{opacity:0;transform:scale(2.4) rotate(-8deg);}to{opacity:1;transform:scale(1) rotate(0);}}',
+    '@keyframes vsFight{0%{opacity:0;transform:translateY(-50%) scale(.4);}30%{opacity:1;transform:translateY(-50%) scale(1.15);}70%{opacity:1;transform:translateY(-50%) scale(1);}100%{opacity:0;transform:translateY(-50%) scale(1.4);}}'
+  ].join('\n');
+  document.head.appendChild(st);
+  var xc=$('towersclose'); if(xc)xc.onclick=function(){ m.classList.remove('show'); };
+  m.addEventListener('click',function(e){ if(e.target===m)m.classList.remove('show'); });
+}
+if(document.readyState!=='loading') initTowersDOM(); else document.addEventListener('DOMContentLoaded', initTowersDOM);
 
 // ---------- Daily quests ----------
 const DAILY_QUESTS=[
@@ -2600,14 +2722,17 @@ function renderPlayHub(){ var el=$('playhub'); if(!el)return;
   var solved=0; for(var i=0;i<PUZZLES.length;i++){ if(STATS.puzzles&&STATS.puzzles[i])solved++; }
   var prog=campaignProgress(); var next=LADDER[Math.min(prog+1,LADDER.length-1)];
   var campMeta = prog+1>=LADDER.length ? '👑 Completed' : ('Next: '+next.emoji+' '+next.name);
+  var tprog=towerProgress(); var tnext=TOWER[Math.min(tprog+1,TOWER.length-1)];
+  var towMeta = tprog+1>=TOWER.length ? '🏆 Conquered' : ('Floor '+(tprog+2)+': '+tnext.emoji+' '+tnext.name);
   el.innerHTML='<div class="hubgrid">'+
     '<div class="hubcard" id="hubdaily"><span class="he">🗓️</span><span class="ht">Daily Puzzle</span><span class="hs">A fresh position every day.</span><span class="hmeta">'+(dDone?('✅ done · 🔥 '+dStreak+'-day streak'):'Not solved yet today')+'</span></div>'+
     '<div class="hubcard" id="hubpuz"><span class="he">🧩</span><span class="ht">Puzzle Pack</span><span class="hs">Tactics to sharpen your eye.</span><span class="hmeta">'+solved+' / '+PUZZLES.length+' solved</span></div>'+
     '<div class="hubcard" id="hubcamp"><span class="he">🏰</span><span class="ht">Campaign</span><span class="hs">Climb the ladder of rivals.</span><span class="hmeta">'+campMeta+'</span></div>'+
+    '<div class="hubcard hubcard-tower" id="hubtowers"><span class="he">⚔️</span><span class="ht">Towers</span><span class="hs">Fight the skin champions in themed arenas.</span><span class="hmeta">'+towMeta+'</span></div>'+
     '<div class="hubcard" id="hubtime"><span class="he">⏱️</span><span class="ht">Time Attack</span><span class="hs">Blitz clocks &amp; survival.</span><span class="hmeta">Beat the clock</span></div>'+
     '</div>';
   $('hubdaily').onclick=function(){ if(di<0){showToast('Puzzles loading…');return;} startPuzzle(di,true); };
-  $('hubpuz').onclick=openPuzList; $('hubcamp').onclick=openCampaign; $('hubtime').onclick=openTimeAttack; }
+  $('hubpuz').onclick=openPuzList; $('hubcamp').onclick=openCampaign; $('hubtime').onclick=openTimeAttack; $('hubtowers').onclick=openTowers; }
 let puzFilter='all';
 function openPuzList(){ closeAllModals(); puzFilter='all'; renderPuzTabs(); renderPuzList(); $('puzlist').classList.add('show'); }
 function renderPuzTabs(){ var el=$('puztabs'); if(!el)return; var tabs=[['all','All'],['easy','Easy'],['medium','Medium'],['hard','Hard']];
@@ -2877,7 +3002,7 @@ $('talist').addEventListener('click',function(e){ var b=e.target.closest('[data-
 $('pzreveal').addEventListener('click',puzzleReveal);
 $('pznext').addEventListener('click',puzzleNext);
 $('pzexit').addEventListener('click',exitPuzzle);
-$('mode').addEventListener('change',function(){ forcedGame=null; campaignLevel=null; survival=null; if(puzzleActive){ puzzleActive=false; puzzle=null; hidePuzzleBar(); } });
+$('mode').addEventListener('change',function(){ forcedGame=null; campaignLevel=null; survival=null; towerFloor=null; if(puzzleActive){ puzzleActive=false; puzzle=null; hidePuzzleBar(); } });
 // ---- fullscreen side dock ----
 $('fsnew').addEventListener('click',function(){ initAudio(); onlineNewGameShared(); });
 $('fsundo').addEventListener('click',function(){ initAudio(); undo(); });

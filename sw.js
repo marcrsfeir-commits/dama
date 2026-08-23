@@ -1,6 +1,6 @@
 // Dama — offline service worker
-const CACHE = 'dama-v100';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './music.mp3', './music-oud.mp3', './music-lofi.mp3', './music-zen.mp3'];
+const CACHE = 'dama-v101';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './music.mp3', './music-oud.mp3', './music-lofi.mp3', './music-zen.mp3', './towers/bg-galaxy.jpg', './towers/bg-jungle.jpg', './towers/bg-serpent.jpg', './towers/bg-lightning.jpg', './towers/bg-throne.jpg'];
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
