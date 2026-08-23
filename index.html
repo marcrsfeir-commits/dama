@@ -2535,7 +2535,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v112';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v113';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2949,7 +2949,7 @@ function simplifyUI(){
   if($('bottomnav'))return; var C=document.querySelector('.controls'); if(!C)return;
   // ☰ More menu — move the toggles & settings out of the top bar
   var menu=document.createElement('div'); menu.id='moremenu';
-  ['side','style','sound','music','coachbtn','fs','settings'].forEach(function(id){ var b=$(id); if(b){ b.classList.add('mmitem'); menu.appendChild(b); } });
+  ['side','style','sound','music','coachbtn','settings'].forEach(function(id){ var b=$(id); if(b){ b.classList.add('mmitem'); menu.appendChild(b); } });   // Fullscreen (#fs) stays in the top toolbar — always within reach
   document.body.appendChild(menu);
   var moreBtn=document.createElement('button'); moreBtn.className='btn'; moreBtn.id='morebtn'; moreBtn.textContent='☰ More';
   moreBtn.onclick=function(e){ e.stopPropagation(); menu.classList.toggle('show'); };
