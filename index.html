@@ -2536,7 +2536,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v120';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v121';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2719,7 +2719,17 @@ function diffLabel(d){ return {xeasy:'Extremely easy',veasy:'Very easy',easy:'Ea
 function applyArenaBg(src){ var a=$('arenabg'); if(!a)return;
   if(src){ a.style.backgroundImage='url('+src+')'; a.classList.add('show'); document.body.classList.add('tower-active'); }
   else{ a.classList.remove('show'); a.style.backgroundImage=''; document.body.classList.remove('tower-active'); } }
-function openTowers(){ closeAllModals(); towerRun=null; if($('towerexit'))$('towerexit').classList.remove('show'); renderTowerMap(); var m=$('towermap'); if(m)m.classList.add('show'); var _v=$('mkvid'); if(_v&&_v.play){ try{ var pp=_v.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} } }
+function openTowers(){ closeAllModals(); towerRun=null; if($('towerexit'))$('towerexit').classList.remove('show'); renderTowerMap(); var m=$('towermap'); if(m)m.classList.add('show');
+  var B=$('mkvid2'); if(B)B.__off=false;
+  ['mkvid2','mkvid'].forEach(function(id){ var v=$(id); if(v&&v.play){ try{ var pp=v.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} } });
+  mkStartXfade(); }
+var mkxfRAF=null;
+function mkStartXfade(){ var A=$('mkvid'), B=$('mkvid2'); if(!A||!B)return;   // seamless loop: crossfade two copies offset by half the clip so a seam is never visible
+  function step(){ var m=$('towermap'); if(!m||!m.classList.contains('show')){ mkxfRAF=null; return; }
+    var D=A.duration; if(D&&isFinite(D)&&D>0){ if(!B.__off){ try{ B.currentTime=(A.currentTime+D/2)%D; B.__off=true; }catch(e){} }
+      var ta=A.currentTime||0, fade=0.7, edge=Math.min(ta, D-ta); A.style.opacity=Math.max(0,Math.min(1, edge/fade)); }
+    mkxfRAF=requestAnimationFrame(step); }
+  if(mkxfRAF)cancelAnimationFrame(mkxfRAF); mkxfRAF=requestAnimationFrame(step); }
 function firstPickTower(){ for(var i=0;i<TOWERS.length;i++){ if(towerUnlocked(i)&&!towerDone(i)) return i; } return TOWERS.length-1; }
 function sizeMKtowers(){ var f=$('towermapinner'); if(!f)return; var H=(window.innerHeight||700)-52; var avail=H-68-30-24-8; if(avail<240)avail=240;   // fit the tallest (15-floor) tower to the field height (use window height — reliable during open transition)
   var ch=Math.max(28,Math.min(62,Math.floor(avail/15))); var cw=Math.round(ch*1.9);
@@ -2833,6 +2843,7 @@ function initTowersDOM(){
   document.body.appendChild(vs);
   var map=document.createElement('div'); map.id='towermap'; map.className='tover';
   map.innerHTML='<div class="mkvistafb" style="background-image:url(towers/vista.jpg)"></div>'+
+    '<video class="mkvid" id="mkvid2" autoplay muted loop playsinline preload="auto"><source src="towers/vista.mp4" type="video/mp4"></video>'+
     '<video class="mkvid" id="mkvid" autoplay muted loop playsinline preload="auto" poster="towers/vista.jpg"><source src="towers/vista.mp4" type="video/mp4"></video>'+
     '<div class="mkdim"></div>'+
     '<div class="tovhead"><span>⚔️ TOWERS</span><button class="tovx" id="towermapx" aria-label="Close">✕</button></div>'+
