@@ -2418,7 +2418,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v101';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v102';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2617,9 +2617,9 @@ function startTowerFloor(i){ if(i>towerProgress()+1){ showToast('🔒 Clear the 
 function showVS(tf,i,cb){ var v=$('vsintro'); if(!v){ cb&&cb(); return; } var boss=towerBoss(i);
   v.style.setProperty('--vsbg','url('+tf.bg+')');
   v.querySelector('.vs-floor').textContent = boss ? 'FINAL BOSS' : ('FLOOR '+(i+1));
-  v.querySelector('.vs-em').textContent = tf.emoji;
-  v.querySelector('.vs-name').textContent = tf.name;
-  v.querySelector('.vs-sub').textContent = tf.sub;
+  v.querySelector('.vs-opp .vs-em').textContent = tf.emoji;
+  v.querySelector('.vs-opp .vs-name').textContent = tf.name;
+  v.querySelector('.vs-opp .vs-sub').textContent = tf.sub;
   var fight=v.querySelector('.vs-fight'); if(fight)fight.classList.remove('on');
   v.classList.remove('go'); void v.offsetWidth; v.classList.add('show','go');
   try{ if(!audioCtx)initAudio(); sPromote&&sPromote(); }catch(e){}
