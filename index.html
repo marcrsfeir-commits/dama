@@ -1438,7 +1438,7 @@ let purgeCnt={1:0,2:0}, purgeCharge={1:false,2:false}, strikeSelectMode=false;  
 let godPower=null, godTeleFrom=null;                             // Sovereign (owner): infinite god powers
 let slitherLeft=0, slitherMode=false, slitherSel=null;          // Serpent: move a man backward, 5x per game
 let monkeyUsed=false, monkeyMode=false, monkeyPicks=0, monkeyPickSet=null, monkeyBanish=null;   // Monkey Mayhem: once/game, monkeys banish up to 4 enemy pawns for 2 turns
-let hellPower=null, hellCount=0, hellOnceDone=false;            // Hell mode: the machine spins a wheel and wields one random skin power against you
+let hellPower=null, hellCount=0, hellOnceDone=false, voidCfg=null;   // Hell mode wheel power; voidCfg = per-level Void-tower buffs
 let noProg=0, posCounts={}, gQuad=false, dangerSet=null;
 const boardEl=$('board'),frameEl=$('board').parentElement,statusMain=$('statusMain'),countEl=$('count'),overlay=$('overlay');
 function disp(r,c){return flip?{r:7-r,c:7-c}:{r,c};}
@@ -1476,6 +1476,8 @@ function newGame(doBounce){
   if(diff==='hell'&&mode==='ai'&&!towerRun){ hellStartWheel(); }                                      // hell wheel only in a normal Hell game, never a tower fight
   applyArenaBg(forcedGame&&forcedGame.bg);                                                            // Towers: cinematic arena backdrop (cleared when absent)
   if($('towerexit')) $('towerexit').classList.toggle('show', !!towerRun);                             // show the give-up button only during a tower run
+  voidCfg = (forcedGame && forcedGame.voidCfg) ? forcedGame.voidCfg : null; hellCount=0;              // Void tower: per-level AI buffs/powers
+  if(voidCfg){ applyVoidBuff(voidCfg); var _vb='☠️ Void buff — enemy: '+voidCfg.kings+'👑'+(voidCfg.extra?' +'+voidCfg.extra+' men':'')+(voidCfg.strikeEvery?' · strikes':'')+(voidCfg.summonEvery?' · summons':''); setTimeout(function(){ try{showToast(_vb);}catch(e){} }, 500); }
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -1970,6 +1972,20 @@ function hellApplyPower(){ if(!hellPower)return; hellCount++;
   else if(hellPower==='monkeys'){ if(!hellOnceDone && hellCount>=4){ hellOnceDone=true; hellMonkeyRaid(); } }  // once per game
   else if(hellPower==='summon'){ if(hellCount%6===0) hellSummon(); }                                          // Serpent: keeps regrowing its coils
   else if(hellPower==='sovereign'){ if(hellCount%8===0) hellVaporize(false,'Smite'); if(hellCount===5){ hellCoronate(); } if(hellCount%12===0) hellSummon(); } }  // Sovereign boss combo
+// ---- Void Throne (Hell tower): EVERY level buffs the AI and grants escalating powers ----
+function voidBuffConfig(lvl){ return {
+  kings: Math.min(6, 1+Math.floor(lvl/3)),                       // AI starts with this many kings (>=1 on every level)
+  extra: lvl>=4 ? Math.min(5, Math.floor((lvl-1)/3)) : 0,        // AI starts with bonus men (later levels)
+  summonEvery: Math.max(6, 13-lvl),                             // reinforcements cadence (every level)
+  strikeEvery: lvl>=4 ? Math.max(5, 17-lvl) : 0,                // vaporises your pawns (from level 5)
+  coronateEvery: lvl>=7 ? Math.max(7, 18-lvl) : 0 }; }          // crowns its men (from level 8)
+function applyVoidBuff(cfg){ if(!cfg)return; var ai=2, rows=[0,1,2], added=0;   // AI = dark (player 2), rows 1-2 filled, row 0 open
+  for(var ri=0;ri<rows.length&&added<(cfg.extra||0);ri++){ var r=rows[ri]; for(var c=0;c<8&&added<cfg.extra;c++){ if(!board[r][c]){ board[r][c]={player:ai,king:false}; added++; } } }
+  var crowned=0; for(var r2=2;r2>=0&&crowned<(cfg.kings||0);r2--){ for(var c2=0;c2<8&&crowned<cfg.kings;c2++){ var p=board[r2][c2]; if(p&&p.player===ai&&!p.king){ p.king=true; crowned++; } } } }
+function towerApplyBuff(){ if(!voidCfg)return; hellCount++;
+  if(voidCfg.strikeEvery && hellCount%voidCfg.strikeEvery===0) hellVaporize(false,'Void Strike');
+  if(voidCfg.summonEvery && hellCount%voidCfg.summonEvery===0) hellSummon();
+  if(voidCfg.coronateEvery && hellCount%voidCfg.coronateEvery===0) hellCoronate(); }
 function hellStartWheel(){ hellPower=HELL_POWERS[Math.floor(Math.random()*HELL_POWERS.length)].id; hellShowWheel(hellPower); }
 function hellShowWheel(pid){ var idx=0; for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===pid)idx=i;
   var el=$('hellwheel'), wheel=$('hellwheelspin'); if(!el||!wheel)return;
@@ -2076,6 +2092,7 @@ function maybeAI(){ if(winner)return;
   if(!aiTurn)return;
   if(mode==='ai') diffUsage[diff]=(diffUsage[diff]||0)+1;    // tally which difficulty this game was mostly played at
   if(mode==='ai'&&hellPower){ try{ hellApplyPower(); }catch(e){} if(winner)return; }   // the machine wields its wheel/Tower power
+  if(mode==='ai'&&towerRun&&voidCfg){ try{ towerApplyBuff(); }catch(e){} if(winner)return; }   // Void tower: escalating AI powers each of its turns
   thinking=true;render();
   const pace=(mode==='cvc')?600:120, g=gameId;
   setTimeout(function(){ if(g!==gameId||winner){thinking=false;return;}
@@ -2455,7 +2472,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v108';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v109';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2632,7 +2649,8 @@ function towersDoneArr(){ if(!STATS.towersDone)STATS.towersDone=[]; return STATS
 function towerDone(ti){ return towersDoneArr().indexOf(ti)>=0; }
 function towerUnlocked(ti){ return ti===0 || towerDone(ti-1); }
 const DIFF_TIERS=['xeasy','veasy','easy','med','hard','vhard','xhard','hell'];
-function diffForLevel(tw,lvl){ var b=DIFF_TIERS.indexOf(tw.diff); if(b<0)b=2; var idx=(lvl===tw.lvls-1)?Math.min(b+1,DIFF_TIERS.length-1):b; return DIFF_TIERS[idx]; }
+function diffForLevel(tw,lvl){ if(tw.reward==='voidborn'){ return lvl<3?'vhard':(lvl<7?'xhard':'hell'); }   // Void tower ramps engine strength across its 15 levels
+  var b=DIFF_TIERS.indexOf(tw.diff); if(b<0)b=2; var idx=(lvl===tw.lvls-1)?Math.min(b+1,DIFF_TIERS.length-1):b; return DIFF_TIERS[idx]; }
 function diffLabel(d){ return {xeasy:'Extremely easy',veasy:'Very easy',easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very hard',xhard:'Extremely hard',hell:'Hell'}[d]||d; }
 function applyArenaBg(src){ var a=$('arenabg'); if(!a)return;
   if(src){ a.style.backgroundImage='url('+src+')'; a.classList.add('show'); document.body.classList.add('tower-active'); }
@@ -2673,7 +2691,7 @@ function placeMarker(lvl){ var mk=$('tlmarker'), el=$('towerlevelsinner'); if(!m
 function beginRun(ti){ towerRun={t:ti,lvl:0}; closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; survival=null; campaignLevel=null; startLevel(); }
 function startLevel(){ closeAllModals(); var tw=TOWERS[towerRun.t], lvl=towerRun.lvl, boss=lvl===tw.lvls-1;
   var vo={emoji:tw.emoji, name:tw.name, sub:(boss?'FINAL LEVEL '+(lvl+1):'Level '+(lvl+1))+' · '+diffLabel(diffForLevel(tw,lvl)), bg:towerBg(towerRun.t,lvl), boss:boss, tag:'TOWER '+(tw.id+1)+' · LEVEL '+(lvl+1)+'/'+tw.lvls};
-  showVS(vo,function(){ closeAllModals(); forcedGame={mode:'ai',side:1,diff:diffForLevel(tw,lvl),blitz:0,bg:towerBg(towerRun.t,lvl),towerRun:{t:towerRun.t,lvl:lvl}}; sideChoice=1; newGame(); }); }
+  showVS(vo,function(){ closeAllModals(); forcedGame={mode:'ai',side:1,diff:diffForLevel(tw,lvl),blitz:0,bg:towerBg(towerRun.t,lvl),towerRun:{t:towerRun.t,lvl:lvl},voidCfg:(tw.reward==='voidborn'?voidBuffConfig(lvl):null)}; sideChoice=1; newGame(); }); }
 function towerResolve(w){ var run=towerRun; if(!run)return; var tw=TOWERS[run.t];
   if(w!==humanSide){ towerFail(run.t,run.lvl); return; }
   if(run.lvl<tw.lvls-1){ towerAdvance(run.t,run.lvl); } else { towerComplete(run.t); } }
