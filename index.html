@@ -2443,7 +2443,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v104';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v105';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2818,7 +2818,7 @@ function initTowersDOM(){
     '.tmov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;background:rgba(0,0,0,.5);border-radius:12px;}',
     '.tmnode.locked .tmtower{filter:grayscale(.55) brightness(.55);}',
     '.tmnode.done .tmtower{border-color:rgba(120,220,140,.6);}',
-    '#towerlevels .tovscroll{display:flex;justify-content:center;}',
+    '#towerlevels .tovscroll{display:flex;justify-content:center;align-items:flex-start;}',
     '.tlpath{width:344px;max-width:92vw;margin:0 auto;position:relative;padding:0 8px;}',
     '.tlpath::before,.tlpath::after{content:"";position:absolute;top:38px;bottom:46px;width:13px;background:linear-gradient(180deg,#403a5c,#241f38);border:1px solid rgba(255,255,255,.12);z-index:0;}',
     '.tlpath::before{left:-3px;border-radius:6px 0 0 6px;}',
