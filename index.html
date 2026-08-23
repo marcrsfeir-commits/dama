@@ -2535,7 +2535,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v113';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v114';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2959,6 +2959,9 @@ function simplifyUI(){
   // Bottom nav — the section buttons
   var nav=document.createElement('div'); nav.id='bottomnav';
   ['playbtn','skins','onlinebtn','questbtn','accountbtn'].forEach(function(id){ var b=$(id); if(b){ b.classList.add('navbtn'); nav.appendChild(b); } });
+  var fsnav=document.createElement('button'); fsnav.className='navbtn'; fsnav.id='fsnav'; fsnav.textContent='⛶ Full';   // Fullscreen — always within reach in the fixed bottom nav
+  fsnav.onclick=function(){ if(typeof toggleBoardFS==='function') toggleBoardFS(); };
+  nav.appendChild(fsnav);
   document.body.appendChild(nav);
   // One-tap quick play
   var qp=document.createElement('button'); qp.id='quickplay'; qp.className='btn primary'; qp.textContent='🤖 Play vs Computer';
