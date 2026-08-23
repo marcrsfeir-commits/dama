@@ -631,6 +631,11 @@
     <input id="acctpass" class="olinput" type="password" autocomplete="current-password" placeholder="password (6+ characters)" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px">
     <div class="setbtns"><button class="btn primary" id="acctsignin">Log in</button><button class="btn" id="acctsignup">Sign up</button></div>
     <div id="acctstatus" class="olstatus"></div>
+    <div class="setbtns"><button class="btn" id="acctcodebtn" style="flex:1">🎟️ Log in with a code</button></div>
+    <div id="codeloginbox" style="display:none;margin-top:6px">
+      <input id="codeinput" class="olinput" type="text" autocomplete="off" placeholder="paste your login code" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px;margin:0 0 6px">
+      <div class="setbtns"><button class="btn primary" id="codeloginsave">Log in</button><button class="btn" id="codelogincancel">Cancel</button></div>
+    </div>
   </div>
   <div id="acctin" style="display:none">
     <div class="olconnok">✅ Signed in</div>
@@ -646,6 +651,13 @@
       <input id="chpw2" class="olinput" type="password" placeholder="confirm new password" style="text-transform:none;letter-spacing:0;text-align:left;font-size:15px;margin:0 0 6px">
       <div class="setbtns"><button class="btn primary" id="chpwsave">Save password</button><button class="btn" id="chpwcancel">Cancel</button></div>
       <div id="chpwstatus" class="olnote"></div>
+    </div>
+    <div class="setbtns"><button class="btn" id="acctmkcode" style="flex:1">🎟️ Create a login code</button></div>
+    <div id="mkcodebox" style="display:none;margin-top:6px">
+      <div class="olnote">Save this code somewhere safe. Type it on any device to log in — even if you forget your password. (It becomes your new password.)</div>
+      <div id="mkcodeval" style="text-align:center;font-size:19px;font-weight:800;letter-spacing:1px;background:rgba(0,0,0,.28);border-radius:10px;padding:11px;margin:6px 0;user-select:all;word-break:break-all">—</div>
+      <div class="setbtns"><button class="btn primary" id="mkcodecopy">📋 Copy code</button><button class="btn" id="mkcodedone">Done</button></div>
+      <div id="mkcodestatus" class="olnote"></div>
     </div>
   </div>
   <div class="shopnote">Your progress is stored privately — only you can read or change your own data. Passwords are handled by Supabase; the game never sees them.</div>
@@ -2443,7 +2455,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v106';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v107';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2468,6 +2480,8 @@ function acctRefresh(){ var inl=!!sbUser;
   if(inl&&$('acctwho'))$('acctwho').textContent='Signed in as '+emailToUser((sbUser&&sbUser.email)||'you');
   if($('acctowner'))$('acctowner').style.display=isAdmin()?'inline-block':'none';
   if($('chpwbox'))$('chpwbox').style.display='none';
+  if($('mkcodebox'))$('mkcodebox').style.display='none';
+  if($('codeloginbox'))$('codeloginbox').style.display='none';
   if(inl){ if($('acctavatar'))$('acctavatar').textContent=STATS.avatar||'🙂'; if($('accttitle'))$('accttitle').textContent=playerTitle(); renderAvatars(); } }
 const AVATARS=['🙂','😎','🦁','🐉','👑','🔥','🌙','⭐','🐺','🦅','🎯','🧠','⚡','🌊','🍀','💎'];
 function playerTitle(){ for(var i=ACHV.length-1;i>=0;i--){ if(STATS.achv&&STATS.achv[ACHV[i].id])return ACHV[i].emoji+' '+ACHV[i].name; } return rankName(STATS.wp||0); }
@@ -2954,6 +2968,30 @@ function doChangePassword(){ if(!sb||!sbUser){ chpwStatus('Sign in first.'); ret
   }, function(){ chpwStatus('Couldn’t update — check your connection.'); }); }
   catch(e){ chpwStatus('Couldn’t update right now.'); } }
 
+// ---- Login code: a friendly code (username-SECRET) that becomes the account password, so you can sign in without remembering it ----
+const CODE_ALPH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';               // no ambiguous chars (no O/0/I/1)
+function genSecret(n){ var s=''; for(var i=0;i<(n||8);i++) s+=CODE_ALPH[Math.floor(Math.random()*CODE_ALPH.length)]; return s; }
+function toggleMkcode(show){ var b=$('mkcodebox'); if(!b)return; b.style.display=show?'block':'none'; if(!show&&$('mkcodestatus'))$('mkcodestatus').textContent=''; }
+function makeLoginCode(){ if(!sb||!sbUser){ toggleMkcode(true); if($('mkcodestatus'))$('mkcodestatus').textContent='Sign in first.'; return; }
+  var uname=emailToUser(sbUser.email||''), secret=genSecret(8), code=uname+'-'+secret;
+  toggleMkcode(true); if($('mkcodeval'))$('mkcodeval').textContent='…'; if($('mkcodestatus'))$('mkcodestatus').textContent='Creating…';
+  try{ sb.auth.updateUser({password:secret}).then(function(r){
+    if(r&&r.error){ if($('mkcodestatus'))$('mkcodestatus').textContent='Couldn’t create: '+r.error.message; return; }
+    if($('mkcodeval'))$('mkcodeval').textContent=code; if($('mkcodestatus'))$('mkcodestatus').textContent='✓ Ready — this code now logs you in.'; showToast('🎟️ Login code created');
+  }, function(){ if($('mkcodestatus'))$('mkcodestatus').textContent='Couldn’t create — check your connection.'; }); }
+  catch(e){ if($('mkcodestatus'))$('mkcodestatus').textContent='Couldn’t create right now.'; } }
+function toggleCodeLogin(show){ var b=$('codeloginbox'); if(!b)return; b.style.display=show?'block':'none'; if(show){ if($('codeinput')){ $('codeinput').value=''; $('codeinput').focus(); } acctStatus(''); } }
+function codeLogin(){ var code=(($('codeinput')&&$('codeinput').value)||'').trim(); var idx=code.lastIndexOf('-');
+  if(idx<1||idx>=code.length-1){ acctStatus('That doesn’t look like a login code.'); return; }
+  var uname=code.slice(0,idx).toLowerCase().replace(/[^a-z0-9._-]/g,''), secret=code.slice(idx+1).toUpperCase();
+  if(uname.length<3||secret.length<4){ acctStatus('That code looks incomplete.'); return; }
+  acctStatus('Signing in…');
+  sbInit(function(ok){ if(!ok){ acctStatus('Couldn’t reach the account service — check your connection.'); return; }
+    sb.auth.signInWithPassword({email:userToEmail(uname),password:secret}).then(function(r){
+      if(r.error){ acctStatus('That code didn’t work — check it, or make a new one while logged in on another device.'); return; }
+      sbUser=r.data.user; onSignedIn(false); toggleCodeLogin(false);
+    }, function(){ acctStatus('Network error — please try again.'); }); }); }
+
 // ---- sync: first login on a device merges best-of; afterwards last-write-wins by timestamp (so owner edits & other devices win) ----
 function progressBlob(){ return { STATS:STATS, LEARN:LEARN, name:myName, ver:APP_VERSION }; }
 function ctsKey(){ return 'dama-cts-'+((sbUser&&sbUser.id)||'x'); }
@@ -3228,6 +3266,13 @@ $('acctsignout').addEventListener('click',acctSignout);
 $('acctchpw').addEventListener('click',function(){ toggleChpw($('chpwbox').style.display==='none'); });
 $('chpwsave').addEventListener('click',doChangePassword);
 $('chpwcancel').addEventListener('click',function(){ toggleChpw(false); });
+$('acctmkcode').addEventListener('click',makeLoginCode);
+$('mkcodedone').addEventListener('click',function(){ toggleMkcode(false); });
+$('mkcodecopy').addEventListener('click',function(){ var t=($('mkcodeval')&&$('mkcodeval').textContent)||''; try{ navigator.clipboard.writeText(t); showToast('📋 Code copied'); }catch(e){ try{ window.prompt('Copy your login code:', t); }catch(_){} } });
+$('acctcodebtn').addEventListener('click',function(){ toggleCodeLogin($('codeloginbox').style.display==='none'); });
+$('codeloginsave').addEventListener('click',codeLogin);
+$('codelogincancel').addEventListener('click',function(){ toggleCodeLogin(false); });
+$('codeinput').addEventListener('keydown',function(e){ if(e.key==='Enter')codeLogin(); });
 $('acctsyncbtn').addEventListener('click',function(){ if($('acctsync'))$('acctsync').textContent='Syncing…'; cloudPull(function(){ if($('acctsync'))$('acctsync').textContent='Progress synced ✓'; showToast('Progress synced'); }); });
 $('acctpass').addEventListener('keydown',function(e){ if(e.key==='Enter')acctAuth('signin'); });
 $('avarow').addEventListener('click',function(e){ var b=e.target.closest('[data-ava]'); if(b)setAvatar(b.getAttribute('data-ava')); });
