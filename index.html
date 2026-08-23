@@ -1261,7 +1261,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
     else if(eq) foot='<span class="stag ok">Equipped</span>';
     else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
-      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move'};
+      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move',reinforce:'🌿 Reinforce — summon an extra man onto your back row',vanish:'✴️ Vanish — erase the opponent’s most advanced man',enthrall:'🔮 Enthrall — convert an enemy man to your side',ascension:'👑 Ascension — crown your ENTIRE army as kings'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
@@ -2455,7 +2455,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v107';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v108';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
