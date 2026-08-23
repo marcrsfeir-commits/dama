@@ -1477,7 +1477,7 @@ function newGame(doBounce){
   applyArenaBg(forcedGame&&forcedGame.bg);                                                            // Towers: cinematic arena backdrop (cleared when absent)
   if($('towerexit')) $('towerexit').classList.toggle('show', !!towerRun);                             // show the give-up button only during a tower run
   voidCfg = (forcedGame && forcedGame.voidCfg) ? forcedGame.voidCfg : null; hellCount=0;              // Void tower: per-level AI buffs/powers
-  if(voidCfg){ applyVoidBuff(voidCfg); var _vb='☠️ Void buff — enemy: '+voidCfg.kings+'👑'+(voidCfg.extra?' +'+voidCfg.extra+' men':'')+(voidCfg.strikeEvery?' · strikes':'')+(voidCfg.summonEvery?' · summons':''); setTimeout(function(){ try{showToast(_vb);}catch(e){} }, 500); }
+  if(voidCfg){ applyVoidBuff(voidCfg); var _vp=(voidCfg.sig||[]).map(function(id){ var m=hellPowerMeta(id); return m?m.icon:''; }).join(' '); var _vb='☠️ Void buff — enemy: '+voidCfg.kings+'👑'+(voidCfg.extra?' +'+voidCfg.extra+' men':'')+(_vp?' · wields '+_vp:''); setTimeout(function(){ try{showToast(_vb);}catch(e){} }, 500); }
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show');buildLabels();refresh();updateSideBtn();showCoachIdle();
   if(doBounce!==false)bouncePieces();
@@ -2017,19 +2017,38 @@ function hellApplyPower(){ if(!hellPower)return; hellCount++;
   else if(hellPower==='phantom'){ if(hellCount%19===0) aiPhantom(); }
   else if(hellPower==='warlord'){ if(!hellOnceDone && hellCount>=5){ hellOnceDone=true; hellSummon(); hellSummon(); hellCoronate(); } } }
 // ---- Void Throne (Hell tower): EVERY level buffs the AI and grants escalating powers ----
-function voidBuffConfig(lvl){ return {
-  kings: Math.min(6, 1+Math.floor(lvl/3)),                       // AI starts with this many kings (>=1 on every level)
-  extra: lvl>=4 ? Math.min(5, Math.floor((lvl-1)/3)) : 0,        // AI starts with bonus men (later levels)
-  summonEvery: Math.max(6, 13-lvl),                             // reinforcements cadence (every level)
-  strikeEvery: lvl>=4 ? Math.max(5, 17-lvl) : 0,                // vaporises your pawns (from level 5)
-  coronateEvery: lvl>=7 ? Math.max(7, 18-lvl) : 0 }; }          // crowns its men (from level 8)
+const VOID_POOL=['legion','overlord','vampire','warp','enslave','hex','phantom','smite','plague','reaper','tyrant','leech','inferno','doom'];   // Hell-wheel powers the Void tower can wield
+function voidBuffConfig(lvl){
+  var kings=Math.min(6,1+Math.floor(lvl/3));                     // starting kings (>=1 every level)
+  var extra=lvl>=4?Math.min(5,Math.floor((lvl-1)/3)):0;          // starting bonus men (later levels)
+  var nPow=lvl<3?1:(lvl<8?2:3);                                  // how many Hell-wheel powers this floor wields
+  var pool=VOID_POOL.slice(), sig=[];
+  for(var i=0;i<nPow&&pool.length;i++){ var idx=(lvl*7+i*13)%pool.length; sig.push(pool.splice(idx,1)[0]); }
+  return { kings:kings, extra:extra, summonEvery:Math.max(8,15-lvl), sig:sig, sigEvery:Math.max(6,14-lvl) };
+}
+function applyVoidPower(id){                                     // one-shot dispatch of a Hell-wheel power effect
+  if(id==='legion') hellSummon();
+  else if(id==='overlord') hellCoronate();
+  else if(id==='vampire'){ hellVaporize(false,'Vampire'); hellSummon(); }
+  else if(id==='warp') aiWarp();
+  else if(id==='enslave'||id==='leech') aiEnslave(1);
+  else if(id==='hex') aiDemoteKing();
+  else if(id==='phantom') aiPhantom();
+  else if(id==='smite') hellVaporize(true,'Smite');
+  else if(id==='reaper') hellVaporize(true,'Reaper');
+  else if(id==='plague'){ hellVaporize(false,'Plague'); hellVaporize(false,'Plague'); }
+  else if(id==='inferno'){ hellVaporize(true,'Inferno'); hellVaporize(true,'Inferno'); }
+  else if(id==='doom'){ hellVaporize(false,'Doom'); hellVaporize(false,'Doom'); hellVaporize(false,'Doom'); }
+  else if(id==='tyrant'){ if(Math.floor(hellCount/10)%2===1) hellSummon(); else hellCoronate(); }
+  else hellSummon();
+}
 function applyVoidBuff(cfg){ if(!cfg)return; var ai=2, rows=[0,1,2], added=0;   // AI = dark (player 2), rows 1-2 filled, row 0 open
   for(var ri=0;ri<rows.length&&added<(cfg.extra||0);ri++){ var r=rows[ri]; for(var c=0;c<8&&added<cfg.extra;c++){ if(!board[r][c]){ board[r][c]={player:ai,king:false}; added++; } } }
   var crowned=0; for(var r2=2;r2>=0&&crowned<(cfg.kings||0);r2--){ for(var c2=0;c2<8&&crowned<cfg.kings;c2++){ var p=board[r2][c2]; if(p&&p.player===ai&&!p.king){ p.king=true; crowned++; } } } }
 function towerApplyBuff(){ if(!voidCfg)return; hellCount++;
-  if(voidCfg.strikeEvery && hellCount%voidCfg.strikeEvery===0) hellVaporize(false,'Void Strike');
   if(voidCfg.summonEvery && hellCount%voidCfg.summonEvery===0) hellSummon();
-  if(voidCfg.coronateEvery && hellCount%voidCfg.coronateEvery===0) hellCoronate(); }
+  if(voidCfg.sig && voidCfg.sig.length && voidCfg.sigEvery && hellCount%voidCfg.sigEvery===0){
+    var k=Math.floor(hellCount/voidCfg.sigEvery)-1; applyVoidPower(voidCfg.sig[k%voidCfg.sig.length]); } }
 function hellStartWheel(){ hellPower=HELL_POWERS[Math.floor(Math.random()*HELL_POWERS.length)].id; hellShowWheel(hellPower); }
 function hellShowWheel(pid){ var idx=0; for(var i=0;i<HELL_POWERS.length;i++)if(HELL_POWERS[i].id===pid)idx=i;
   var el=$('hellwheel'), wheel=$('hellwheelspin'); if(!el||!wheel)return;
@@ -2516,7 +2535,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v111';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v112';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -3305,9 +3324,14 @@ $('fsxbtn').addEventListener('click',toggleBoardFS);
 var pendingDiff=null, prevDiff=null;
 function applyDiffLive(nd){ diff=nd; savePrefs(); if(diff==='hell' && !hellPower){ hellStartWheel(); } else if(diff!=='hell'){ hellPower=null; } }
 $('diff').addEventListener('change',function(){
-  if(!(mode==='ai' && !forcedGame && campaignLevel==null && survival==null && !puzzleActive)) return;   // only plain vs-Computer games
   var nd=this.value;
-  if(winner || history.length===0){ applyDiffLive(nd); return; }                 // nothing in progress → just switch
+  var plainAi=(mode==='ai' && !forcedGame && campaignLevel==null && survival==null && !puzzleActive);
+  if(!plainAi){                                                                   // difficulty is a vs-Computer setting → switch to vs Computer & start fresh
+    $('mode').value='ai'; forcedGame=null; campaignLevel=null; survival=null; towerRun=null;
+    if(puzzleActive){ puzzleActive=false; puzzle=null; if(typeof hidePuzzleBar==='function')hidePuzzleBar(); }
+    mode='ai'; diff=nd; savePrefs(); newGame(); return;                           // newGame spins the Hell wheel when Hell is chosen
+  }
+  if(winner || history.length===0){ applyDiffLive(nd); return; }                 // fresh vs-Computer game → switch live (spins wheel for Hell)
   pendingDiff=nd; prevDiff=diff;                                                  // mid-game → ask restart or continue
   if($('diffq'))$('diffq').textContent='Switch to '+diffName(nd)+' — keep this game going, or restart?';
   $('diffmodal').classList.add('show');
