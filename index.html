@@ -2472,7 +2472,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v109';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v110';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2879,6 +2879,45 @@ function initTowersDOM(){
   var le=$('tlexit'); if(le)le.onclick=function(){ openTowers(); };
 }
 if(document.readyState!=='loading') initTowersDOM(); else document.addEventListener('DOMContentLoaded', initTowersDOM);
+
+// ==================== QoL: simplified UI (bottom nav + ☰ menu + one-tap quick play) ====================
+// Relocates existing buttons (keeping their handlers & live labels) — no logic changes.
+function simplifyUI(){
+  if($('bottomnav'))return; var C=document.querySelector('.controls'); if(!C)return;
+  // ☰ More menu — move the toggles & settings out of the top bar
+  var menu=document.createElement('div'); menu.id='moremenu';
+  ['side','style','sound','music','coachbtn','fs','settings'].forEach(function(id){ var b=$(id); if(b){ b.classList.add('mmitem'); menu.appendChild(b); } });
+  document.body.appendChild(menu);
+  var moreBtn=document.createElement('button'); moreBtn.className='btn'; moreBtn.id='morebtn'; moreBtn.textContent='☰ More';
+  moreBtn.onclick=function(e){ e.stopPropagation(); menu.classList.toggle('show'); };
+  C.appendChild(moreBtn);
+  document.addEventListener('click',function(e){ if(menu.classList.contains('show') && !menu.contains(e.target) && e.target!==moreBtn) menu.classList.remove('show'); });
+  menu.addEventListener('click',function(e){ if(e.target.id==='settings') menu.classList.remove('show'); });
+  // Bottom nav — the section buttons
+  var nav=document.createElement('div'); nav.id='bottomnav';
+  ['playbtn','skins','onlinebtn','questbtn','accountbtn'].forEach(function(id){ var b=$(id); if(b){ b.classList.add('navbtn'); nav.appendChild(b); } });
+  document.body.appendChild(nav);
+  // One-tap quick play
+  var qp=document.createElement('button'); qp.id='quickplay'; qp.className='btn primary'; qp.textContent='🤖 Play vs Computer';
+  qp.onclick=function(){ var m=$('mode'); if(m){ m.value='ai'; try{ m.dispatchEvent(new Event('change')); }catch(e){} } sideChoice=1; newGame(); showToast('🤖 New game vs Computer'); };
+  if(C.parentNode) C.parentNode.insertBefore(qp, C);
+  var st=document.createElement('style'); st.id='qolcss'; st.textContent=[
+    '#quickplay{display:block;width:100%;font-size:16px;padding:12px;margin:0 0 10px;font-weight:800;}',
+    '.controls{align-items:center;}',
+    '#morebtn{margin-left:auto;}',
+    '#moremenu{position:fixed;right:12px;top:64px;z-index:80;display:none;flex-direction:column;gap:8px;background:var(--panel);border:1px solid #4a3a24;border-radius:14px;padding:12px;box-shadow:0 12px 34px rgba(0,0,0,.55);min-width:190px;max-width:80vw;}',
+    '#moremenu.show{display:flex;}',
+    '#moremenu .mmitem,#moremenu select{width:100%;text-align:left;justify-content:flex-start;}',
+    '#bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;gap:2px;background:var(--panel);border-top:1px solid #4a3a24;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 16px rgba(0,0,0,.4);}',
+    '#bottomnav .navbtn{flex:1;min-width:0;border:1px solid transparent;background:transparent;font-size:12px;font-weight:700;padding:9px 2px;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '#bottomnav .navbtn:active{background:rgba(255,255,255,.08);}',
+    'body{padding-bottom:66px;}',
+    'body.boardfs #bottomnav,body.boardfs #quickplay,body.boardfs #moremenu{display:none !important;}',
+    'body.boardfs{padding-bottom:0;}'
+  ].join('\n');
+  document.head.appendChild(st);
+}
+if(document.readyState!=='loading') simplifyUI(); else document.addEventListener('DOMContentLoaded', simplifyUI);
 
 // ---------- Daily quests ----------
 const DAILY_QUESTS=[
