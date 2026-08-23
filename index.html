@@ -2443,7 +2443,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v103';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v104';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2628,37 +2628,38 @@ function renderTowerMap(){ var el=$('towermapinner'); if(!el)return;
   el.innerHTML=TOWERS.map(function(tw,i){ var done=towerDone(i), unlocked=towerUnlocked(i);
     var st=done?'done':(unlocked?'open':'locked');
     var badge=done?'✅ Conquered':(unlocked?(tw.lvls+' levels · '+diffLabel(tw.diff)):'🔒 Clear '+TOWERS[i-1].name+' first');
-    return '<div class="tmnode '+st+'" data-tw="'+i+'" style="--tmbg:url('+towerBg(i,0)+')">'+
-      '<div class="tmicon">'+tw.emoji+'</div>'+
-      '<div class="tmtext"><div class="tmname">Tower '+(i+1)+' — '+tw.name+'</div>'+
+    return '<div class="tmnode '+st+'" data-tw="'+i+'">'+
+      '<div class="tmtower" style="background-image:url(towers/tower'+(i+1)+'.jpg)">'+(done?'<span class="tmov">✅</span>':(unlocked?'':'<span class="tmov">🔒</span>'))+'</div>'+
+      '<div class="tmtext"><div class="tmname">Tower '+(i+1)+' — '+tw.emoji+' '+tw.name+'</div>'+
       '<div class="tmsub">'+badge+'</div>'+
-      '<div class="tmreward">🎁 '+tw.rewardEmoji+' '+tw.rewardName+' skin</div></div>'+
-      (unlocked?'<div class="tmgo">'+(done?'Replay ▸':'Enter ▸')+'</div>':'<div class="tmlock">🔒</div>')+'</div>';
+      '<div class="tmreward">🎁 '+tw.rewardEmoji+' '+tw.rewardName+' skin</div>'+
+      (unlocked?'<div class="tmgo">'+(done?'Replay ▸':'Enter ▸')+'</div>':'')+'</div></div>';
   }).join('');
   el.querySelectorAll('.tmnode').forEach(function(n){ var i=+n.getAttribute('data-tw'); if(towerUnlocked(i)) n.onclick=function(){ openTower(i); }; });
 }
 function openTower(ti){ tlTower=ti; closeAllModals(); renderTowerLevels(ti,0,-1); var m=$('towerlevels'); if(m)m.classList.add('show'); }
 function renderTowerLevels(ti,curLvl,clearedUpto){ var tw=TOWERS[ti]; var el=$('towerlevelsinner'); if(!el)return;
   if($('tltitle'))$('tltitle').textContent=tw.emoji+' Tower '+(ti+1)+' — '+tw.name;
-  if($('tlbg'))$('tlbg').style.backgroundImage='url('+towerBg(ti,0)+')';
-  var rows='';
-  for(var k=0;k<tw.lvls;k++){ var cleared=k<=clearedUpto, cur=k===curLvl, boss=k===tw.lvls-1;
-    rows+='<div class="tlnode'+(cleared?' done':'')+(cur?' cur':'')+(boss?' boss':'')+'" data-lvl="'+k+'" style="--tlbg:url('+towerBg(ti,k)+')">'+
-      '<div class="tlnum">'+(cleared?'✅':(boss?'👑':(k+1)))+'</div>'+
-      '<div class="tlmeta"><div class="tlname">'+(boss?'FINAL · Level '+(k+1):'Level '+(k+1))+'</div>'+
-      '<div class="tldiff">'+diffLabel(diffForLevel(tw,k))+'</div></div></div>';
+  if($('tlbg'))$('tlbg').style.backgroundImage='url('+towerBg(ti,tw.lvls-1)+')';
+  var floors='';
+  for(var k=tw.lvls-1;k>=0;k--){ var cleared=k<=clearedUpto, cur=k===curLvl, boss=k===tw.lvls-1;   // top floor = final level, climb upward
+    floors+='<div class="tlfloor'+(cleared?' done':'')+(cur?' cur':'')+(boss?' boss':'')+'" data-lvl="'+k+'" style="--tlbg:url('+towerBg(ti,k)+')">'+
+      '<div class="tlfnum">'+(cleared?'✅':(boss?'👑':(k+1)))+'</div>'+
+      '<div class="tlfmeta"><div class="tlfname">'+(boss?'ROOFTOP · Level '+(k+1):'Floor '+(k+1))+'</div>'+
+      '<div class="tlfdiff">'+diffLabel(diffForLevel(tw,k))+'</div></div>'+
+      (cur?'<div class="tlfcur">▶ HERE</div>':'')+'</div>';
   }
-  el.innerHTML='<div class="tlmarker" id="tlmarker">🫡</div>'+rows;
+  el.innerHTML='<div class="tlspire">'+tw.emoji+'</div>'+floors+'<div class="tlbase">⛰️ '+tw.name+' · base camp</div><div class="tlclimber" id="tlmarker">🧗</div>';
   requestAnimationFrame(function(){ placeMarker(curLvl); });
 }
 function placeMarker(lvl){ var mk=$('tlmarker'), el=$('towerlevelsinner'); if(!mk||!el)return;
-  var node=el.querySelector('.tlnode[data-lvl="'+lvl+'"]'); if(!node)return;
+  var node=el.querySelector('.tlfloor[data-lvl="'+lvl+'"]'); if(!node)return;
   mk.style.top=(node.offsetTop+node.offsetHeight/2-18)+'px'; mk.style.opacity='1';
   node.scrollIntoView({block:'center',behavior:'smooth'}); }
 function beginRun(ti){ towerRun={t:ti,lvl:0}; closeAllModals(); onlineActive=false; puzzleActive=false; puzzle=null; survival=null; campaignLevel=null; startLevel(); }
-function startLevel(){ var tw=TOWERS[towerRun.t], lvl=towerRun.lvl, boss=lvl===tw.lvls-1;
+function startLevel(){ closeAllModals(); var tw=TOWERS[towerRun.t], lvl=towerRun.lvl, boss=lvl===tw.lvls-1;
   var vo={emoji:tw.emoji, name:tw.name, sub:(boss?'FINAL LEVEL '+(lvl+1):'Level '+(lvl+1))+' · '+diffLabel(diffForLevel(tw,lvl)), bg:towerBg(towerRun.t,lvl), boss:boss, tag:'TOWER '+(tw.id+1)+' · LEVEL '+(lvl+1)+'/'+tw.lvls};
-  showVS(vo,function(){ forcedGame={mode:'ai',side:1,diff:diffForLevel(tw,lvl),blitz:0,bg:towerBg(towerRun.t,lvl),towerRun:{t:towerRun.t,lvl:lvl}}; sideChoice=1; newGame(); }); }
+  showVS(vo,function(){ closeAllModals(); forcedGame={mode:'ai',side:1,diff:diffForLevel(tw,lvl),blitz:0,bg:towerBg(towerRun.t,lvl),towerRun:{t:towerRun.t,lvl:lvl}}; sideChoice=1; newGame(); }); }
 function towerResolve(w){ var run=towerRun; if(!run)return; var tw=TOWERS[run.t];
   if(w!==humanSide){ towerFail(run.t,run.lvl); return; }
   if(run.lvl<tw.lvls-1){ towerAdvance(run.t,run.lvl); } else { towerComplete(run.t); } }
@@ -2811,6 +2812,35 @@ function initTowersDOM(){
     '#towerexit.show{display:block;}'
   ].join('\n');
   document.head.appendChild(st);
+  var st2=document.createElement('style'); st2.id='towercss2'; st2.textContent=[
+    '.tmnode{align-items:stretch;}',
+    '.tmtower{width:78px;flex:none;border-radius:12px;background-size:cover;background-position:center;position:relative;border:1px solid rgba(255,255,255,.2);box-shadow:0 4px 16px rgba(0,0,0,.55);min-height:120px;align-self:stretch;}',
+    '.tmov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;background:rgba(0,0,0,.5);border-radius:12px;}',
+    '.tmnode.locked .tmtower{filter:grayscale(.55) brightness(.55);}',
+    '.tmnode.done .tmtower{border-color:rgba(120,220,140,.6);}',
+    '#towerlevels .tovscroll{display:flex;justify-content:center;}',
+    '.tlpath{width:344px;max-width:92vw;margin:0 auto;position:relative;padding:0 8px;}',
+    '.tlpath::before,.tlpath::after{content:"";position:absolute;top:38px;bottom:46px;width:13px;background:linear-gradient(180deg,#403a5c,#241f38);border:1px solid rgba(255,255,255,.12);z-index:0;}',
+    '.tlpath::before{left:-3px;border-radius:6px 0 0 6px;}',
+    '.tlpath::after{right:-3px;border-radius:0 6px 6px 0;}',
+    '.tlspire{height:46px;display:flex;align-items:center;justify-content:center;font-size:27px;background:linear-gradient(180deg,#5a4f80,#2e2848);border:1px solid rgba(255,255,255,.18);position:relative;z-index:1;clip-path:polygon(50% 0,100% 100%,0 100%);box-shadow:0 -2px 14px rgba(180,140,255,.3);}',
+    '.tlfloor{position:relative;display:flex;align-items:center;gap:10px;height:60px;margin:5px 0;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.1);border-left:3px solid rgba(255,255,255,.2);border-right:3px solid rgba(255,255,255,.2);z-index:1;}',
+    '.tlfloor::before{content:"";position:absolute;inset:0;background-image:var(--tlbg);background-size:cover;background-position:center;opacity:.52;}',
+    '.tlfloor::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(12,9,20,.9),rgba(12,9,20,.38));}',
+    '.tlfloor>*{position:relative;z-index:1;}',
+    '.tlfloor.done{border-left-color:rgba(120,220,140,.75);}',
+    '.tlfloor.cur{border-color:rgba(255,210,120,.9);box-shadow:0 0 18px rgba(255,200,80,.4) inset;}',
+    '.tlfloor.boss{height:76px;border-color:rgba(255,200,90,.85);}',
+    '.tlfnum{width:40px;height:40px;flex:none;margin-left:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff;background:rgba(0,0,0,.58);border:2px solid rgba(255,255,255,.32);border-radius:50%;}',
+    '.tlfloor.boss .tlfnum{border-color:#ffd970;color:#ffd970;font-size:20px;}',
+    '.tlfmeta{flex:1;min-width:0;}',
+    '.tlfname{font-weight:800;color:#fff;font-size:13px;text-shadow:0 1px 3px #000;}',
+    '.tlfdiff{font-size:11px;color:#d6cde4;text-shadow:0 1px 3px #000;}',
+    '.tlfcur{font-size:11px;font-weight:900;color:#ffd970;margin-right:10px;letter-spacing:1px;text-shadow:0 1px 3px #000;}',
+    '.tlbase{height:44px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#e8e0f0;background:linear-gradient(180deg,#2e2848,#1c1832);border:1px solid rgba(255,255,255,.14);border-radius:4px 4px 16px 16px;position:relative;z-index:1;text-shadow:0 1px 3px #000;}',
+    '.tlclimber{position:absolute;left:-26px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:0;transition:top .9s cubic-bezier(.35,1.2,.4,1);z-index:6;filter:drop-shadow(0 2px 6px #000);}'
+  ].join('\n');
+  document.head.appendChild(st2);
   var mx=$('towermapx'); if(mx)mx.onclick=function(){ map.classList.remove('show'); };
   var lx=$('towerlevelsx'); if(lx)lx.onclick=function(){ openTowers(); };
   var lb=$('tlbegin'); if(lb)lb.onclick=function(){ beginRun(tlTower); };
