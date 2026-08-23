@@ -2536,7 +2536,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v119';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v120';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2719,7 +2719,7 @@ function diffLabel(d){ return {xeasy:'Extremely easy',veasy:'Very easy',easy:'Ea
 function applyArenaBg(src){ var a=$('arenabg'); if(!a)return;
   if(src){ a.style.backgroundImage='url('+src+')'; a.classList.add('show'); document.body.classList.add('tower-active'); }
   else{ a.classList.remove('show'); a.style.backgroundImage=''; document.body.classList.remove('tower-active'); } }
-function openTowers(){ closeAllModals(); towerRun=null; if($('towerexit'))$('towerexit').classList.remove('show'); renderTowerMap(); var m=$('towermap'); if(m)m.classList.add('show'); }
+function openTowers(){ closeAllModals(); towerRun=null; if($('towerexit'))$('towerexit').classList.remove('show'); renderTowerMap(); var m=$('towermap'); if(m)m.classList.add('show'); var _v=$('mkvid'); if(_v&&_v.play){ try{ var pp=_v.play(); if(pp&&pp.catch)pp.catch(function(){}); }catch(e){} } }
 function firstPickTower(){ for(var i=0;i<TOWERS.length;i++){ if(towerUnlocked(i)&&!towerDone(i)) return i; } return TOWERS.length-1; }
 function sizeMKtowers(){ var f=$('towermapinner'); if(!f)return; var H=(window.innerHeight||700)-52; var avail=H-68-30-24-8; if(avail<240)avail=240;   // fit the tallest (15-floor) tower to the field height (use window height — reliable during open transition)
   var ch=Math.max(28,Math.min(62,Math.floor(avail/15))); var cw=Math.round(ch*1.9);
@@ -2832,7 +2832,9 @@ function initTowersDOM(){
     '<div class="vs-fight">FIGHT!</div></div>';
   document.body.appendChild(vs);
   var map=document.createElement('div'); map.id='towermap'; map.className='tover';
-  map.innerHTML='<div class="tovbg mkvista" style="background-image:url(towers/vista.jpg)"></div>'+
+  map.innerHTML='<div class="mkvistafb" style="background-image:url(towers/vista.jpg)"></div>'+
+    '<video class="mkvid" id="mkvid" autoplay muted loop playsinline preload="auto" poster="towers/vista.jpg"><source src="towers/vista.mp4" type="video/mp4"></video>'+
+    '<div class="mkdim"></div>'+
     '<div class="tovhead"><span>⚔️ TOWERS</span><button class="tovx" id="towermapx" aria-label="Close">✕</button></div>'+
     '<div class="mkfield" id="towermapinner"></div>'+
     '<div class="mkplate" id="mkplate"></div>';
@@ -2981,9 +2983,14 @@ function initTowersDOM(){
     '.mkpsub{font-size:12px;color:#e6cfa0;margin-top:2px;}',
     '.mkprew{font-size:12px;color:#ffd970;margin-top:2px;font-weight:700;}',
     '.mkpbtn{margin-top:9px;}',
-    '.mkwp{position:absolute;right:14px;bottom:16px;z-index:5;background:rgba(20,14,6,.9);border:1px solid #c8952e;border-radius:20px;padding:7px 13px;font-weight:800;font-size:13px;color:#ffd970;box-shadow:0 4px 12px rgba(0,0,0,.5);}'
+    '.mkwp{position:absolute;right:14px;bottom:16px;z-index:5;background:rgba(20,14,6,.9);border:1px solid #c8952e;border-radius:20px;padding:7px 13px;font-weight:800;font-size:13px;color:#ffd970;box-shadow:0 4px 12px rgba(0,0,0,.5);}',
+    '#towermap::after{display:none;}',
+    '.mkvistafb{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0;}',
+    '.mkvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}',
+    '.mkdim{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(6,5,12,.5),rgba(6,5,12,.32) 45%,rgba(6,5,12,.72));}'
   ].join('\n');
   document.head.appendChild(st3);
+  var vid=$('mkvid'); if(vid){ var vs=vid.querySelector('source'); if(vs)vs.addEventListener('error',function(){ vid.style.display='none'; }); vid.addEventListener('error',function(){ vid.style.display='none'; }); }
   window.addEventListener('resize',function(){ if($('towermap')&&$('towermap').classList.contains('show')&&typeof sizeMKtowers==='function')sizeMKtowers(); });
   var mx=$('towermapx'); if(mx)mx.onclick=function(){ map.classList.remove('show'); };
   var lx=$('towerlevelsx'); if(lx)lx.onclick=function(){ openTowers(); };
