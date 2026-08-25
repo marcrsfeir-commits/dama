@@ -1091,7 +1091,9 @@ const SKINS=[
  {id:'emberlord',name:'Emberlord',emoji:'🌋',cost:0,special:true,earn:'Conquer the Emberforge tower',rarity:'legendary',perk:{bonusWP:5,strongHint:true,powerup:'enthrall'},swatch:['#ff9a3a','#8a3016','#140806'],
    vars:{'--bg':'#140806','--panel':'#200c08','--frameA':'#8a3016','--frameB':'#4e1408','--frameLine':'#2a0c06','--sqLight':'#e88a4a','--sqDark':'#5a1e10','--gold':'#ff9a3a','--sel':'#ff6a2a','--accent':'#f07a3a','--ink':'#f8e6da','--muted':'#c89a86','--lp1':'#ffc48a','--lp2':'#f0824a','--lp3':'#b0442a','--dp1':'#7a2e18','--dp2':'#4e1a0c','--dp3':'#2a0e06'}},
  {id:'voidborn',name:'Voidborn',emoji:'🕳️',cost:0,special:true,earn:'Conquer the Void Throne tower (Hell)',rarity:'mythic',perk:{bonusWP:8,strongHint:true,powerup:'ascension'},swatch:['#b98cff','#3a2a6a','#060410'],
-   vars:{'--bg':'#060410','--panel':'#0e0a1c','--frameA':'#3a2a6a','--frameB':'#1c1240','--frameLine':'#0a0616','--sqLight':'#6a4fb0','--sqDark':'#160f2e','--gold':'#b98cff','--sel':'#c060ff','--accent':'#a878ff','--ink':'#ece6ff','--muted':'#a898c8','--lp1':'#d0c0ff','--lp2':'#9a7fe0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1c1240','--dp3':'#0c0820'}}
+   vars:{'--bg':'#060410','--panel':'#0e0a1c','--frameA':'#3a2a6a','--frameB':'#1c1240','--frameLine':'#0a0616','--sqLight':'#6a4fb0','--sqDark':'#160f2e','--gold':'#b98cff','--sel':'#c060ff','--accent':'#a878ff','--ink':'#ece6ff','--muted':'#a898c8','--lp1':'#d0c0ff','--lp2':'#9a7fe0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1c1240','--dp3':'#0c0820'}},
+ {id:'cataclysm',name:'Cataclysm',emoji:'💥',cost:0,special:true,earn:'Conquer The Sundering tower',rarity:'legendary',perk:{bonusWP:6,strongHint:true,powerup:'detonate'},swatch:['#ffb43a','#d0421f','#180a06'],
+   vars:{'--bg':'#180a06','--panel':'#26100a','--frameA':'#a8451c','--frameB':'#5e220e','--frameLine':'#2c0f06','--sqLight':'#f0a552','--sqDark':'#5e2812','--gold':'#ffb43a','--sel':'#ff7a2a','--accent':'#ff8f3a','--ink':'#fbeadd','--muted':'#cca188','--lp1':'#ffd79a','--lp2':'#f5934a','--lp3':'#c05024','--dp1':'#8a3a18','--dp2':'#54200c','--dp3':'#2a0f06'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
 function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); }
@@ -1262,7 +1264,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
     else if(eq) foot='<span class="stag ok">Equipped</span>';
     else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
-      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move',reinforce:'🌿 Reinforce — summon an extra man onto your back row',vanish:'✴️ Vanish — erase the opponent’s most advanced man',enthrall:'🔮 Enthrall — convert an enemy man to your side',ascension:'👑 Ascension — crown your ENTIRE army as kings'};
+      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move',reinforce:'🌿 Reinforce — summon an extra man onto your back row',vanish:'✴️ Vanish — erase the opponent’s most advanced man',enthrall:'🔮 Enthrall — convert an enemy man to your side',ascension:'👑 Ascension — crown your ENTIRE army as kings for 4 turns',detonate:'💥 Detonate — tap anywhere; a huge blast scatters every piece to a random square'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
@@ -1628,6 +1630,7 @@ function handleCell(r,c){ initAudio();
   if(godPower){ applyGod(r,c); return; }
   if(slitherMode){ handleSlither(r,c); return; }
   if(monkeyMode){ monkeyPick(r,c); return; }
+  if(powerSelectMode==='detonate'){ doCataclysm(r,c); return; }                    // Cataclysm skin: tap ANY square to detonate
   if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
@@ -1674,7 +1677,7 @@ function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false;
 
 // ---- Coronation power-up (from the Coronation skin): crown your men as kings for 2 of your turns ----
 let powerUp=null, powerUsed=false;
-const POWER_META={ tempkings:{icon:'♛',label:'Crown'}, doublejump:{icon:'🐸',label:'Leap'}, fortress:{icon:'🛡️',label:'Shield'}, secondwind:{icon:'🌀',label:'Rewind'}, foresight:{icon:'👁️',label:'Foresee'}, reinforce:{icon:'🌿',label:'Reinforce'}, vanish:{icon:'✴️',label:'Vanish'}, enthrall:{icon:'🔮',label:'Enthrall'}, ascension:{icon:'👑',label:'Ascension'} };
+const POWER_META={ tempkings:{icon:'♛',label:'Crown'}, doublejump:{icon:'🐸',label:'Leap'}, fortress:{icon:'🛡️',label:'Shield'}, secondwind:{icon:'🌀',label:'Rewind'}, foresight:{icon:'👁️',label:'Foresee'}, reinforce:{icon:'🌿',label:'Reinforce'}, vanish:{icon:'✴️',label:'Vanish'}, enthrall:{icon:'🔮',label:'Enthrall'}, ascension:{icon:'👑',label:'Ascension'}, detonate:{icon:'💥',label:'Detonate'} };
 function powerType(){ return equippedPerk('powerup')||''; }
 function hasPower(){ return !!POWER_META[powerType()]; }
 function canUsePower(){ return hasPower() && !powerUsed && !powerUp && !powerSelectMode && canAssist(); }
@@ -1694,7 +1697,8 @@ function activatePower(){ if(!canUsePower())return; initAudio(); var t=powerType
   else if(t==='reinforce') pwReinforce();
   else if(t==='vanish') pwVanish();
   else if(t==='enthrall') pwEnthrall();
-  else if(t==='ascension') pwAscension(); }
+  else if(t==='ascension') pwAscension();
+  else if(t==='detonate'){ powerSelectMode='detonate'; render(); updatePowerUI(); showToast('💥 Tap anywhere on the board to detonate!'); } }
 function bestManOf(side,kingsToo){ var best=null,bs=-1; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(!p||p.player!==side)continue; if(p.king&&!kingsToo)continue; var adv=side===1?(6-r):(r-1); var sc=(p.king?100:0)+Math.max(0,adv)*10+(3.5-Math.abs(c-3.5)); if(sc>bs){bs=sc;best=[r,c];} } return best; }
 function pwFinish(){ var opp=turn===1?2:1; if(countPieces(board,opp)===0){ finishGame(turn); return true; } return false; }
 function pwReinforce(){ var side=turn, rows=side===1?[7,6,5]:[0,1,2], done=false;
@@ -1705,9 +1709,18 @@ function pwVanish(){ var opp=turn===1?2:1, t=bestManOf(opp,false)||bestManOf(opp
   board[t[0]][t[1]]=null; powerUsed=true; try{boardBurst(t[0],t[1]);}catch(e){} legal=computeLegal(board,turn); render(); updatePowerUI(); try{sCapture();}catch(e){} showToast('✴️ Vanish — an enemy man is erased!'); if(!pwFinish()&&coachMode)coachAuto(); }
 function pwEnthrall(){ var opp=turn===1?2:1, t=bestManOf(opp,false)||bestManOf(opp,true); if(!t){ showToast('No enemy to enthrall.'); return; }
   board[t[0]][t[1]].player=turn; powerUsed=true; try{boardBurst(t[0],t[1]);}catch(e){} legal=computeLegal(board,turn); render(); updatePowerUI(); try{sPromote();}catch(e){} showToast('🔮 Enthrall — an enemy turns to your side!'); if(!pwFinish()&&coachMode)coachAuto(); }
-function pwAscension(){ var side=turn, n=0; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===side&&!p.king){ p.king=true; n++; try{boardBurst(r,c);}catch(e){} } }
-  if(!n){ showToast('Your men are already kings.'); return; }
-  powerUsed=true; legal=computeLegal(board,turn); render(); updatePowerUI(); try{sPromote();}catch(e){} showToast('👑 Ascension — your army rises as kings!'); if(coachMode)coachAuto(); }
+function pwAscension(){ var owner=turn, cells=new Set(); for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===owner&&!p.king){ p.king=true; cells.add(r+','+c); try{boardBurst(r,c);}catch(e){} } }
+  if(!cells.size){ showToast('Your men are already kings.'); return; }
+  powerUp={owner:owner,remaining:4,cells:cells}; powerUsed=true; legal=computeLegal(board,turn); selected=null; hint=null; render(); updatePowerUI(); try{sPromote();}catch(e){} showToast('👑 Ascension — your army fights as kings for 4 turns!'); if(coachMode)coachAuto(); }
+function doCataclysm(er,ec){ powerSelectMode=null;                // 💥 explode: scatter every piece to a random non-promotion square
+  var pieces=[]; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ if(board[r][c]){ pieces.push(board[r][c]); board[r][c]=null; } }
+  var cells=[]; for(var r2=1;r2<=6;r2++)for(var c2=0;c2<8;c2++) cells.push([r2,c2]);   // rows 1-6 only → never a promotion row, so nothing auto-becomes a dama
+  for(var i=cells.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=cells[i]; cells[i]=cells[j]; cells[j]=t; }
+  for(var k=0;k<pieces.length && k<cells.length;k++){ var cc=cells[k]; board[cc[0]][cc[1]]=pieces[k]; }
+  powerUsed=true; legal=computeLegal(board,turn); selected=null; hint=null;
+  try{ boardBurst(er,ec); }catch(e){} try{ hellBolt&&hellBolt(er,ec); }catch(e){}
+  try{ for(var r3=0;r3<8;r3++)for(var c3=0;c3<8;c3++){ if(board[r3][c3]) jumpPieces(r3,c3); } }catch(e){}
+  render(); updatePowerUI(); try{ sCapture(); }catch(e){} showToast('💥 CATACLYSM — the board is blown apart!'); if(coachMode)coachAuto(); }
 function powerCoronation(){ var owner=turn, cells=new Set();
   for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(p&&p.player===owner&&!p.king){ p.king=true; cells.add(r+','+c); } }
   if(!cells.size){ showToast('No ordinary men to crown right now.'); return; }
@@ -2019,13 +2032,13 @@ function hellApplyPower(){ if(!hellPower)return; hellCount++;
   else if(hellPower==='warlord'){ if(!hellOnceDone && hellCount>=5){ hellOnceDone=true; hellSummon(); hellSummon(); hellCoronate(); } } }
 // ---- Void Throne (Hell tower): EVERY level buffs the AI and grants escalating powers ----
 const VOID_POOL=['legion','overlord','vampire','warp','enslave','hex','phantom','smite','plague','reaper','tyrant','leech','inferno','doom'];   // Hell-wheel powers the Void tower can wield
-function voidBuffConfig(lvl){
-  var kings=Math.min(6,1+Math.floor(lvl/3));                     // starting kings (>=1 every level)
-  var extra=lvl>=4?Math.min(5,Math.floor((lvl-1)/3)):0;          // starting bonus men (later levels)
-  var nPow=lvl<3?1:(lvl<8?2:3);                                  // how many Hell-wheel powers this floor wields
+function voidBuffConfig(lvl){                                     // BRUTAL: the final tower
+  var kings=Math.min(8,2+Math.floor(lvl/2));                     // starting kings 2 → 8
+  var extra=Math.min(6,1+Math.floor(lvl/3));                     // starting bonus men from floor 1
+  var nPow=lvl<2?2:(lvl<6?3:(lvl<11?4:5));                       // wields 2 → 5 Hell-wheel powers at once
   var pool=VOID_POOL.slice(), sig=[];
   for(var i=0;i<nPow&&pool.length;i++){ var idx=(lvl*7+i*13)%pool.length; sig.push(pool.splice(idx,1)[0]); }
-  return { kings:kings, extra:extra, summonEvery:Math.max(8,15-lvl), sig:sig, sigEvery:Math.max(6,14-lvl) };
+  return { kings:kings, extra:extra, summonEvery:Math.max(5,12-lvl), sig:sig, sigEvery:Math.max(4,11-lvl) };
 }
 function applyVoidPower(id){                                     // one-shot dispatch of a Hell-wheel power effect
   if(id==='legion') hellSummon();
@@ -2536,7 +2549,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v123';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v124';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2702,18 +2715,19 @@ function postGameModes(w){
 // Each tower = a run of themed AI fights on a planet. Beat every level IN A ROW; lose one → the tower resets.
 // Clearing a tower grants a brand-new skin (with a new power) that scales with the tower's difficulty.
 const TOWERS=[
-  {id:0,name:'Verdant Reach', emoji:'🌿',diff:'easy',lvls:5, reward:'verdant',  rewardEmoji:'🌿',rewardName:'Verdant',   blurb:'A gentle green world.'},
-  {id:1,name:'Sunscar Desert',emoji:'🏜️',diff:'med', lvls:7, reward:'mirage',   rewardEmoji:'🏜️',rewardName:'Mirage',    blurb:'Seven trials across burning sands.'},
-  {id:2,name:'Emberforge',    emoji:'🌋',diff:'hard',lvls:10,reward:'emberlord',rewardEmoji:'🌋',rewardName:'Emberlord', blurb:'Ten fights through fire and magma.'},
-  {id:3,name:'Void Throne',   emoji:'🕳️',diff:'hell',lvls:15,reward:'voidborn', rewardEmoji:'🕳️',rewardName:'Voidborn',  blurb:'Fifteen levels of hell itself.'}
+  {id:0,art:1,name:'Verdant Reach', emoji:'🌿',diff:'easy', lvls:5, reward:'verdant',  rewardEmoji:'🌿',rewardName:'Verdant',   blurb:'A gentle green world.'},
+  {id:1,art:2,name:'Sunscar Desert',emoji:'🏜️',diff:'med',  lvls:7, reward:'mirage',   rewardEmoji:'🏜️',rewardName:'Mirage',    blurb:'Seven trials across burning sands.'},
+  {id:2,art:3,name:'Emberforge',    emoji:'🌋',diff:'hard', lvls:10,reward:'emberlord',rewardEmoji:'🌋',rewardName:'Emberlord', blurb:'Ten fights through fire and magma.'},
+  {id:3,art:5,name:'The Sundering', emoji:'☄️',diff:'xhard',lvls:12,reward:'cataclysm',rewardEmoji:'💥',rewardName:'Cataclysm', blurb:'Twelve fights amid shattering reality.'},
+  {id:4,art:4,name:'Void Throne',   emoji:'🕳️',diff:'hell', lvls:15,reward:'voidborn', rewardEmoji:'🕳️',rewardName:'Voidborn',  blurb:'Fifteen levels of hell itself.'}
 ];
 let tlTower=0;                                                    // which tower the level screen is showing
-function towerBg(ti,lvl){ return 'towers/tw'+(ti+1)+'-'+(lvl+1)+'.jpg'; }
+function towerBg(ti,lvl){ var a=(TOWERS[ti]&&TOWERS[ti].art)||(ti+1); return 'towers/tw'+a+'-'+(lvl+1)+'.jpg'; }
 function towersDoneArr(){ if(!STATS.towersDone)STATS.towersDone=[]; return STATS.towersDone; }
 function towerDone(ti){ return towersDoneArr().indexOf(ti)>=0; }
 function towerUnlocked(ti){ return ti===0 || towerDone(ti-1); }
 const DIFF_TIERS=['xeasy','veasy','easy','med','hard','vhard','xhard','hell'];
-function diffForLevel(tw,lvl){ if(tw.reward==='voidborn'){ return lvl<3?'vhard':(lvl<7?'xhard':'hell'); }   // Void tower ramps engine strength across its 15 levels
+function diffForLevel(tw,lvl){ if(tw.reward==='voidborn'){ return lvl<2?'xhard':'hell'; }   // Void tower: brutal — full Hell engine almost throughout
   var b=DIFF_TIERS.indexOf(tw.diff); if(b<0)b=2; var idx=(lvl===tw.lvls-1)?Math.min(b+1,DIFF_TIERS.length-1):b; return DIFF_TIERS[idx]; }
 function diffLabel(d){ return {xeasy:'Extremely easy',veasy:'Very easy',easy:'Easy',med:'Medium',hard:'Hard',vhard:'Very hard',xhard:'Extremely hard',hell:'Hell'}[d]||d; }
 function applyArenaBg(src){ var a=$('arenabg'); if(!a)return;
