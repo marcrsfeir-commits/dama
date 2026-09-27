@@ -100,6 +100,19 @@
   .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,11,8,.66);border-radius:12px;z-index:6;}
   .overlay.show{display:flex;}
   .card{background:var(--panel);border:1px solid #3a2f24;border-radius:14px;padding:22px 26px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.5);}
+  /* ---- offline awareness popup ---- */
+  .offpop{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:20px;}
+  .offpop.show{display:flex;animation:offfade .18s ease;}
+  @keyframes offfade{from{opacity:0}to{opacity:1}}
+  .offcard{background:var(--panel);border:1px solid var(--frameA);border-radius:16px;max-width:410px;width:100%;padding:22px 22px 20px;text-align:center;box-shadow:0 16px 46px rgba(0,0,0,.62);}
+  .offcard .officon{font-size:42px;line-height:1;margin-bottom:4px;}
+  .offcard h2{margin:.15em 0 .1em;color:var(--ink);font-size:1.32em;}
+  .offcard .offsub{color:var(--muted);margin:0 0 15px;font-size:.95em;}
+  .offcard .offlist{text-align:start;margin:0 0 17px;display:flex;flex-direction:column;gap:9px;}
+  .offcard .offrow{display:flex;gap:9px;align-items:flex-start;font-size:.92em;color:var(--ink);line-height:1.35;}
+  .offcard .offrow .ic{flex:0 0 auto;margin-top:1px;}
+  .offcard .offrow.no{color:var(--muted);}
+  .offcard #offok{min-width:130px;}
   .card h2{margin:0 0 4px;font-family:Georgia,serif;font-size:24px;color:var(--gold);} .card p{margin:0 0 14px;color:var(--muted);font-size:13px;}
 
   .rulesbtn{margin-top:16px;background:transparent;color:var(--muted);border:none;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;}
@@ -179,6 +192,9 @@
   [data-finish="metal"] .piece{box-shadow:inset 0 3px 5px rgba(255,255,255,.45),inset 0 -3px 6px rgba(0,0,0,.42),0 2px 5px rgba(0,0,0,.45);}
   [data-finish="glass"] .piece{box-shadow:inset 0 2px 9px rgba(255,255,255,.55),inset 0 -2px 7px rgba(0,0,0,.28),0 2px 5px rgba(0,0,0,.35);}
   [data-finish="neon"] .piece{box-shadow:0 0 11px var(--gold),inset 0 0 7px rgba(255,255,255,.4),0 2px 5px rgba(0,0,0,.4);}
+  .piece.rogue{box-shadow:0 0 9px 2px #ff2a2a,0 0 4px #ff7a7a,inset 0 0 6px rgba(255,90,90,.55)!important;animation:roguepulse 1.15s ease-in-out infinite;}
+  .piece.rogue::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid rgba(255,60,60,.85);pointer-events:none;}
+  @keyframes roguepulse{0%,100%{box-shadow:0 0 8px 2px #ff2a2a,inset 0 0 6px rgba(255,90,90,.5)}50%{box-shadow:0 0 16px 5px #ff3a3a,inset 0 0 9px rgba(255,120,120,.75)}}
   /* Joey's Galaxy — light pawns = bright starry galaxy, dark pawns = deep galaxy with a violet glow, both readable on the black/purple board */
   [data-skin="joey"] .piece.l{
     background:
@@ -593,6 +609,7 @@
 </div></div>
 <div id="resumebar" class="resumebar" style="display:none"><span>⏸️ You have a game in progress.</span><button class="btn primary" id="resumebtn">Resume</button><button class="btn" id="resumedismiss">Dismiss</button></div>
 <div id="toast" class="toast" role="status"></div>
+<div id="offlinepop" class="offpop" role="dialog" aria-modal="true"></div>
 <div id="diffmodal" class="shop"><div class="shopcard" style="max-width:360px;text-align:center">
   <div class="shophead" style="justify-content:center"><span>⚙️ Change difficulty</span></div>
   <div id="diffq" class="olnote" style="margin:2px 0 12px"></div>
@@ -697,14 +714,15 @@ var diff;
 var SHIELD=new Set();                                             // Fortress power-up: squares the opponent can't capture
 function posKey(){return '';}
 function learnScore(){return 0;}
-const SIZE=8, KING_DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+const SIZE=8, KING_DIRS=[[-1,0],[1,0],[0,-1],[0,1]], DIAG_DIRS=[[-1,-1],[-1,1],[1,-1],[1,1]];
+function kdirs(p){ return (p&&p.rogue)?KING_DIRS.concat(DIAG_DIRS):KING_DIRS; }   // rogue (Devil skin) damas also slide/jump diagonally, for 2 turns
 const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
-const clone=b=>b.map(row=>row.map(c=>c?{player:c.player,king:c.king}:null));
+const clone=b=>b.map(row=>row.map(c=>c?(c.rogue?{player:c.player,king:c.king,rogue:true}:{player:c.player,king:c.king}):null));
 function initialBoard(){const b=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
   for(let c=0;c<SIZE;c++){b[1][c]={player:2,king:false};b[2][c]={player:2,king:false};b[5][c]={player:1,king:false};b[6][c]={player:1,king:false};}return b;}
 function isShielded(r,c){ return SHIELD && SHIELD.has && SHIELD.has(r+','+c); }
 function singleCaptures(board,r,c,piece){const opts=[],enemy=piece.player===1?2:1;
-  if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
+  if(piece.king){for(const[dr,dc]of kdirs(piece)){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
     if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;if(isShielded(nr,nc))continue;let lr=nr+dr,lc=nc+dc;
     while(inB(lr,lc)&&!board[lr][lc]){opts.push({capR:nr,capC:nc,landR:lr,landC:lc});lr+=dr;lc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const er=r+dr,ec=c+dc,lr=r+2*dr,lc=c+2*dc;
@@ -715,11 +733,11 @@ function captureSequences(board,r,c){const piece=board[r][c],out=[];
       const ddr=Math.sign(cap.landR-cr), ddc=Math.sign(cap.landC-cc);
       if(piece.king && lastDir && ddr===-lastDir[0] && ddc===-lastDir[1]) continue; // a king may not turn 180° between captures
       const nb=clone(bd);nb[cap.capR][cap.capC]=null;nb[cr][cc]=null;
-      nb[cap.landR][cap.landC]={player:piece.player,king:piece.king};ext=true;
+      nb[cap.landR][cap.landC]=piece.rogue?{player:piece.player,king:piece.king,rogue:true}:{player:piece.player,king:piece.king};ext=true;
       rec(nb,cap.landR,cap.landC,captured.concat([{r:cap.capR,c:cap.capC}]),path.concat([{r:cap.landR,c:cap.landC}]),[ddr,ddc]);}
     if(!ext&&captured.length>0)out.push({captured,end:{r:cr,c:cc},path});})(board,r,c,[],[],null);return out;}
 function normalMoves(board,r,c,piece){const d=[];
-  if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
+  if(piece.king){for(const[dr,dc]of kdirs(piece)){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc])d.push({r:nr,c:nc});}}return d;}
 function computeLegal(board,player){const capBy={};let anyCap=false;
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
@@ -739,7 +757,7 @@ function countPieces(board,player){let n=0;for(const row of board)for(const c of
 function allMoves(board,player){const lg=computeLegal(board,player);const list=[];
   for(const k in lg.moves){const p=k.split(',').map(Number);for(const m of lg.moves[k])list.push({from:p,to:[m.r,m.c],captured:m.captured,path:m.path});}return list;}
 function makeMove(board,mv){const nb=clone(board);const fr=mv.from[0],fc=mv.from[1];
-  const piece={player:nb[fr][fc].player,king:nb[fr][fc].king};nb[fr][fc]=null;
+  const _sp=nb[fr][fc],piece=_sp.rogue?{player:_sp.player,king:_sp.king,rogue:true}:{player:_sp.player,king:_sp.king};nb[fr][fc]=null;
   if(mv.captured)for(const cap of mv.captured)nb[cap.r][cap.c]=null;
   const backRow=piece.player===1?0:7;if(!piece.king&&mv.to[0]===backRow)piece.king=true;
   nb[mv.to[0]][mv.to[1]]=piece;return nb;}
@@ -773,7 +791,7 @@ function orderMoves(m){m.sort(function(a,b){
   return pb-pa;                                                      // then promotions
 });return m;}
 var TT=Object.create(null);
-function ttKey(board,player){ var s=(player===1?'1':'2'); for(var r=0;r<8;r++){ var row=board[r]; for(var c=0;c<8;c++){ var p=row[c]; s+= p?(p.player===1?(p.king?'A':'a'):(p.king?'B':'b')):'.'; } } return s; }
+function ttKey(board,player){ var s=(player===1?'1':'2'); for(var r=0;r<8;r++){ var row=board[r]; for(var c=0;c<8;c++){ var p=row[c]; s+= p?(p.player===1?(p.rogue?'R':(p.king?'A':'a')):(p.rogue?'S':(p.king?'B':'b'))):'.'; } } return s; }
 function nega(board,player,depth,alpha,beta,deadline){
   if(performance.now()>deadline) throw 0;
   const moves=allMoves(board,player);
@@ -865,14 +883,15 @@ let lang="en", sideChoice=1, gameId=0;
 const $=id=>document.getElementById(id);
 
 // ================= engine =================
-const SIZE=8, KING_DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+const SIZE=8, KING_DIRS=[[-1,0],[1,0],[0,-1],[0,1]], DIAG_DIRS=[[-1,-1],[-1,1],[1,-1],[1,1]];
+function kdirs(p){ return (p&&p.rogue)?KING_DIRS.concat(DIAG_DIRS):KING_DIRS; }   // rogue (Devil skin) damas also slide/jump diagonally, for 2 turns
 const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
-const clone=b=>b.map(row=>row.map(c=>c?{player:c.player,king:c.king}:null));
+const clone=b=>b.map(row=>row.map(c=>c?(c.rogue?{player:c.player,king:c.king,rogue:true}:{player:c.player,king:c.king}):null));
 function initialBoard(){const b=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
   for(let c=0;c<SIZE;c++){b[1][c]={player:2,king:false};b[2][c]={player:2,king:false};b[5][c]={player:1,king:false};b[6][c]={player:1,king:false};}return b;}
 function isShielded(r,c){ return SHIELD && SHIELD.has && SHIELD.has(r+','+c); }
 function singleCaptures(board,r,c,piece){const opts=[],enemy=piece.player===1?2:1;
-  if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
+  if(piece.king){for(const[dr,dc]of kdirs(piece)){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){nr+=dr;nc+=dc;}
     if(!inB(nr,nc)||board[nr][nc].player!==enemy)continue;if(isShielded(nr,nc))continue;let lr=nr+dr,lc=nc+dc;
     while(inB(lr,lc)&&!board[lr][lc]){opts.push({capR:nr,capC:nc,landR:lr,landC:lc});lr+=dr;lc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const er=r+dr,ec=c+dc,lr=r+2*dr,lc=c+2*dc;
@@ -883,11 +902,11 @@ function captureSequences(board,r,c){const piece=board[r][c],out=[];
       const ddr=Math.sign(cap.landR-cr), ddc=Math.sign(cap.landC-cc);
       if(piece.king && lastDir && ddr===-lastDir[0] && ddc===-lastDir[1]) continue; // a king may not turn 180° between captures
       const nb=clone(bd);nb[cap.capR][cap.capC]=null;nb[cr][cc]=null;
-      nb[cap.landR][cap.landC]={player:piece.player,king:piece.king};ext=true;
+      nb[cap.landR][cap.landC]=piece.rogue?{player:piece.player,king:piece.king,rogue:true}:{player:piece.player,king:piece.king};ext=true;
       rec(nb,cap.landR,cap.landC,captured.concat([{r:cap.capR,c:cap.capC}]),path.concat([{r:cap.landR,c:cap.landC}]),[ddr,ddc]);}
     if(!ext&&captured.length>0)out.push({captured,end:{r:cr,c:cc},path});})(board,r,c,[],[],null);return out;}
 function normalMoves(board,r,c,piece){const d=[];
-  if(piece.king){for(const[dr,dc]of KING_DIRS){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
+  if(piece.king){for(const[dr,dc]of kdirs(piece)){let nr=r+dr,nc=c+dc;while(inB(nr,nc)&&!board[nr][nc]){d.push({r:nr,c:nc});nr+=dr;nc+=dc;}}}
   else{const fwd=piece.player===1?-1:1;for(const[dr,dc]of[[fwd,0],[0,-1],[0,1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc])d.push({r:nr,c:nc});}}return d;}
 function computeLegal(board,player){const capBy={};let anyCap=false;
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){const p=board[r][c];if(!p||p.player!==player)continue;
@@ -907,7 +926,7 @@ function countPieces(board,player){let n=0;for(const row of board)for(const c of
 function allMoves(board,player){const lg=computeLegal(board,player);const list=[];
   for(const k in lg.moves){const p=k.split(',').map(Number);for(const m of lg.moves[k])list.push({from:p,to:[m.r,m.c],captured:m.captured,path:m.path});}return list;}
 function makeMove(board,mv){const nb=clone(board);const fr=mv.from[0],fc=mv.from[1];
-  const piece={player:nb[fr][fc].player,king:nb[fr][fc].king};nb[fr][fc]=null;
+  const _sp=nb[fr][fc],piece=_sp.rogue?{player:_sp.player,king:_sp.king,rogue:true}:{player:_sp.player,king:_sp.king};nb[fr][fc]=null;
   if(mv.captured)for(const cap of mv.captured)nb[cap.r][cap.c]=null;
   const backRow=piece.player===1?0:7;if(!piece.king&&mv.to[0]===backRow)piece.king=true;
   nb[mv.to[0]][mv.to[1]]=piece;return nb;}
@@ -941,7 +960,7 @@ function orderMoves(m){m.sort(function(a,b){
   return pb-pa;                                                      // then promotions
 });return m;}
 var TT=Object.create(null);
-function ttKey(board,player){ var s=(player===1?'1':'2'); for(var r=0;r<8;r++){ var row=board[r]; for(var c=0;c<8;c++){ var p=row[c]; s+= p?(p.player===1?(p.king?'A':'a'):(p.king?'B':'b')):'.'; } } return s; }
+function ttKey(board,player){ var s=(player===1?'1':'2'); for(var r=0;r<8;r++){ var row=board[r]; for(var c=0;c<8;c++){ var p=row[c]; s+= p?(p.player===1?(p.rogue?'R':(p.king?'A':'a')):(p.rogue?'S':(p.king?'B':'b'))):'.'; } } return s; }
 function nega(board,player,depth,alpha,beta,deadline){
   if(performance.now()>deadline) throw 0;
   const moves=allMoves(board,player);
@@ -1093,7 +1112,13 @@ const SKINS=[
  {id:'voidborn',name:'Voidborn',emoji:'🕳️',cost:0,special:true,earn:'Conquer the Void Throne tower (Hell)',rarity:'mythic',perk:{bonusWP:8,strongHint:true,powerup:'ascension'},swatch:['#b98cff','#3a2a6a','#060410'],
    vars:{'--bg':'#060410','--panel':'#0e0a1c','--frameA':'#3a2a6a','--frameB':'#1c1240','--frameLine':'#0a0616','--sqLight':'#6a4fb0','--sqDark':'#160f2e','--gold':'#b98cff','--sel':'#c060ff','--accent':'#a878ff','--ink':'#ece6ff','--muted':'#a898c8','--lp1':'#d0c0ff','--lp2':'#9a7fe0','--lp3':'#5a4590','--dp1':'#3a2a6a','--dp2':'#1c1240','--dp3':'#0c0820'}},
  {id:'cataclysm',name:'Cataclysm',emoji:'💥',cost:0,special:true,earn:'Conquer The Sundering tower',rarity:'legendary',perk:{bonusWP:6,strongHint:true,powerup:'detonate'},swatch:['#ffb43a','#d0421f','#180a06'],
-   vars:{'--bg':'#180a06','--panel':'#26100a','--frameA':'#a8451c','--frameB':'#5e220e','--frameLine':'#2c0f06','--sqLight':'#f0a552','--sqDark':'#5e2812','--gold':'#ffb43a','--sel':'#ff7a2a','--accent':'#ff8f3a','--ink':'#fbeadd','--muted':'#cca188','--lp1':'#ffd79a','--lp2':'#f5934a','--lp3':'#c05024','--dp1':'#8a3a18','--dp2':'#54200c','--dp3':'#2a0f06'}}
+   vars:{'--bg':'#180a06','--panel':'#26100a','--frameA':'#a8451c','--frameB':'#5e220e','--frameLine':'#2c0f06','--sqLight':'#f0a552','--sqDark':'#5e2812','--gold':'#ffb43a','--sel':'#ff7a2a','--accent':'#ff8f3a','--ink':'#fbeadd','--muted':'#cca188','--lp1':'#ffd79a','--lp2':'#f5934a','--lp3':'#c05024','--dp1':'#8a3a18','--dp2':'#54200c','--dp3':'#2a0f06'}},
+ {id:'angelic',name:'Angelic',emoji:'😇',cost:520,rarity:'legendary',perk:{bonusWP:3,strongHint:true,powerup:'judgment'},swatch:['#fffbe8','#e8c24a','#fff2a8'],
+   vars:{'--bg':'#0d0f18','--panel':'#161a28','--frameA':'#c8a24a','--frameB':'#8a6a2a','--frameLine':'#4a3a1a','--sqLight':'#fffbe8','--sqDark':'#e6d18a','--gold':'#fff2a8','--sel':'#ffe27a','--accent':'#ffe9a8','--ink':'#fdf8e6','--muted':'#c8bc94','--lp1':'#ffffff','--lp2':'#fff2c8','--lp3':'#e6cf88','--dp1':'#f0d878','--dp2':'#c8a63c','--dp3':'#8a6e22'}},
+ {id:'devil',name:'Devil',emoji:'😈',cost:540,rarity:'legendary',perk:{bonusWP:3,powerup:'rogue'},swatch:['#e84a4a','#1a0a0a'],
+   vars:{'--bg':'#0c0606','--panel':'#160a0a','--frameA':'#7a1a1a','--frameB':'#3a0e0e','--frameLine':'#1a0606','--sqLight':'#c87a7a','--sqDark':'#3a1414','--gold':'#ff3a3a','--sel':'#ff6a2a','--accent':'#e84a4a','--ink':'#f6e0e0','--muted':'#c09090','--lp1':'#ff9a9a','--lp2':'#e84a4a','--lp3':'#a02a2a','--dp1':'#5a1414','--dp2':'#2a0a0a','--dp3':'#120404'}},
+ {id:'halfangeldevil',name:'Half-Devil Half-Angel',emoji:'☯️',cost:0,special:true,earn:'Equip Angelic → Devil → Angelic ×3',rarity:'mythic',perk:{bonusWP:9,strongHint:true,powerup:'reckoning'},swatch:['#ffffff','#e84a4a'],
+   vars:{'--bg':'#100a0c','--panel':'#1a1012','--frameA':'#b02a3a','--frameB':'#5a1420','--frameLine':'#2a0a10','--sqLight':'#fff2f4','--sqDark':'#d06a7a','--gold':'#ff4a5a','--sel':'#ff8a3a','--accent':'#ffffff','--ink':'#fbeef0','--muted':'#c89aa0','--lp1':'#ffffff','--lp2':'#ffe0e4','--lp3':'#f0b8c0','--dp1':'#c02a3a','--dp2':'#7a1420','--dp3':'#3a0a12'}}
 ];
 const MAXSKIN=Math.max.apply(null,SKINS.filter(function(s){return !s.special;}).map(function(s){return s.cost;}));
 function ownsSpecial(id){ return !!(STATS.owned && STATS.owned.indexOf(id)>=0); }
@@ -1107,6 +1132,12 @@ function seedSpecialSkins(){ var n=(myName||'').toLowerCase();
   if(isAdmin()||n==='youxito') grantSpecial('youxito'); }
   // Sovereign is NOT seeded to a local list — ownsSkin() gates it on isAdmin(), so it lives only on the signed-in owner account
 let pendingUnlock=[];
+var equipSeq=[];                                                    // rolling equip history → secret Half-Devil Half-Angel unlock
+function noteEquip(id){ equipSeq.push(id); if(equipSeq.length>10)equipSeq=equipSeq.slice(-10);
+  var want=['angelic','devil','angelic','angelic','angelic'];       // equip Angelic → Devil → Angelic ×3
+  if(equipSeq.length>=want.length && equipSeq.slice(-want.length).join(',')===want.join(',') && !ownsSpecial('halfangeldevil')){
+    if(grantSpecial('halfangeldevil')){ equipSeq=[]; try{sPromote();}catch(e){} try{confettiBurst();}catch(e){}
+      setTimeout(function(){ showToast('☯️ The balance is struck — Half-Devil Half-Angel unlocked!'); },200); } } }
 function skinById(id){ return SKINS.find(function(s){return s.id===id;})||SKINS[0]; }
 function equippedSkin(){ return skinById(STATS.equipped||'wood'); }
 function equippedPerk(k){ const p=equippedSkin().perk; return p&&p[k]; }
@@ -1119,10 +1150,10 @@ function gameInProgress(){ return history.length>0 && !winner && (mode==='pvp'||
 function canSwitchSkin(id){ if(isAdmin())return true; if((STATS.equipped||'wood')===id)return true; return !gameInProgress(); }  // no swapping skins mid-game to stack once-per-game powers
 function buySkin(id){ var s=skinById(id); if(!s||s.special)return;
   if(!canSwitchSkin(id)){ showToast('Finish the game before switching skins.'); return; }
-  if(ownsSkin(s)){ STATS.equipped=id; applySkin(id); saveStats(); renderShop(); return; }
+  if(ownsSkin(s)){ STATS.equipped=id; noteEquip(id); applySkin(id); saveStats(); renderShop(); return; }
   if((STATS.wp||0) < s.cost){ showToast('Need '+fmtWP(s.cost-(STATS.wp||0))+' more WP.'); return; }
   STATS.wp=(STATS.wp||0)-s.cost; STATS.spent=(STATS.spent||0)+s.cost; if(!STATS.bought)STATS.bought=[]; STATS.bought.push(id);
-  STATS.equipped=id; applySkin(id); try{sPromote();}catch(e){} try{confettiBurst();}catch(e){}
+  STATS.equipped=id; noteEquip(id); applySkin(id); try{sPromote();}catch(e){} try{confettiBurst();}catch(e){}
   saveStats(); updateStats(); renderShop(); updatePowerUI(); showToast('🛒 Bought '+s.emoji+' '+s.name+' for '+s.cost+' WP — equipped!'); }
 function hintUnlocked(){ return hintLevel()>=1; }
 function applySkin(id){ const s=skinById(id); const root=document.documentElement;
@@ -1132,8 +1163,8 @@ function applySkin(id){ const s=skinById(id); const root=document.documentElemen
   root.setAttribute('data-skin', s.id);
   applyBoardFX(s);
 }
-function pieceFinish(s){ if(!s)return ''; if(['royalgold','crimson','marble','coronation','sunset'].indexOf(s.id)>=0)return 'metal'; if(['obsidian','celestial','ocean','candy','winter'].indexOf(s.id)>=0)return 'glass'; if(['galaxy','phoenix','aurora','ramadan'].indexOf(s.id)>=0)return 'neon'; return ''; }
-function skinFX(s){ if(!s)return ''; if(['galaxy','celestial','aurora','joey'].indexOf(s.id)>=0)return 'stars'; if(['phoenix','crimson','theasskicker'].indexOf(s.id)>=0)return 'embers'; if(s.rarity==='legendary'||s.rarity==='epic')return 'shimmer'; return ''; }
+function pieceFinish(s){ if(!s)return ''; if(['royalgold','crimson','marble','coronation','sunset','devil'].indexOf(s.id)>=0)return 'metal'; if(['obsidian','celestial','ocean','candy','winter','angelic'].indexOf(s.id)>=0)return 'glass'; if(['galaxy','phoenix','aurora','ramadan','halfangeldevil'].indexOf(s.id)>=0)return 'neon'; return ''; }
+function skinFX(s){ if(!s)return ''; if(['galaxy','celestial','aurora','joey','angelic'].indexOf(s.id)>=0)return 'stars'; if(['phoenix','crimson','theasskicker','devil','halfangeldevil'].indexOf(s.id)>=0)return 'embers'; if(s.rarity==='legendary'||s.rarity==='epic')return 'shimmer'; return ''; }
 function skinFXKind(){ var id=STATS.equipped||'wood'; if(id==='joey')return 'galaxy'; if(id==='theasskicker')return 'fire'; if(id==='sovereign')return 'royal'; if(id==='youxito')return 'jungle'; return 'default'; }
 function applyBoardFX(s){ var fx=document.getElementById('boardfx'); if(!fx)return; fx.className='boardfx'; fx.innerHTML='';
   var t=skinFX(s); if(!t)return; fx.classList.add('fx-'+t);
@@ -1264,7 +1295,7 @@ function renderShop(){ const grid=$('shopgrid'); if(!grid)return; const wp=STATS
     else if(eq) foot='<span class="stag ok">Equipped</span>';
     else foot='<button class="btn equip" data-id="'+s.id+'">Equip</button>';
     let perk=''; if(s.perk){ const bits=[]; if(s.perk.bonusWP)bits.push('+'+s.perk.bonusWP+' WP / win'); if(s.perk.strongHint)bits.push('stronger hint');
-      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move',reinforce:'🌿 Reinforce — summon an extra man onto your back row',vanish:'✴️ Vanish — erase the opponent’s most advanced man',enthrall:'🔮 Enthrall — convert an enemy man to your side',ascension:'👑 Ascension — crown your ENTIRE army as kings for 4 turns',detonate:'💥 Detonate — tap anywhere; a huge blast scatters every piece to a random square'};
+      const PWTXT={tempkings:'👑 Coronation — crown all your men as kings for 2 turns',doublejump:'🐸 Leap — one man moves like a king for a move',fortress:'🛡️ Shield — make a piece uncapturable for a turn',secondwind:'🌀 Second Wind — undo the opponent’s last capture',foresight:'👁️ Foresight — reveal the opponent’s planned move',reinforce:'🌿 Reinforce — summon an extra man onto your back row',vanish:'✴️ Vanish — erase the opponent’s most advanced man',enthrall:'🔮 Enthrall — convert an enemy man to your side',ascension:'👑 Ascension — crown your ENTIRE army as kings for 4 turns',detonate:'💥 Detonate — tap anywhere; a huge blast scatters every piece to a random square',judgment:'😇 Judgment — beam any 3×3 area: men are wiped out, kings are cast down to men (hits BOTH sides — aim carefully!)',rogue:'😈 Rogue — turn one of your men into a dama that moves in + and × for 2 turns, and stays a dama forever',reckoning:'☯️ Reckoning — a beam that spares your side (enemy kings cast down, men wiped) AND raises a rogue dama'};
       if(s.perk.powerup&&PWTXT[s.perk.powerup])bits.push(PWTXT[s.perk.powerup]+' (once/game)');
       if(s.perk.repeat==='purge')bits.push('💀 Strike — delete an enemy man (not a king) every 10 of your moves');
       if(s.perk.god)bits.push('👑 GOD POWERS — Strike · Smite · Crown · Summon · Teleport · Enslave, infinite use, any time');
@@ -1474,7 +1505,7 @@ function newGame(doBounce){
   flip=(humanSide===2);
   boardEl.classList.toggle('mono',style==='trad');
   board=initialBoard();turn=1;selected=null;winner=null;lastMove=null;history=[];thinking=false;animating=false;hint=null;
-  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;shieldPerm=false;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;monkeyBanish=null;hellPower=null;hellCount=0;hellOnceDone=false;savePrefs();hideCoachPanel();updateCoachUI();
+  moveTrail=[];coachStats={};noProg=0;posCounts={};gQuad=false;dangerSet=null;powerUp=null;rogueUp=null;powerUsed=false;SHIELD=new Set();shieldOwner=0;shieldPerm=false;powerSelectMode=null;diffUsage={};purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;godPower=null;godTeleFrom=null;slitherLeft=(equippedPerk('retreat')?5:0);slitherMode=false;slitherSel=null;monkeyUsed=false;monkeyMode=false;monkeyPicks=0;monkeyPickSet=null;monkeyBanish=null;hellPower=null;hellCount=0;hellOnceDone=false;savePrefs();hideCoachPanel();updateCoachUI();
   towerRun = (forcedGame&&forcedGame.towerRun) ? forcedGame.towerRun : null;                          // Towers: current gauntlet run context
   if(diff==='hell'&&mode==='ai'&&!towerRun){ hellStartWheel(); }                                      // hell wheel only in a normal Hell game, never a tower fight
   applyArenaBg(forcedGame&&forcedGame.bg);                                                            // Towers: cinematic arena backdrop (cleared when absent)
@@ -1572,7 +1603,7 @@ function render(){ if(!board||!legal)return;   // not initialised yet (e.g. firs
     const isDest=destSet.has(key);
     const canPick=canInput&&cell&&cell.player===turn&&pickable.has(key);
     if(isDest)sq.classList.add('godest');else if(canPick)sq.classList.add('pick');
-    if(cell){const p=document.createElement('div');p.className='piece '+(cell.player===1?'l':'d');if(cell.king)p.classList.add('king');sq.appendChild(p);}
+    if(cell){const p=document.createElement('div');p.className='piece '+(cell.player===1?'l':'d');if(cell.king)p.classList.add('king');if(cell.rogue)p.classList.add('rogue');sq.appendChild(p);}
     if(isDest&&!cell){const d=document.createElement('span');d.className='dest';sq.appendChild(d);}
     if(isDest&&cell){const d=document.createElement('span');d.className='destcap';sq.appendChild(d);}
     if(canPick&&!isDest){const d=document.createElement('span');d.className='pickdot';sq.appendChild(d);}
@@ -1631,6 +1662,8 @@ function handleCell(r,c){ initAudio();
   if(slitherMode){ handleSlither(r,c); return; }
   if(monkeyMode){ monkeyPick(r,c); return; }
   if(powerSelectMode==='detonate'){ doCataclysm(r,c); return; }                    // Cataclysm skin: tap ANY square to detonate
+  if(powerSelectMode==='judgment'){ doAngelBeam(r,c); return; }                    // Angelic skin: tap ANY square for the divine beam
+  if(powerSelectMode==='reckoning'){ doReckoning(r,c); return; }                   // Half-Devil Half-Angel: beam + rogue
   if(powerSelectMode){ var pc=board[r][c]; if(pc&&pc.player===turn){ applyPowerToPiece(r,c); } else { showToast('Tap one of YOUR pieces.'); } return; }
   const key=r+','+c,cell=board[r][c];
   if(selected){const list=legal.moves[selected.join(',')]||[];const mv=list.find(m=>m.r===r&&m.c===c);
@@ -1649,6 +1682,7 @@ function apply(mv){
   purgeTrack(mover);                                             // The Ass Kicker: tally moves, grant a Strike every 10
   monkeyTrack(mover);                                            // Monkey Mayhem: count down the 2-turn banish, then bring pawns back
   powerTrack(mover,mv);                                          // update / expire the Coronation crowns before scoring the position
+  rogueTrack(mover,mv);                                          // Devil rogue: count down its diagonal window, then it stays a plain dama
   shieldTrack(mover,mv);                                          // Fortress shield follows its piece
   if(onlineActive&&!applyingRemote) sendMsg({type:'move',mv:mv, sh:Array.from(SHIELD||[]), so:shieldOwner, sp:shieldPerm});// mirror my move + shield state to my online opponent
   const wasMan=!prev[mv.from[0]][mv.from[1]].king;
@@ -1676,16 +1710,18 @@ function finishGame(w){ winner=w; stopClock(); renderClocks(); clearGameSnapshot
 function canAssist(){ if(winner||thinking||animating||mode==='cvc')return false; if((mode==='ai'||mode==='online')&&turn!==humanSide)return false; return true; }
 
 // ---- Coronation power-up (from the Coronation skin): crown your men as kings for 2 of your turns ----
-let powerUp=null, powerUsed=false;
-const POWER_META={ tempkings:{icon:'♛',label:'Crown'}, doublejump:{icon:'🐸',label:'Leap'}, fortress:{icon:'🛡️',label:'Shield'}, secondwind:{icon:'🌀',label:'Rewind'}, foresight:{icon:'👁️',label:'Foresee'}, reinforce:{icon:'🌿',label:'Reinforce'}, vanish:{icon:'✴️',label:'Vanish'}, enthrall:{icon:'🔮',label:'Enthrall'}, ascension:{icon:'👑',label:'Ascension'}, detonate:{icon:'💥',label:'Detonate'} };
+let powerUp=null, powerUsed=false, rogueUp=null;   // rogueUp = Devil skin's rogue dama: diagonal (+ and ×) for N turns, then a permanent dama
+const POWER_META={ tempkings:{icon:'♛',label:'Crown'}, doublejump:{icon:'🐸',label:'Leap'}, fortress:{icon:'🛡️',label:'Shield'}, secondwind:{icon:'🌀',label:'Rewind'}, foresight:{icon:'👁️',label:'Foresee'}, reinforce:{icon:'🌿',label:'Reinforce'}, vanish:{icon:'✴️',label:'Vanish'}, enthrall:{icon:'🔮',label:'Enthrall'}, ascension:{icon:'👑',label:'Ascension'}, detonate:{icon:'💥',label:'Detonate'}, judgment:{icon:'😇',label:'Judgment'}, rogue:{icon:'😈',label:'Rogue'}, reckoning:{icon:'☯️',label:'Reckoning'} };
 function powerType(){ return equippedPerk('powerup')||''; }
 function hasPower(){ return !!POWER_META[powerType()]; }
 function canUsePower(){ return hasPower() && !powerUsed && !powerUp && !powerSelectMode && canAssist(); }
 function updatePowerUI(){ var b=$('powerfab'); if(b){ b.classList.toggle('show', canUsePower());
     var m=POWER_META[powerType()]; if(m){ var ic=b.querySelector('.hicon'), lb=b.querySelector('.hlbl'); if(ic)ic.textContent=m.icon; if(lb)lb.textContent=m.label; } }
   var badge=$('powerbadge'); if(badge){ var show=false, txt='';
-    if(powerUp&&powerUp.remaining>0){ show=true; txt='♛ '+powerUp.remaining+' turn'+(powerUp.remaining>1?'s':'')+' of kings'; }
+    if(rogueUp&&rogueUp.remaining>0){ show=true; txt='😈 rogue: '+rogueUp.remaining+' turn'+(rogueUp.remaining>1?'s':'')+' of + and ×'; }
+    else if(powerUp&&powerUp.remaining>0){ show=true; txt='♛ '+powerUp.remaining+' turn'+(powerUp.remaining>1?'s':'')+' of kings'; }
     else if(SHIELD.size){ show=true; txt='🛡️ '+SHIELD.size+' piece'+(SHIELD.size>1?'s':'')+' shielded'; }
+    else if(powerSelectMode==='judgment'||powerSelectMode==='detonate'||powerSelectMode==='reckoning'){ show=true; txt='Tap any square…'; }
     else if(powerSelectMode){ show=true; txt='Tap one of your pieces…'; }
     badge.classList.toggle('show',show); if(show)badge.textContent=txt; } }
 function activatePower(){ if(!canUsePower())return; initAudio(); var t=powerType();
@@ -1698,7 +1734,10 @@ function activatePower(){ if(!canUsePower())return; initAudio(); var t=powerType
   else if(t==='vanish') pwVanish();
   else if(t==='enthrall') pwEnthrall();
   else if(t==='ascension') pwAscension();
-  else if(t==='detonate'){ powerSelectMode='detonate'; render(); updatePowerUI(); showToast('💥 Tap anywhere on the board to detonate!'); } }
+  else if(t==='detonate'){ powerSelectMode='detonate'; render(); updatePowerUI(); showToast('💥 Tap anywhere on the board to detonate!'); }
+  else if(t==='judgment'){ powerSelectMode='judgment'; render(); updatePowerUI(); showToast('😇 Tap any square — a divine beam smites everything in a 3×3.'); }
+  else if(t==='rogue'){ powerSelectMode='rogue'; render(); updatePowerUI(); showToast('😈 Tap one of your men to turn it rogue.'); }
+  else if(t==='reckoning'){ powerSelectMode='reckoning'; render(); updatePowerUI(); showToast('☯️ Tap any square — judgment upon your foes, and a rogue rises.'); } }
 function bestManOf(side,kingsToo){ var best=null,bs=-1; for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var p=board[r][c]; if(!p||p.player!==side)continue; if(p.king&&!kingsToo)continue; var adv=side===1?(6-r):(r-1); var sc=(p.king?100:0)+Math.max(0,adv)*10+(3.5-Math.abs(c-3.5)); if(sc>bs){bs=sc;best=[r,c];} } return best; }
 function pwFinish(){ var opp=turn===1?2:1; if(countPieces(board,opp)===0){ finishGame(turn); return true; } return false; }
 function pwReinforce(){ var side=turn, rows=side===1?[7,6,5]:[0,1,2], done=false;
@@ -1726,12 +1765,43 @@ function powerCoronation(){ var owner=turn, cells=new Set();
   if(!cells.size){ showToast('No ordinary men to crown right now.'); return; }
   powerUp={owner:owner,remaining:2,cells:cells}; powerUsed=true; legal=computeLegal(board,turn); selected=null; hint=null;
   try{ sPromote(); }catch(e){} render(); updatePowerUI(); showToast('👑 Coronation! Your men fight as kings for 2 turns.'); if(coachMode)coachAuto(); }
+function beamFinish(){ var opp=turn===1?2:1;                                 // a beam can wipe out a whole side — resolve either outcome
+  if(countPieces(board,opp)===0){ finishGame(turn); return true; }
+  if(countPieces(board,turn)===0){ finishGame(opp); return true; }
+  return false; }
+function doAngelBeam(er,ec){ powerSelectMode=null;                           // 😇 Judgment: smite a 3×3 — men die, kings fall to men — hits BOTH sides
+  var hit=0,dem=0;
+  for(var r=er-1;r<=er+1;r++)for(var c=ec-1;c<=ec+1;c++){ if(r<0||r>7||c<0||c>7)continue; var p=board[r][c]; if(!p)continue;
+    if(p.king){ p.king=false; p.rogue=false; dem++; } else { board[r][c]=null; hit++; } try{boardBurst(r,c);}catch(e){} }
+  powerUsed=true; try{ hellBolt(er,ec); }catch(e){}
+  legal=computeLegal(board,turn); selected=null; hint=null; render(); updatePowerUI(); try{ sCapture(); }catch(e){}
+  showToast('😇 Judgment — '+hit+' struck down'+(dem?', '+dem+' dethroned':'')+'!'); if(!beamFinish()&&coachMode)coachAuto(); }
+function doReckoning(er,ec){ powerSelectMode=null;                           // ☯️ Reckoning: a beam that SPARES your side, plus a rogue rises
+  var me=turn,hit=0,dem=0;
+  for(var r=er-1;r<=er+1;r++)for(var c=ec-1;c<=ec+1;c++){ if(r<0||r>7||c<0||c>7)continue; var p=board[r][c]; if(!p||p.player===me)continue;
+    if(p.king){ p.king=false; p.rogue=false; dem++; } else { board[r][c]=null; hit++; } try{boardBurst(r,c);}catch(e){} }
+  var t=bestManOf(me,false); if(t){ var rp=board[t[0]][t[1]]; rp.king=true; rp.rogue=true; rogueUp={owner:me,remaining:2,cells:new Set([t[0]+','+t[1]])}; try{boardBurst(t[0],t[1]);}catch(e){} }
+  powerUsed=true; try{ hellBolt(er,ec); }catch(e){}
+  legal=computeLegal(board,turn); selected=t||null; hint=null; render(); updatePowerUI(); try{ sCapture(); }catch(e){}
+  showToast('☯️ Reckoning — '+hit+' struck'+(dem?', '+dem+' dethroned':'')+(t?', a rogue rises':'')+'!'); if(!pwFinish()&&coachMode)coachAuto(); }
+function rogueTrack(mover,mv){ if(!rogueUp)return;                           // count down the rogue's diagonal window, following the piece as it moves
+  if(mv.captured)mv.captured.forEach(function(cp){ rogueUp.cells.delete(cp.r+','+cp.c); });
+  if(mover===rogueUp.owner){ var fk=mv.from[0]+','+mv.from[1];
+    if(rogueUp.cells.has(fk)){ rogueUp.cells.delete(fk); rogueUp.cells.add(mv.to[0]+','+mv.to[1]); }
+    rogueUp.remaining--; if(rogueUp.remaining<=0) rogueRevert(); } }
+function rogueRevert(){ if(!rogueUp)return;                                  // diagonals expire; the piece stays a dama forever
+  rogueUp.cells.forEach(function(k){ var a=k.split(','),r=+a[0],c=+a[1],p=board[r][c]; if(p&&p.rogue)p.rogue=false; });
+  rogueUp=null; }
 function applyPowerToPiece(r,c){ var p=board[r][c]; if(!p||p.player!==turn)return;
   if(powerSelectMode==='doublejump'){ if(p.king){ showToast('Pick a normal man, not a king.'); return; }
     p.king=true; powerUp={owner:turn,remaining:1,cells:new Set([r+','+c])}; powerUsed=true; powerSelectMode=null;
     legal=computeLegal(board,turn); selected=[r,c]; try{sPromote();}catch(e){} render(); updatePowerUI(); showToast('🐸 Leap armed — move this man like a king now.'); }
   else if(powerSelectMode==='fortress'){ SHIELD=new Set([r+','+c]); shieldOwner=turn; powerUsed=true; powerSelectMode=null;
-    selected=null; legal=computeLegal(board,turn); render(); updatePowerUI(); showToast('🛡️ Shielded — safe from capture through the next turn.'); } }
+    selected=null; legal=computeLegal(board,turn); render(); updatePowerUI(); showToast('🛡️ Shielded — safe from capture through the next turn.'); }
+  else if(powerSelectMode==='rogue'){ if(p.king){ showToast('Pick a normal man to turn rogue.'); return; }   // 😈 Devil: a man becomes a rogue dama
+    p.king=true; p.rogue=true; rogueUp={owner:turn,remaining:2,cells:new Set([r+','+c])}; powerUsed=true; powerSelectMode=null;
+    selected=[r,c]; legal=computeLegal(board,turn); try{sPromote();}catch(e){} try{boardBurst(r,c);}catch(e){} render(); updatePowerUI();
+    showToast('😈 Rogue — this dama moves in + and × for 2 turns, and stays a dama forever!'); } }
 function powerSecondWind(){ var me=turn, opp=me===1?2:1, restored=0, found=false;
   for(var i=history.length-1;i>=0;i--){ if(history[i].turn===opp){ found=true; var before=history[i].board;
     for(var r=0;r<8;r++)for(var c=0;c<8;c++){ var pb=before[r][c]; if(pb&&pb.player===me && !board[r][c]){ board[r][c]={player:pb.player,king:pb.king}; restored++; } } break; } }
@@ -2193,7 +2263,7 @@ function undo(){ if(thinking||animating)return;
   if(!history.length)return;
   let prev=history.pop();
   if(mode==='ai'&&prev.turn!==humanSide&&history.length)prev=history.pop();
-  board=prev.board;turn=prev.turn;lastMove=prev.lastMove;selected=null;winner=null;powerUp=null;
+  board=prev.board;turn=prev.turn;lastMove=prev.lastMove;selected=null;winner=null;powerUp=null;rogueUp=null;
   overlay.classList.remove('show');refresh();}
 
 // ================= settings / achievements / backup / prefs =================
@@ -2264,7 +2334,7 @@ function doResume(){ var snap; try{ snap=JSON.parse(localStorage.getItem('dama-g
   boardEl.classList.toggle('mono',style==='trad');
   board=snap.board.map(function(row){return row.map(function(c){return c?{player:c.p,king:!!c.k}:null;});});
   turn=snap.turn||1; selected=null; winner=null; lastMove=snap.lastMove||null; history=[]; thinking=false; animating=false; hint=null;
-  moveTrail=[]; coachStats={}; noProg=0; posCounts={}; gQuad=false; dangerSet=null; powerUp=null; powerUsed=false; legal=computeLegal(board,turn);
+  moveTrail=[]; coachStats={}; noProg=0; posCounts={}; gQuad=false; dangerSet=null; powerUp=null; rogueUp=null; powerUsed=false; legal=computeLegal(board,turn);
   overlay.classList.remove('show'); if($('resumebar'))$('resumebar').style.display='none';
   buildLabels(); refresh(); updateSideBtn(); showCoachIdle(); updateCoachUI(); maybeAI(); autoAssist(); coachAuto(); showToast('▶️ Resumed your game'); }
 // ---- stats page ----
@@ -2489,7 +2559,7 @@ function sendMsg(m){ try{ if(mqc&&mqc.connected&&roomTopic){ m.sid=myId; mqc.pub
 function serializeBoard(){ return board.map(function(row){ return row.map(function(c){ return c?{p:c.player,k:c.king?1:0}:0; }); }); }
 function loadOnlineState(bd,t){ board=bd.map(function(row){ return row.map(function(c){ return c?{player:c.p,king:!!c.k}:null; }); });
   mode='online'; humanSide=onlineSide; flip=(humanSide===2);        // guest: lock in MY side + orient the board so my pieces sit at the bottom
-  turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;powerUsed=false;
+  turn=t; selected=null;winner=null;hint=null;dangerSet=null;lastMove=null;history=[];thinking=false;animating=false;powerUp=null;rogueUp=null;powerUsed=false;
   purgeCnt={1:0,2:0};purgeCharge={1:false,2:false};strikeSelectMode=false;monkeyMode=false;monkeyPickSet=null;monkeyBanish=null;
   legal=computeLegal(board,turn); overlay.classList.remove('show'); buildLabels(); render(); updateSideBtn(); if(coachMode)coachAuto(); }
 function sendSync(){ sendMsg({type:'sync', bd:serializeBoard(), t:turn, nm:myName, eq:STATS.equipped}); }
@@ -2549,7 +2619,7 @@ function onlineNewGameShared(){ initAudio();
   else newGame(); }
 
 // ================= accounts (cloud progress via Supabase) =================
-const APP_VERSION='v124';                                         // shown in-game so players can confirm they're up to date
+const APP_VERSION='v125';                                         // shown in-game so players can confirm they're up to date
 const SB_URL='https://zsbjzljbeaekajjzgkna.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzYmp6bGpiZWFla2Fqanpna25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjA1NjksImV4cCI6MjEwMjczNjU2OX0.ToeJgGY4Lxe82p8oyTlA6K-UUwSrid89PMOUTX1umvk';
 const ADMIN_UID='08cc6461-8b4a-412c-afab-00d6dfbbc722';           // the owner account (username: marc)
@@ -2630,7 +2700,7 @@ function startPuzzle(idx,daily){ var pz=PUZZLES[idx]; if(!pz){ showToast('No puz
   gameId++; mode='puzzle'; humanSide=pz.side; diff='vhard'; style=($('style')&&$('style').value)||'classic';
   flip=(pz.side===2); boardEl.classList.toggle('mono',style==='trad');
   board=fenToBoard(pz.fen); turn=pz.side; selected=null; winner=null; lastMove=null; history=[];
-  thinking=false; animating=false; hint=null; powerUp=null; powerUsed=false; SHIELD=new Set(); shieldOwner=0; powerSelectMode=null;
+  thinking=false; animating=false; hint=null; powerUp=null; rogueUp=null; powerUsed=false; SHIELD=new Set(); shieldOwner=0; powerSelectMode=null;
   noProg=0; posCounts={}; dangerSet=null; blitzSecs=0; stopClock(); renderClocks();
   clearGameSnapshot(); if($('resumebar'))$('resumebar').style.display='none';
   overlay.classList.remove('show'); hideCoachPanel&&hideCoachPanel(); buildLabels(); refresh(); updateSideBtn();
@@ -3239,6 +3309,28 @@ function acctRestoreOnLoad(){ var flag; try{ flag=localStorage.getItem('dama-acc
   sbInit(function(ok){ if(!ok)return; try{ sb.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u&&!sbUser){ sbUser=u; onSignedIn(true); } }); }catch(e){} }); }
 function tryRestoreSession(){ var flag; try{ flag=localStorage.getItem('dama-acct'); }catch(e){} if(flag&&!sbUser) acctRestoreOnLoad(); }
 window.addEventListener('online', tryRestoreSession);
+// ---- Offline awareness: a one-time popup when the connection drops, telling you what still works ----
+function offlineCopy(){
+  if(lang==='ar') return { icon:'📴', title:'أنت غير متصل بالإنترنت', sub:'لا يوجد اتصال — لكن الداما تعمل بالكامل دون إنترنت.',
+    rows:[ {ok:1,t:'يمكنك اللعب: ضد الكمبيوتر، لاعبان، الألغاز، الحملة، البقاء، سباق الوقت، والأبراج'},
+           {ok:1,t:'تقدّمك (النقاط، الجلود، الأبراج، الإحصاءات) محفوظ على هذا الجهاز'},
+           {ok:0,t:'يحتاج إنترنت: اللعب أونلاين ومزامنة الحساب بين الأجهزة — ستُحدَّث عند عودة الاتصال'} ], ok:'حسناً' };
+  return { icon:'📴', title:"You're offline", sub:'No connection — but Dama is built to run fully offline.',
+    rows:[ {ok:1,t:'You can still play: vs Computer, 2 Players, Puzzles, Campaign, Survival, Time Attack & Towers'},
+           {ok:1,t:'Your progress (WP, skins, towers, stats) is saved right here on this device'},
+           {ok:0,t:'Needs internet: Online multiplayer & cross-device account sync — they catch up when you reconnect'} ], ok:'Got it' };
+}
+function showOfflinePop(){ var el=$('offlinepop'); if(!el)return; var c=offlineCopy();
+  var rows=c.rows.map(function(r){ return '<div class="offrow'+(r.ok?'':' no')+'"><span class="ic">'+(r.ok?'✅':'🚫')+'</span><span>'+r.t+'</span></div>'; }).join('');
+  el.innerHTML='<div class="offcard"><div class="officon">'+c.icon+'</div><h2>'+c.title+'</h2><p class="offsub">'+c.sub+'</p><div class="offlist">'+rows+'</div><button class="btn" id="offok">'+c.ok+'</button></div>';
+  el.classList.add('show');
+  var b=$('offok'); if(b)b.onclick=hideOfflinePop;
+  el.onclick=function(e){ if(e.target===el)hideOfflinePop(); };            // tap the backdrop to dismiss
+}
+function hideOfflinePop(){ var el=$('offlinepop'); if(el)el.classList.remove('show'); }
+window.addEventListener('offline', showOfflinePop);
+window.addEventListener('online', function(){ hideOfflinePop(); try{ showToast('✅ Back online — your progress will sync.'); }catch(e){} });
+if(!navigator.onLine) setTimeout(showOfflinePop, 1300);                     // opened while already offline → tell them once, after the splash clears
 window.addEventListener('focus', tryRestoreSession);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) tryRestoreSession(); });
 
@@ -3512,7 +3604,7 @@ $('challengedecline').addEventListener('click',declineChallenge);
 $('skins').addEventListener('click',openShop);
 $('shopclose').addEventListener('click',closeShop);
 $('shop').addEventListener('click',function(e){ if(e.target===$('shop'))closeShop(); });
-$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ var eid=b.getAttribute('data-id'); if(!canSwitchSkin(eid)){ showToast('Finish the game before switching skins.'); return; } STATS.equipped=eid; saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); return; }
+$('shopgrid').addEventListener('click',function(e){ var b=e.target.closest('.equip'); if(b){ var eid=b.getAttribute('data-id'); if(!canSwitchSkin(eid)){ showToast('Finish the game before switching skins.'); return; } STATS.equipped=eid; noteEquip(eid); saveStats(); applySkin(STATS.equipped); renderShop(); updatePowerUI(); return; }
   var buy=e.target.closest('.buy'); if(buy){ buySkin(buy.getAttribute('data-buy')); } });
 function onFSChange(){ if(!document.fullscreenElement) document.body.classList.remove('boardfs'); updateFSLabel(); render(); }
 document.addEventListener('fullscreenchange',onFSChange);
